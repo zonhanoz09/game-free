@@ -57,24 +57,34 @@ pub fn setup_gltf_models(
             let mut graph = AnimationGraph::new();
             let mut indices = HashMap::new();
 
-            // Load animations by index (0: Idle, 1: Attack, 2: Run, 3: Hit, 4: Die)
-            let idle_clip = asset_server.load(format!("{}#Animation0", rel_path));
+            // Map standard KayKit/Mixamo animations to indices:
+            // 36: Idle, 48: Running_A, 34: Hit_A, 23: Death_A
+            // Attack: Knight = 0 (1H_Melee_Attack_Chop), Mage = 62 (Spellcast_Shoot), Assassin = 32 (Dualwield_Melee_Attack_Slice)
+            let (idle_idx, attack_idx, run_idx, hit_idx, die_idx) = match class {
+                UnitClass::Knight => (36, 0, 48, 34, 23),
+                UnitClass::Mage => (36, 62, 48, 34, 23),
+                UnitClass::Assassin => (36, 32, 48, 34, 23),
+                UnitClass::Archer => (36, 16, 48, 34, 23),
+                UnitClass::Cleric => (36, 61, 48, 34, 23),
+            };
+
+            let idle_clip = asset_server.load(format!("{}#Animation{}", rel_path, idle_idx));
             let idle_node = graph.add_clip(idle_clip, 1.0, graph.root);
             indices.insert(CharacterAnimation::Idle, idle_node);
 
-            let attack_clip = asset_server.load(format!("{}#Animation1", rel_path));
+            let attack_clip = asset_server.load(format!("{}#Animation{}", rel_path, attack_idx));
             let attack_node = graph.add_clip(attack_clip, 1.0, graph.root);
             indices.insert(CharacterAnimation::Attack, attack_node);
 
-            let run_clip = asset_server.load(format!("{}#Animation2", rel_path));
+            let run_clip = asset_server.load(format!("{}#Animation{}", rel_path, run_idx));
             let run_node = graph.add_clip(run_clip, 1.0, graph.root);
             indices.insert(CharacterAnimation::Run, run_node);
 
-            let hit_clip = asset_server.load(format!("{}#Animation3", rel_path));
+            let hit_clip = asset_server.load(format!("{}#Animation{}", rel_path, hit_idx));
             let hit_node = graph.add_clip(hit_clip, 1.0, graph.root);
             indices.insert(CharacterAnimation::Hit, hit_node);
 
-            let die_clip = asset_server.load(format!("{}#Animation4", rel_path));
+            let die_clip = asset_server.load(format!("{}#Animation{}", rel_path, die_idx));
             let die_node = graph.add_clip(die_clip, 1.0, graph.root);
             indices.insert(CharacterAnimation::Die, die_node);
 
