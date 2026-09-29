@@ -4,17 +4,35 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 #[derive(Component)]
-pub struct BoardTile {
+pub struct TileEntity {
     pub col: usize,
     pub row: usize,
     pub faction: Faction,
-    pub base_y: f32,
 }
 
 #[derive(Component)]
-pub struct BrazierFlame {
+pub struct TileBorderVisual;
+
+#[derive(Component)]
+pub struct BrazierLight {
+    pub base_intensity: f32,
     pub phase: f32,
 }
+
+#[derive(Component)]
+pub struct BrazierEmberEmitter {
+    pub timer: Timer,
+    pub pos: Vec3,
+}
+
+#[derive(Component)]
+pub struct FloatingEmber {
+    pub velocity: Vec3,
+    pub timer: Timer,
+}
+
+#[derive(Component)]
+pub struct CenterRuneMedallion;
 
 #[derive(Resource, Default)]
 pub struct HoveredTile {
@@ -22,171 +40,238 @@ pub struct HoveredTile {
 }
 
 pub fn grid_to_world_pos(col: usize, row: usize, faction: Faction) -> Vec3 {
+    let col_pitch = TILE_SIZE + TILE_GAP;
+    let row_pitch = TILE_SIZE + TILE_GAP;
+
+    let z = (row as f32 - 1.0) * row_pitch;
     let x = match faction {
-        Faction::Player => PLAYER_COL_X[col.min(2)],
-        Faction::Enemy => ENEMY_COL_X[col.min(2)],
+        Faction::Player => -(2.5 - col as f32) * col_pitch - 0.7,
+        Faction::Enemy => (0.5 + col as f32) * col_pitch + 0.7,
     };
-    let z = ROW_Z[row.min(2)];
-    Vec3::new(x, UNIT_BASE_Y, z)
-}
 
-pub fn world_to_grid_pos(hit_point: Vec3) -> Option<GridPos> {
-    for faction in [Faction::Player, Faction::Enemy] {
-        for col in 0..BOARD_COLS {
-            for row in 0..BOARD_ROWS {
-                let tile_pos = grid_to_world_pos(col, row, faction);
-                let dx = (hit_point.x - tile_pos.x).abs();
-                let dz = (hit_point.z - tile_pos.z).abs();
-
-                if dx <= TILE_SIZE * 0.5 && dz <= TILE_SIZE * 0.5 {
-                    return Some(GridPos { col, row, faction });
-                }
-            }
-        }
-    }
-    None
+    Vec3::new(x, TILE_HEIGHT * 0.5 + 0.04, z)
 }
 
 pub fn setup_board(mut commands: Commands, assets_3d: Res<Game3dAssets>) {
-    // Main 3D Directional Sunlight
-    commands.spawn((
-        DirectionalLight {
-            color: Color::srgb(1.0, 0.96, 0.90),
-            illuminance: 14_000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(8.0, 22.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
-
-    // Secondary fill light for soft shadows
-    commands.spawn((
-        DirectionalLight {
-            color: Color::srgb(0.4, 0.6, 0.9),
-            illuminance: 5_000.0,
-            shadows_enabled: false,
-            ..default()
-        },
-        Transform::from_xyz(-10.0, 15.0, -8.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
-
-    // Main 3D Arena Podium ("Sàn Đấu")
-    commands.spawn((
-        Mesh3d(assets_3d.arena_floor.clone()),
-        MeshMaterial3d(assets_3d.arena_stone.clone()),
-        Transform::from_xyz(0.0, -0.4, 0.0),
-    ));
-
-    // Raised decorative outer rim / beveled stone dais base
+    // 1. Colosseum Stone Ground Foundation & Outer Rim
     commands.spawn((
         Mesh3d(assets_3d.arena_rim.clone()),
         MeshMaterial3d(assets_3d.arena_rim_mat.clone()),
-        Transform::from_xyz(0.0, -0.6, 0.0),
+        Transform::from_xyz(0.0, -0.40, 0.0),
     ));
 
-    // Glowing central division line across the arena
+    commands.spawn((
+        Mesh3d(assets_3d.arena_floor.clone()),
+        MeshMaterial3d(assets_3d.arena_stone.clone()),
+        Transform::from_xyz(0.0, -0.20, 0.0),
+    ));
+
+    // 2. Central Golden Arena Divider Line
     commands.spawn((
         Mesh3d(assets_3d.divider.clone()),
         MeshMaterial3d(assets_3d.divider_mat.clone()),
-        Transform::from_xyz(0.0, 0.015, 0.0),
+        Transform::from_xyz(0.0, 0.02, 0.0),
     ));
 
-    // Central Arena Centerpiece / VS Emblem
+    // 3. Central Ethereal Runic Medallion
     commands.spawn((
-        Mesh3d(assets_3d.cylinder.clone()),
-        MeshMaterial3d(assets_3d.gold_trim.clone()),
-        Transform::from_xyz(0.0, 0.02, 0.0).with_scale(Vec3::new(1.2, 0.02, 1.2)),
+        Mesh3d(assets_3d.rune_disc.clone()),
+        MeshMaterial3d(assets_3d.rune_base_mat.clone()),
+        Transform::from_xyz(0.0, 0.025, 0.0),
     ));
     commands.spawn((
-        Mesh3d(assets_3d.cylinder.clone()),
-        MeshMaterial3d(assets_3d.arena_stone.clone()),
-        Transform::from_xyz(0.0, 0.025, 0.0).with_scale(Vec3::new(1.0, 0.02, 1.0)),
+        Mesh3d(assets_3d.rune_circle.clone()),
+        MeshMaterial3d(assets_3d.rune_glow_mat.clone()),
+        Transform::from_xyz(0.0, 0.04, 0.0),
+        CenterRuneMedallion,
     ));
 
-    // 4 Grand Arena Corner Pillars with Braziers & Fire Orbs
-    let corner_positions = [(-8.0, -4.8), (8.0, -4.8), (-8.0, 4.8), (8.0, 4.8)];
+    // 4. Four Grand Corner Pillars & Hanging Banners
+    let pillar_coords = [
+        (-7.8, -4.6, Faction::Player),
+        (-7.8, 4.6, Faction::Player),
+        (7.8, -4.6, Faction::Enemy),
+        (7.8, 4.6, Faction::Enemy),
+    ];
 
-    for (idx, (cx, cz)) in corner_positions.iter().enumerate() {
+    for (px, pz, faction) in pillar_coords {
         // Stone Pillar
         commands.spawn((
             Mesh3d(assets_3d.arena_pillar.clone()),
             MeshMaterial3d(assets_3d.arena_pillar_mat.clone()),
-            Transform::from_xyz(*cx, 0.9, *cz),
+            Transform::from_xyz(px, 1.1, pz),
         ));
 
-        // Brazier Bowl
+        // Brazier Basin
         commands.spawn((
             Mesh3d(assets_3d.arena_brazier.clone()),
             MeshMaterial3d(assets_3d.arena_rim_mat.clone()),
-            Transform::from_xyz(*cx, 1.85, *cz),
+            Transform::from_xyz(px, 2.3, pz),
         ));
 
-        // Glowing Flame Crystal
+        // Blazing Fire Crystal Core
         commands.spawn((
             Mesh3d(assets_3d.sphere.clone()),
             MeshMaterial3d(assets_3d.brazier_fire.clone()),
-            Transform::from_xyz(*cx, 2.15, *cz).with_scale(Vec3::splat(0.38)),
-            BrazierFlame {
-                phase: idx as f32 * 1.5,
-            },
+            Transform::from_xyz(px, 2.65, pz).with_scale(Vec3::splat(0.26)),
         ));
 
-        // Warm Arena Torch Point Light
+        // Point Light for dramatic fire glow
+        let phase = px * 1.5 + pz * 0.7;
         commands.spawn((
             PointLight {
-                color: Color::srgb(1.0, 0.65, 0.25),
-                intensity: 65_000.0,
-                range: 12.0,
+                color: Color::srgb(1.0, 0.65, 0.2),
+                intensity: 4500.0,
+                range: 8.5,
                 shadows_enabled: false,
                 ..default()
             },
-            Transform::from_xyz(*cx, 2.4, *cz),
+            Transform::from_xyz(px, 2.9, pz),
+            BrazierLight {
+                base_intensity: 4500.0,
+                phase,
+            },
+        ));
+
+        // Floating Ember Emitter
+        commands.spawn((BrazierEmberEmitter {
+            timer: Timer::from_seconds(0.18, TimerMode::Repeating),
+            pos: Vec3::new(px, 2.7, pz),
+        },));
+
+        // Royal Hanging War Banners on Pillars
+        let banner_mat = match faction {
+            Faction::Player => assets_3d.banner_blue_mat.clone(),
+            Faction::Enemy => assets_3d.banner_red_mat.clone(),
+        };
+
+        // Banner Pole Crossbar
+        commands.spawn((
+            Mesh3d(assets_3d.banner_pole.clone()),
+            MeshMaterial3d(assets_3d.banner_pole_mat.clone()),
+            Transform::from_xyz(px, 1.9, pz).with_rotation(Quat::from_rotation_z(1.5708)),
+        ));
+
+        // Banner Cloth
+        commands.spawn((
+            Mesh3d(assets_3d.banner_cloth.clone()),
+            MeshMaterial3d(banner_mat),
+            Transform::from_xyz(px, 1.15, pz + if pz > 0.0 { -0.15 } else { 0.15 }),
         ));
     }
 
-    // Spawn 18 3D Grid Tiles (3x3 Player + 3x3 Enemy)
-    for faction in [Faction::Player, Faction::Enemy] {
-        let (slab_mat, border_mat) = match faction {
-            Faction::Player => (assets_3d.tile_player.clone(), assets_3d.player_base.clone()),
-            Faction::Enemy => (assets_3d.tile_enemy.clone(), assets_3d.enemy_base.clone()),
-        };
+    // 5. Directional Arena Sunlight & Fill Lighting
+    commands.spawn((
+        DirectionalLight {
+            color: Color::srgb(1.0, 0.96, 0.90),
+            illuminance: 12000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(9.0, 18.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 
-        for col in 0..BOARD_COLS {
-            for row in 0..BOARD_ROWS {
+    commands.spawn((
+        DirectionalLight {
+            color: Color::srgb(0.55, 0.65, 0.90),
+            illuminance: 3200.0,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(-9.0, 12.0, -10.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+
+    // 6. Interactive 3D Combat Tiles (Player 3x3 + Enemy 3x3)
+    let factions = [
+        (Faction::Player, assets_3d.tile_player.clone()),
+        (Faction::Enemy, assets_3d.tile_enemy.clone()),
+    ];
+
+    for (faction, base_mat) in factions {
+        for col in 0..GRID_COLS {
+            for row in 0..GRID_ROWS {
                 let pos = grid_to_world_pos(col, row, faction);
-                let tile_y = TILE_HEIGHT * 0.5;
 
-                // Base Border Slab
-                commands.spawn((
-                    Mesh3d(assets_3d.tile_border.clone()),
-                    MeshMaterial3d(border_mat.clone()),
-                    Transform::from_xyz(pos.x, TILE_HEIGHT * 0.25, pos.z),
-                ));
-
-                // Interactive Tile Top Slab
-                commands.spawn((
-                    Mesh3d(assets_3d.tile_slab.clone()),
-                    MeshMaterial3d(slab_mat.clone()),
-                    Transform::from_xyz(pos.x, tile_y, pos.z),
-                    BoardTile {
-                        col,
-                        row,
-                        faction,
-                        base_y: tile_y,
-                    },
-                ));
+                // Slab Root
+                commands
+                    .spawn((
+                        TileEntity { col, row, faction },
+                        Mesh3d(assets_3d.tile_slab.clone()),
+                        MeshMaterial3d(base_mat.clone()),
+                        Transform::from_translation(pos),
+                    ))
+                    .with_children(|parent| {
+                        // Outer Border Frame
+                        parent.spawn((
+                            TileBorderVisual,
+                            Mesh3d(assets_3d.tile_border.clone()),
+                            MeshMaterial3d(assets_3d.arena_stone.clone()),
+                            Transform::from_xyz(0.0, -0.015, 0.0),
+                        ));
+                    });
             }
         }
     }
 }
 
-pub fn animate_brazier_flames(time: Res<Time>, mut flames: Query<(&mut Transform, &BrazierFlame)>) {
+pub fn animate_brazier_flames(
+    mut commands: Commands,
+    time: Res<Time>,
+    assets_3d: Res<Game3dAssets>,
+    mut light_query: Query<(&mut PointLight, &BrazierLight)>,
+    mut rune_query: Query<&mut Transform, With<CenterRuneMedallion>>,
+    mut emitter_query: Query<&mut BrazierEmberEmitter>,
+    mut ember_query: Query<
+        (Entity, &mut Transform, &mut FloatingEmber),
+        Without<CenterRuneMedallion>,
+    >,
+) {
     let t = time.elapsed_secs();
-    for (mut transform, flame) in flames.iter_mut() {
-        let pulse = (t * 4.0 + flame.phase).sin() * 0.06;
-        let flicker_y = (t * 6.0 + flame.phase).cos() * 0.04;
-        transform.scale = Vec3::splat(0.38 + pulse);
-        transform.translation.y = 2.15 + flicker_y;
+    let dt = time.delta_secs();
+
+    // 1. Flicker brazier lights
+    for (mut light, brazier) in light_query.iter_mut() {
+        let flicker =
+            (t * 7.0 + brazier.phase).sin() * 0.15 + (t * 19.0 + brazier.phase * 2.0).cos() * 0.08;
+        light.intensity = brazier.base_intensity * (1.0 + flicker);
+    }
+
+    // 2. Pulse center rune medallion
+    for mut rune_tf in rune_query.iter_mut() {
+        let pulse = 1.0 + (t * 2.5).sin() * 0.03;
+        rune_tf.scale = Vec3::new(pulse, 1.0, pulse);
+    }
+
+    // 3. Spawn rising embers from emitters
+    for mut emitter in emitter_query.iter_mut() {
+        emitter.timer.tick(std::time::Duration::from_secs_f32(dt));
+        if emitter.timer.just_finished() {
+            let vx = (t * 13.0).sin() * 0.45;
+            let vy = 1.2 + (t * 5.0).cos().abs() * 0.8;
+            let vz = (t * 17.0).cos() * 0.45;
+
+            commands.spawn((
+                Mesh3d(assets_3d.ember_particle.clone()),
+                MeshMaterial3d(assets_3d.ember_mat.clone()),
+                Transform::from_translation(emitter.pos).with_scale(Vec3::splat(0.8)),
+                FloatingEmber {
+                    velocity: Vec3::new(vx, vy, vz),
+                    timer: Timer::from_seconds(1.1, TimerMode::Once),
+                },
+            ));
+        }
+    }
+
+    // 4. Update floating embers
+    for (entity, mut transform, mut ember) in ember_query.iter_mut() {
+        ember.timer.tick(std::time::Duration::from_secs_f32(dt));
+        transform.translation += ember.velocity * dt;
+        let scale = (1.0 - ember.timer.fraction()).max(0.01);
+        transform.scale = Vec3::splat(scale * 0.8);
+
+        if ember.timer.finished() {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
@@ -194,13 +279,7 @@ pub fn update_cursor_hover(
     windows: Query<&Window, With<PrimaryWindow>>,
     cameras: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     mut hovered: ResMut<HoveredTile>,
-    state: Res<State<GameState>>,
 ) {
-    if *state.get() != GameState::Placement {
-        hovered.tile = None;
-        return;
-    }
-
     let Ok(window) = windows.get_single() else {
         return;
     };
@@ -208,63 +287,83 @@ pub fn update_cursor_hover(
         return;
     };
 
-    if let Some(cursor_pos) = window.cursor_position() {
-        if let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_pos) {
-            if ray.direction.y.abs() > 0.0001 {
-                let t = (TILE_SURFACE_Y - ray.origin.y) / ray.direction.y;
-                if t > 0.0 {
-                    let hit_point = ray.origin + *ray.direction * t;
-                    hovered.tile = world_to_grid_pos(hit_point);
-                    return;
+    let Some(cursor_pos) = window.cursor_position() else {
+        hovered.tile = None;
+        return;
+    };
+
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_pos) else {
+        hovered.tile = None;
+        return;
+    };
+
+    let plane_y = TILE_HEIGHT * 0.5;
+    if ray.direction.y.abs() < 1e-5 {
+        hovered.tile = None;
+        return;
+    }
+
+    let t = (plane_y - ray.origin.y) / ray.direction.y;
+    if t < 0.0 {
+        hovered.tile = None;
+        return;
+    }
+
+    let hit_world = ray.origin + ray.direction * t;
+
+    let half = TILE_SIZE * 0.5 + 0.06;
+    let mut found = None;
+
+    for &faction in &[Faction::Player, Faction::Enemy] {
+        for col in 0..GRID_COLS {
+            for row in 0..GRID_ROWS {
+                let center = grid_to_world_pos(col, row, faction);
+                if (hit_world.x - center.x).abs() <= half && (hit_world.z - center.z).abs() <= half
+                {
+                    found = Some(GridPos { col, row, faction });
+                    break;
                 }
             }
+            if found.is_some() {
+                break;
+            }
+        }
+        if found.is_some() {
+            break;
         }
     }
 
-    hovered.tile = None;
+    hovered.tile = found;
 }
 
 pub fn update_tile_visuals(
     hovered: Res<HoveredTile>,
     assets_3d: Res<Game3dAssets>,
     mut tiles: Query<(
-        &BoardTile,
-        &mut Transform,
+        &TileEntity,
         &mut MeshMaterial3d<StandardMaterial>,
+        &mut Transform,
     )>,
-    time: Res<Time>,
 ) {
-    let dt = time.delta_secs();
-
-    for (tile, mut transform, mut material) in tiles.iter_mut() {
+    for (tile, mut mat, mut transform) in tiles.iter_mut() {
         let is_hovered = hovered.tile.as_ref().map_or(false, |h| {
             h.col == tile.col && h.row == tile.row && h.faction == tile.faction
         });
 
-        let target_y = if is_hovered {
-            tile.base_y + 0.12
+        let base_y = TILE_HEIGHT * 0.5 + 0.04;
+
+        if is_hovered {
+            transform.translation.y = base_y + 0.06;
+            mat.0 = match tile.faction {
+                Faction::Player => assets_3d.tile_player_hover.clone(),
+                Faction::Enemy => assets_3d.tile_enemy_hover.clone(),
+            };
         } else {
-            tile.base_y
-        };
-
-        // Smooth elevation transition
-        transform.translation.y += (target_y - transform.translation.y) * (18.0 * dt).min(1.0);
-
-        match tile.faction {
-            Faction::Player => {
-                if is_hovered {
-                    material.0 = assets_3d.tile_player_hover.clone();
-                } else {
-                    material.0 = assets_3d.tile_player.clone();
-                }
-            }
-            Faction::Enemy => {
-                if is_hovered {
-                    material.0 = assets_3d.tile_enemy_hover.clone();
-                } else {
-                    material.0 = assets_3d.tile_enemy.clone();
-                }
-            }
+            transform.translation.y = base_y;
+            mat.0 = match tile.faction {
+                Faction::Player => assets_3d.tile_player.clone(),
+                Faction::Enemy => assets_3d.tile_enemy.clone(),
+            };
         }
     }
 }

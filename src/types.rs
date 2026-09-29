@@ -1,22 +1,13 @@
 use bevy::prelude::*;
 
-pub const BOARD_COLS: usize = 3;
-pub const BOARD_ROWS: usize = 3;
-
-// 3D Board Layout Constants
-pub const TILE_SIZE: f32 = 1.7;
-pub const TILE_HEIGHT: f32 = 0.14;
-
-pub const PLAYER_COL_X: [f32; 3] = [-5.4, -3.4, -1.4]; // Back (0), Mid (1), Front (2)
-pub const ENEMY_COL_X: [f32; 3] = [1.4, 3.4, 5.4]; // Front (0), Mid (1), Back (2)
-pub const ROW_Z: [f32; 3] = [-2.3, 0.0, 2.3];
-
-pub const TILE_SURFACE_Y: f32 = 0.14;
-pub const UNIT_BASE_Y: f32 = 0.14;
-
+pub const TILE_SIZE: f32 = 1.35;
+pub const TILE_GAP: f32 = 0.18;
+pub const TILE_HEIGHT: f32 = 0.15;
+pub const GRID_COLS: usize = 3;
+pub const GRID_ROWS: usize = 3;
 pub const MAX_PLAYER_UNITS: usize = 5;
 
-#[derive(States, Clone, Copy, Eq, PartialEq, Hash, Debug, Default)]
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GameState {
     #[default]
     Placement,
@@ -25,147 +16,35 @@ pub enum GameState {
     Defeat,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Component, Reflect)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Faction {
     Player,
     Enemy,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Component, Reflect)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum UnitClass {
-    Knight,   // Vanguard Tanker: Heavy armor & shield, melee clash
-    Archer,   // Sniper: Long range, snipes lowest HP enemy
-    Mage,     // Arcane Mage: Launches explosive magic orb with row splash
-    Assassin, // Shadow Assassin: Dashes to enemy backline with high critical rate
-    Cleric,   // Holy Priestess: Channels divine light to heal most injured ally
+    Knight,
+    Archer,
+    Mage,
+    Assassin,
+    Cleric,
 }
 
-impl UnitClass {
-    pub fn name(&self) -> &'static str {
-        match self {
-            UnitClass::Knight => "Knight",
-            UnitClass::Archer => "Archer",
-            UnitClass::Mage => "Mage",
-            UnitClass::Assassin => "Assassin",
-            UnitClass::Cleric => "Cleric",
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn code(&self) -> &'static str {
-        match self {
-            UnitClass::Knight => "KNG",
-            UnitClass::Archer => "ARC",
-            UnitClass::Mage => "MAG",
-            UnitClass::Assassin => "ASN",
-            UnitClass::Cleric => "CLR",
-        }
-    }
-
-    pub fn icon(&self) -> &'static str {
-        match self {
-            UnitClass::Knight => "[Sword & Shield]",
-            UnitClass::Archer => "[Bow & Arrow]",
-            UnitClass::Mage => "[Arcane Magic]",
-            UnitClass::Assassin => "[Dual Daggers]",
-            UnitClass::Cleric => "[Holy Sanctuary]",
-        }
-    }
-
-    pub fn color(&self) -> Color {
-        match self {
-            UnitClass::Knight => Color::srgb(0.23, 0.51, 0.96), // Royal Blue
-            UnitClass::Archer => Color::srgb(0.13, 0.77, 0.37), // Forest Green
-            UnitClass::Mage => Color::srgb(0.66, 0.33, 0.97),   // Arcane Violet
-            UnitClass::Assassin => Color::srgb(0.94, 0.27, 0.27), // Crimson Red
-            UnitClass::Cleric => Color::srgb(0.96, 0.72, 0.15), // Divine Gold
-        }
-    }
-
-    pub fn base_stats(&self) -> UnitStats {
-        match self {
-            UnitClass::Knight => UnitStats {
-                max_hp: 175.0,
-                hp: 175.0,
-                atk: 25.0,
-                def: 9.0,
-                speed: 10.0,
-                range: 1,
-                crit_rate: 0.05,
-            },
-            UnitClass::Archer => UnitStats {
-                max_hp: 85.0,
-                hp: 85.0,
-                atk: 36.0,
-                def: 2.0,
-                speed: 14.0,
-                range: 9,
-                crit_rate: 0.22,
-            },
-            UnitClass::Mage => UnitStats {
-                max_hp: 75.0,
-                hp: 75.0,
-                atk: 32.0,
-                def: 1.0,
-                speed: 9.5,
-                range: 9,
-                crit_rate: 0.10,
-            },
-            UnitClass::Assassin => UnitStats {
-                max_hp: 90.0,
-                hp: 90.0,
-                atk: 44.0,
-                def: 3.0,
-                speed: 18.0,
-                range: 1,
-                crit_rate: 0.38,
-            },
-            UnitClass::Cleric => UnitStats {
-                max_hp: 80.0,
-                hp: 80.0,
-                atk: 20.0,
-                def: 3.0,
-                speed: 11.5,
-                range: 9,
-                crit_rate: 0.05,
-            },
-        }
-    }
-
-    pub fn description(&self) -> &'static str {
-        match self {
-            UnitClass::Knight => {
-                "Frontline vanguard with heavy plate armor and tower shield to absorb enemy fire."
-            }
-            UnitClass::Archer => {
-                "Ranged sniper targeting the lowest HP enemy with lethal precision."
-            }
-            UnitClass::Mage => {
-                "Launches arcane explosive orbs dealing splash damage across the entire enemy row."
-            }
-            UnitClass::Assassin => {
-                "High-speed shadow step targeting enemy backline with deadly critical strikes."
-            }
-            UnitClass::Cleric => "Chants holy prayers to restore health to the most wounded ally.",
-        }
-    }
-}
-
-#[derive(Component, Clone, Copy, Debug, Reflect)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct UnitStats {
     pub max_hp: f32,
     pub hp: f32,
     pub atk: f32,
     pub def: f32,
     pub speed: f32,
-    pub range: usize,
     pub crit_rate: f32,
 }
 
-#[derive(Component, Clone, Copy, Eq, PartialEq, Hash, Debug, Reflect)]
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GridPos {
-    pub col: usize, // 0..3
-    pub row: usize, // 0..3
+    pub col: usize,
+    pub row: usize,
     pub faction: Faction,
 }
 
@@ -199,10 +78,154 @@ pub struct SelectedBenchUnit {
     pub unit_class: Option<UnitClass>,
 }
 
-#[derive(Resource, Clone)]
-pub struct GameTextures {
+#[allow(dead_code)]
+#[derive(Resource, Default)]
+pub struct InspectedUnitInfo {
+    pub class: Option<UnitClass>,
+    pub faction: Option<Faction>,
+    pub stats: Option<UnitStats>,
+}
+
+impl UnitClass {
+    pub fn name(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "Knight",
+            UnitClass::Archer => "Archer",
+            UnitClass::Mage => "Mage",
+            UnitClass::Assassin => "Assassin",
+            UnitClass::Cleric => "Cleric",
+        }
+    }
+
+    pub fn role_title(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "Frontline Iron Vanguard (Tank)",
+            UnitClass::Archer => "Long-Range Sniper (Physical Carry)",
+            UnitClass::Mage => "Arcane Elementalist (Row AoE Burst)",
+            UnitClass::Assassin => "Shadow Blade (Backline Infiltrator)",
+            UnitClass::Cleric => "High Priestess (Divine Support)",
+        }
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "[Knight]",
+            UnitClass::Archer => "[Archer]",
+            UnitClass::Mage => "[Mage]",
+            UnitClass::Assassin => "[Assassin]",
+            UnitClass::Cleric => "[Cleric]",
+        }
+    }
+
+    pub fn skill_name(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "Iron Bulwark & Cleave",
+            UnitClass::Archer => "Eagle Piercing Shot",
+            UnitClass::Mage => "Chain Arc Lightning",
+            UnitClass::Assassin => "Shadow Void Strike",
+            UnitClass::Cleric => "Divine Celestial Sanctuary",
+        }
+    }
+
+    pub fn skill_type(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "Melee Cleave & Armor Buff",
+            UnitClass::Archer => "Precision Snipe & Execute",
+            UnitClass::Mage => "Row-Wide Arcane AoE",
+            UnitClass::Assassin => "Backline Ambush & Crit",
+            UnitClass::Cleric => "Holy Light Pillar Heal",
+        }
+    }
+
+    pub fn skill_description(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => {
+                "Leaps forward with heavy shield bash, slashing with luminous steel blade. Mitigates high damage through fortified defense."
+            }
+            UnitClass::Archer => {
+                "Snipes the lowest-health enemy across the arena with high projectile speed and critical hit chance."
+            }
+            UnitClass::Mage => {
+                "Casts an arcane lightning orb that shocks the primary target and splashes explosive shockwave damage to the entire enemy row."
+            }
+            UnitClass::Assassin => {
+                "Teleports through shadows directly behind enemy lines to assassinate the deepest, weakest backline unit with twin venom blades."
+            }
+            UnitClass::Cleric => {
+                "Summons a celestial pillar of holy light upon the most wounded ally on the battlefield, restoring significant health."
+            }
+        }
+    }
+
     #[allow(dead_code)]
-    pub background: Handle<Image>,
+    pub fn description(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "Vanguard with massive HP & DEF. Absorbs frontline pressure.",
+            UnitClass::Archer => "Snipes lowest HP targets across the arena with lethal precision.",
+            UnitClass::Mage => "Discharges arcane lightning balls that shock entire enemy rows.",
+            UnitClass::Assassin => "Teleports into shadows to strike the weakest backline target.",
+            UnitClass::Cleric => "Summons holy light to heal the most severely injured ally.",
+        }
+    }
+
+    pub fn base_stats(&self) -> UnitStats {
+        match self {
+            UnitClass::Knight => UnitStats {
+                max_hp: 180.0,
+                hp: 180.0,
+                atk: 25.0,
+                def: 40.0,
+                speed: 18.0,
+                crit_rate: 0.10,
+            },
+            UnitClass::Archer => UnitStats {
+                max_hp: 110.0,
+                hp: 110.0,
+                atk: 38.0,
+                def: 15.0,
+                speed: 26.0,
+                crit_rate: 0.35,
+            },
+            UnitClass::Mage => UnitStats {
+                max_hp: 95.0,
+                hp: 95.0,
+                atk: 45.0,
+                def: 10.0,
+                speed: 22.0,
+                crit_rate: 0.20,
+            },
+            UnitClass::Assassin => UnitStats {
+                max_hp: 100.0,
+                hp: 100.0,
+                atk: 50.0,
+                def: 12.0,
+                speed: 34.0,
+                crit_rate: 0.45,
+            },
+            UnitClass::Cleric => UnitStats {
+                max_hp: 125.0,
+                hp: 125.0,
+                atk: 20.0,
+                def: 22.0,
+                speed: 20.0,
+                crit_rate: 0.05,
+            },
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match self {
+            UnitClass::Knight => Color::srgb(0.2, 0.4, 0.8),
+            UnitClass::Archer => Color::srgb(0.2, 0.7, 0.2),
+            UnitClass::Mage => Color::srgb(0.6, 0.2, 0.8),
+            UnitClass::Assassin => Color::srgb(0.8, 0.2, 0.2),
+            UnitClass::Cleric => Color::srgb(0.9, 0.8, 0.2),
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct GameTextures {
     pub knight: Handle<Image>,
     pub archer: Handle<Image>,
     pub mage: Handle<Image>,
@@ -213,8 +236,7 @@ pub struct GameTextures {
 impl FromWorld for GameTextures {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
-        GameTextures {
-            background: asset_server.load("textures/background.png"),
+        Self {
             knight: asset_server.load("textures/knight.png"),
             archer: asset_server.load("textures/archer.png"),
             mage: asset_server.load("textures/mage.png"),

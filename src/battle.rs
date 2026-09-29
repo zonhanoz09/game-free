@@ -1,7 +1,7 @@
 use crate::assets_3d::Game3dAssets;
 use crate::board::grid_to_world_pos;
 use crate::types::*;
-use crate::units::{Unit, UnitVisualRoot};
+use crate::units::{ChibiSquashStretch, Unit, UnitVisualRoot};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use std::f32::consts::PI;
@@ -71,6 +71,55 @@ pub struct ActiveTurnSpotlight {
     pub attacker_entity: Entity,
 }
 
+#[derive(Component)]
+pub struct PointLightFlash {
+    pub timer: Timer,
+    pub initial_intensity: f32,
+}
+
+#[derive(Resource, Default)]
+pub struct HitStopManager {
+    pub timer: Timer,
+    pub active: bool,
+}
+
+impl HitStopManager {
+    pub fn trigger(&mut self, duration: f32) {
+        self.timer = Timer::from_seconds(duration, TimerMode::Once);
+        self.active = true;
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        if self.active {
+            self.timer.tick(std::time::Duration::from_secs_f32(dt));
+            if self.timer.finished() {
+                self.active = false;
+            }
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct CameraShake {
+    pub trauma: f32,
+    pub base_translation: Vec3,
+}
+
+impl Default for CameraShake {
+    fn default() -> Self {
+        Self {
+            trauma: 0.0,
+            base_translation: Vec3::new(0.0, 14.2, 14.6),
+        }
+    }
+}
+
+impl CameraShake {
+    pub fn add_trauma(&mut self, amount: f32) {
+        self.trauma = (self.trauma + amount).clamp(0.0, 1.0);
+    }
+}
+
 #[derive(Resource)]
 pub struct BattleTurnManager {
     pub active_attacker: Option<Entity>,
@@ -81,7 +130,7 @@ impl Default for BattleTurnManager {
     fn default() -> Self {
         Self {
             active_attacker: None,
-            cooldown_timer: Timer::from_seconds(0.12, TimerMode::Once),
+            cooldown_timer: Timer::from_seconds(0.10, TimerMode::Once),
         }
     }
 }
@@ -111,6 +160,52 @@ impl BattleRng {
     }
 }
 
+pub fn update_hit_stop_system(time: Res<Time>, mut hit_stop: ResMut<HitStopManager>) {
+    hit_stop.update(time.delta_secs());
+}
+
+pub fn update_camera_shake(
+    time: Res<Time>,
+    mut shake: ResMut<CameraShake>,
+    mut rng: ResMut<BattleRng>,
+    mut cam_query: Query<&mut Transform, With<crate::MainCamera3d>>,
+) {
+    let dt = time.delta_secs();
+    shake.trauma = (shake.trauma - dt * 2.8).max(0.0);
+    let intensity = shake.trauma * shake.trauma;
+
+    let Ok(mut transform) = cam_query.get_single_mut() else {
+        return;
+    };
+
+    if intensity > 0.001 {
+        let ox = rng.random_range(-1.0, 1.0) * intensity * 0.42;
+        let oy = rng.random_range(-0.7, 0.7) * intensity * 0.32;
+        let oz = rng.random_range(-0.5, 0.5) * intensity * 0.22;
+        transform.translation = shake.base_translation + Vec3::new(ox, oy, oz);
+    } else {
+        transform.translation = shake.base_translation;
+    }
+}
+
+pub fn update_flash_lights(
+    mut commands: Commands,
+    time: Res<Time>,
+    speed: Res<BattleSpeed>,
+    mut query: Query<(Entity, &mut PointLight, &mut PointLightFlash)>,
+) {
+    let dt = time.delta_secs() * speed.multiplier;
+    for (entity, mut light, mut flash) in query.iter_mut() {
+        flash.timer.tick(std::time::Duration::from_secs_f32(dt));
+        let remaining = 1.0 - flash.timer.fraction();
+        light.intensity = flash.initial_intensity * (remaining * remaining);
+
+        if flash.timer.finished() {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
 pub fn on_enter_battle(
     mut commands: Commands,
     units: Query<Entity, With<Unit>>,
@@ -131,6 +226,7 @@ pub fn on_exit_battle(
     vfx_query: Query<Entity, With<CombatVfx>>,
     sparks_query: Query<Entity, With<SparkParticle>>,
     spotlight_query: Query<Entity, With<ActiveTurnSpotlight>>,
+    flash_query: Query<Entity, With<PointLightFlash>>,
     dashes: Query<(Entity, &DashAnimation)>,
     mut turn_manager: ResMut<BattleTurnManager>,
 ) {
@@ -151,6 +247,9 @@ pub fn on_exit_battle(
     for entity in spotlight_query.iter() {
         commands.entity(entity).despawn_recursive();
     }
+    for entity in flash_query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
     for (entity, dash) in dashes.iter() {
         commands.entity(entity).remove::<DashAnimation>();
         commands
@@ -161,12 +260,19 @@ pub fn on_exit_battle(
 
 pub fn spawn_floating_text(
     commands: &mut Commands,
+    rng: &mut BattleRng,
     world_pos: Vec3,
     text: &str,
     color: Color,
     font_size: f32,
 ) {
-    let spawn_pos = world_pos + Vec3::new(0.0, 2.6, 0.0);
+    // Scatter position slightly so consecutive damage numbers don't pile up in a straight line
+    let offset_x = rng.random_range(-0.45, 0.45);
+    let offset_z = rng.random_range(-0.25, 0.25);
+    let spawn_pos = world_pos + Vec3::new(offset_x, 2.3, offset_z);
+    let upward_speed = rng.random_range(2.6, 3.4);
+    let drift_x = rng.random_range(-0.5, 0.5);
+
     commands.spawn((
         Text2d::new(text.to_string()),
         TextFont {
@@ -174,11 +280,11 @@ pub fn spawn_floating_text(
             ..default()
         },
         TextColor(color),
-        Transform::from_xyz(0.0, 0.0, 100.0),
+        Transform::from_xyz(0.0, 0.0, 100.0).with_scale(Vec3::splat(1.15)),
         FloatingText {
             world_pos: spawn_pos,
-            timer: Timer::from_seconds(1.1, TimerMode::Once),
-            velocity: Vec3::new(0.0, 1.5, 0.0),
+            timer: Timer::from_seconds(0.68, TimerMode::Once),
+            velocity: Vec3::new(drift_x, upward_speed, 0.0),
         },
     ));
 }
@@ -192,17 +298,17 @@ pub fn spawn_impact_sparks(
     count: usize,
 ) {
     for _ in 0..count {
-        let vx = rng.random_range(-2.8, 2.8);
-        let vy = rng.random_range(2.0, 5.0);
-        let vz = rng.random_range(-2.8, 2.8);
+        let vx = rng.random_range(-3.2, 3.2);
+        let vy = rng.random_range(2.5, 5.5);
+        let vz = rng.random_range(-3.2, 3.2);
 
         commands.spawn((
             Mesh3d(assets_3d.spark_sphere.clone()),
             MeshMaterial3d(mat.clone()),
-            Transform::from_translation(pos).with_scale(Vec3::splat(rng.random_range(0.6, 1.3))),
+            Transform::from_translation(pos).with_scale(Vec3::splat(rng.random_range(0.7, 1.4))),
             SparkParticle {
                 velocity: Vec3::new(vx, vy, vz),
-                timer: Timer::from_seconds(rng.random_range(0.22, 0.40), TimerMode::Once),
+                timer: Timer::from_seconds(rng.random_range(0.24, 0.42), TimerMode::Once),
             },
         ));
     }
@@ -228,10 +334,29 @@ pub fn update_floating_text(
 
     for (entity, mut transform, mut color, mut ft) in query.iter_mut() {
         ft.timer.tick(std::time::Duration::from_secs_f32(dt));
+        let progress = ft.timer.fraction();
+
+        // Gravity naturally curves the floating arc
+        ft.velocity.y -= 4.0 * dt;
         let vel = ft.velocity;
         ft.world_pos += vel * dt;
 
-        let alpha = 1.0 - ft.timer.fraction();
+        // Pop in scale at start, settle, then shrink out
+        let scale = if progress < 0.20 {
+            1.0 + (progress / 0.20) * 0.25
+        } else if progress < 0.65 {
+            1.25 - ((progress - 0.20) / 0.45) * 0.25
+        } else {
+            1.0 - ((progress - 0.65) / 0.35) * 0.35
+        };
+        transform.scale = Vec3::splat(scale);
+
+        // Alpha fade out in last 40% of duration
+        let alpha = if progress < 0.60 {
+            1.0
+        } else {
+            1.0 - (progress - 0.60) / 0.40
+        };
         color.0 = color.0.with_alpha(alpha);
 
         if let Ok(viewport_pos) = camera.world_to_viewport(camera_transform, ft.world_pos) {
@@ -249,6 +374,7 @@ pub fn update_combat_vfx(
     mut commands: Commands,
     time: Res<Time>,
     speed: Res<BattleSpeed>,
+    hit_stop: Res<HitStopManager>,
     mut vfx_query: Query<(Entity, &mut Transform, &mut CombatVfx)>,
     mut sparks_query: Query<
         (Entity, &mut Transform, &mut SparkParticle),
@@ -259,6 +385,10 @@ pub fn update_combat_vfx(
         (Without<CombatVfx>, Without<SparkParticle>),
     >,
 ) {
+    if hit_stop.active {
+        return;
+    }
+
     let dt = time.delta_secs() * speed.multiplier;
 
     // 1. Expand / fade combat effects
@@ -276,10 +406,10 @@ pub fn update_combat_vfx(
         }
     }
 
-    // 2. Spark particles with physics gravity
+    // 2. Spark particles with physics gravity and friction
     for (entity, mut transform, mut spark) in sparks_query.iter_mut() {
         spark.timer.tick(std::time::Duration::from_secs_f32(dt));
-        spark.velocity.y -= 14.0 * dt; // Gravity
+        spark.velocity.y -= 15.0 * dt;
         transform.translation += spark.velocity * dt;
         transform.scale *= (1.0 - spark.timer.fraction()).max(0.01);
 
@@ -293,10 +423,10 @@ pub fn update_combat_vfx(
         recoil.timer.tick(std::time::Duration::from_secs_f32(dt));
         let fraction = recoil.timer.fraction();
 
-        if fraction < 0.3 {
-            transform.translation = recoil.original_pos + recoil.recoil_offset * (fraction / 0.3);
+        if fraction < 0.28 {
+            transform.translation = recoil.original_pos + recoil.recoil_offset * (fraction / 0.28);
         } else {
-            let back = (fraction - 0.3) / 0.7;
+            let back = (fraction - 0.28) / 0.72;
             transform.translation =
                 (recoil.original_pos + recoil.recoil_offset).lerp(recoil.original_pos, back);
         }
@@ -319,6 +449,7 @@ pub fn update_turn_spotlight(
             spot_transform.translation = unit_transform.translation + Vec3::new(0.0, 0.06, 0.0);
             let pulse = 1.0 + (t * 8.0).sin() * 0.12;
             spot_transform.scale = Vec3::new(pulse, 1.0, pulse);
+            spot_transform.rotate_y(2.5 * 0.016);
         }
     }
 }
@@ -329,6 +460,7 @@ pub fn battle_tick_system(
     speed: Res<BattleSpeed>,
     assets_3d: Res<Game3dAssets>,
     mut rng: ResMut<BattleRng>,
+    hit_stop: Res<HitStopManager>,
     mut turn_manager: ResMut<BattleTurnManager>,
     mut units: Query<
         (
@@ -338,16 +470,19 @@ pub fn battle_tick_system(
             &GridPos,
             &Transform,
             &mut ActionGauge,
+            &mut ChibiSquashStretch,
         ),
-        (Without<DeadUnit>, Without<DashAnimation>),
+        Without<DeadUnit>,
     >,
     all_targets: Query<(Entity, &Unit, &UnitStats, &GridPos, &Transform), Without<DeadUnit>>,
     spotlight_query: Query<Entity, With<ActiveTurnSpotlight>>,
 ) {
+    if hit_stop.active {
+        return;
+    }
+
     let dt = time.delta_secs() * speed.multiplier;
 
-    // If an attack is currently in progress, wait for it to complete.
-    // Each attack, EXACTLY ONE character takes action!
     if turn_manager.active_attacker.is_some() {
         return;
     }
@@ -359,21 +494,21 @@ pub fn battle_tick_system(
         return;
     }
 
-    // Clean up any remaining spotlight from previous turn
+    // Clean up spotlight from previous turn
     for spot in spotlight_query.iter() {
         commands.entity(spot).despawn_recursive();
     }
 
-    // Fill action gauges for all alive champions based on their speed
-    for (_, _, stats, _, _, mut gauge) in units.iter_mut() {
+    // Fill action gauges for all alive champions based on speed
+    for (_, _, stats, _, _, mut gauge, _) in units.iter_mut() {
         gauge.current += stats.speed * 8.5 * dt;
     }
 
-    // Find the single unit with the highest ready gauge (>= 100.0)
+    // Pick champion with highest ready gauge (>= 100.0)
     let mut best_candidate: Option<(Entity, UnitClass, Faction, UnitStats, GridPos, Vec3)> = None;
     let mut highest_gauge = 99.99f32;
 
-    for (entity, unit, stats, grid, transform, gauge) in units.iter() {
+    for (entity, unit, stats, grid, transform, gauge, _) in units.iter() {
         if gauge.current >= 100.0 && gauge.current > highest_gauge {
             highest_gauge = gauge.current;
             best_candidate = Some((
@@ -391,15 +526,16 @@ pub fn battle_tick_system(
         return;
     };
 
-    // Deduct 100 gauge points from the chosen champion
-    if let Ok((_, _, _, _, _, mut gauge)) = units.get_mut(actor_entity) {
+    // Deduct 100 gauge points and trigger shooter squash & stretch
+    if let Ok((_, _, _, _, _, mut gauge, mut squash)) = units.get_mut(actor_entity) {
         gauge.current -= 100.0;
+        // Chibi windup squash
+        squash.target_scale = Vec3::new(0.85, 1.28, 0.85);
     }
 
-    // Set as the single active attacker!
     turn_manager.active_attacker = Some(actor_entity);
 
-    // Spawn dramatic golden turn spotlight ring at the active champion's feet
+    // Spawn golden turn spotlight ring at actor's feet
     commands.spawn((
         Mesh3d(assets_3d.spotlight_ring.clone()),
         MeshMaterial3d(assets_3d.spotlight_mat.clone()),
@@ -428,7 +564,7 @@ pub fn battle_tick_system(
         }
 
         if let Some((target_entity, _, target_pos)) = lowest_ally {
-            let heal_amount = 28.0 + stats.atk * 0.45;
+            let heal_amount = 32.0 + stats.atk * 0.50;
             commands.spawn((
                 Mesh3d(assets_3d.divine_star.clone()),
                 MeshMaterial3d(assets_3d.heal_glow.clone()),
@@ -437,7 +573,7 @@ pub fn battle_tick_system(
                     start: actor_pos + Vec3::new(0.0, 1.6, 0.0),
                     target_pos: target_pos + Vec3::new(0.0, 1.4, 0.0),
                     target_entity,
-                    timer: Timer::from_seconds(0.40, TimerMode::Once),
+                    timer: Timer::from_seconds(0.38, TimerMode::Once),
                     damage: heal_amount,
                     is_heal: true,
                     is_crit: false,
@@ -447,7 +583,6 @@ pub fn battle_tick_system(
                 },
             ));
         } else {
-            // No injured ally, turn ends
             turn_manager.active_attacker = None;
             turn_manager.cooldown_timer.reset();
         }
@@ -491,41 +626,63 @@ pub fn battle_tick_system(
                 }
             }
         }
-        _ => {
-            let mut best_score = i32::MAX;
+        UnitClass::Knight | UnitClass::Mage => {
+            let mut min_col = usize::MAX;
+            let mut best_row_diff = usize::MAX;
 
             for (t_entity, t_unit, t_stats, t_grid, t_transform) in all_targets.iter() {
                 if t_unit.faction == opponent_faction && t_stats.hp > 0.0 {
-                    let row_diff = (t_grid.row as i32 - grid.row as i32).abs();
-                    let col_depth = match opponent_faction {
-                        Faction::Enemy => t_grid.col as i32,
-                        Faction::Player => 2 - t_grid.col as i32,
+                    let frontline_col = match opponent_faction {
+                        Faction::Player => 2 - t_grid.col,
+                        Faction::Enemy => t_grid.col,
                     };
-                    let score = row_diff * 10 + col_depth;
 
-                    if score < best_score {
-                        best_score = score;
+                    let row_diff = (grid.row as i32 - t_grid.row as i32).unsigned_abs() as usize;
+
+                    if frontline_col < min_col
+                        || (frontline_col == min_col && row_diff < best_row_diff)
+                    {
+                        min_col = frontline_col;
+                        best_row_diff = row_diff;
                         target_candidate = Some((t_entity, t_transform.translation, *t_grid));
                     }
                 }
             }
         }
+        UnitClass::Cleric => {
+            // Already handled above
+        }
     }
 
     if let Some((target_entity, target_pos, target_grid)) = target_candidate {
         let is_crit = rng.next_f32() < stats.crit_rate;
-        let raw_dmg = stats.atk * if is_crit { 1.65 } else { 1.0 };
+        let crit_mult = if is_crit { 1.5 } else { 1.0 };
+        let raw_dmg = stats.atk * crit_mult;
 
-        if class == UnitClass::Knight || class == UnitClass::Assassin {
-            let duration = if class == UnitClass::Assassin {
-                0.28
-            } else {
-                0.36
-            };
+        let is_melee = class == UnitClass::Knight || class == UnitClass::Assassin;
+
+        if is_melee {
+            let offset_dir = (actor_pos - target_pos).normalize_or_zero();
+            let dash_target = target_pos + offset_dir * 0.95;
+
+            // Spawn Anime Dust Puff at takeoff
+            commands.spawn((
+                Mesh3d(assets_3d.dust_puff_mesh.clone()),
+                MeshMaterial3d(assets_3d.dust_mat.clone()),
+                Transform::from_translation(actor_pos + Vec3::new(0.0, 0.05, 0.0))
+                    .with_scale(Vec3::splat(0.4)),
+                CombatVfx {
+                    timer: Timer::from_seconds(0.22, TimerMode::Once),
+                    initial_scale: Vec3::splat(0.4),
+                    target_scale: Vec3::splat(1.3),
+                    rotate_speed: 1.0,
+                },
+            ));
+
             commands.entity(actor_entity).insert(DashAnimation {
                 origin: actor_pos,
-                target: target_pos,
-                timer: Timer::from_seconds(duration, TimerMode::Once),
+                target: dash_target,
+                timer: Timer::from_seconds(0.26, TimerMode::Once),
                 returning: false,
                 damage_dealt: false,
                 target_entity,
@@ -534,23 +691,19 @@ pub fn battle_tick_system(
                 class,
             });
         } else {
-            let aoe = if class == UnitClass::Mage {
-                Some((target_grid.row, opponent_faction))
-            } else {
-                None
-            };
-
-            let (mesh, mat, arc_h) = if class == UnitClass::Mage {
+            let (mesh, mat, arc_h, aoe) = if class == UnitClass::Mage {
                 (
                     assets_3d.magic_orb.clone(),
-                    assets_3d.mage_crystal.clone(),
-                    0.6,
+                    assets_3d.lightning.clone(),
+                    0.8,
+                    Some((target_grid.row, opponent_faction)),
                 )
             } else {
                 (
                     assets_3d.arrow_head.clone(),
                     assets_3d.arrow_glow.clone(),
                     1.4,
+                    None,
                 )
             };
 
@@ -563,7 +716,7 @@ pub fn battle_tick_system(
                     start: start_pt,
                     target_pos: target_pos + Vec3::new(0.0, 1.2, 0.0),
                     target_entity,
-                    timer: Timer::from_seconds(0.38, TimerMode::Once),
+                    timer: Timer::from_seconds(0.34, TimerMode::Once),
                     damage: raw_dmg,
                     is_heal: false,
                     is_crit,
@@ -574,7 +727,6 @@ pub fn battle_tick_system(
             ));
         }
     } else {
-        // No valid target, clear active attacker
         turn_manager.active_attacker = None;
         turn_manager.cooldown_timer.reset();
     }
@@ -586,31 +738,63 @@ pub fn update_dash_animations(
     speed: Res<BattleSpeed>,
     assets_3d: Res<Game3dAssets>,
     mut rng: ResMut<BattleRng>,
+    mut hit_stop: ResMut<HitStopManager>,
+    mut camera_shake: ResMut<CameraShake>,
     mut turn_manager: ResMut<BattleTurnManager>,
-    mut query: Query<(Entity, &mut Transform, &mut DashAnimation)>,
-    mut target_query: Query<(Entity, &mut UnitStats, &Transform), Without<DashAnimation>>,
+    mut query: Query<(
+        Entity,
+        &mut Transform,
+        &mut DashAnimation,
+        &mut ChibiSquashStretch,
+    )>,
+    mut target_query: Query<
+        (Entity, &mut UnitStats, &Transform, &mut ChibiSquashStretch),
+        (Without<DashAnimation>, Without<UnitHitRecoil>),
+    >,
 ) {
+    if hit_stop.active {
+        return;
+    }
+
     let dt = time.delta_secs() * speed.multiplier;
 
-    for (entity, mut transform, mut dash) in query.iter_mut() {
+    for (entity, mut transform, mut dash, mut attacker_squash) in query.iter_mut() {
         dash.timer.tick(std::time::Duration::from_secs_f32(dt));
         let progress = dash.timer.fraction();
 
         if !dash.returning {
             let mut pos = dash.origin.lerp(dash.target, progress);
-            pos.y += (progress * PI).sin() * 0.40; // Dynamic leap arc
+            pos.y += (progress * PI).sin() * 0.45; // Dynamic leap arc
             transform.translation = pos;
+
+            // Squash & Stretch: Stretch in mid-leap, squash on impact
+            if progress < 0.25 {
+                attacker_squash.target_scale = Vec3::new(1.20, 0.78, 1.20);
+            } else if progress < 0.85 {
+                attacker_squash.target_scale = Vec3::new(0.82, 1.34, 0.82);
+            } else {
+                attacker_squash.target_scale = Vec3::new(1.30, 0.70, 1.30);
+            }
 
             if dash.timer.finished() {
                 if !dash.damage_dealt {
                     dash.damage_dealt = true;
 
-                    if let Ok((target_ent, mut target_stats, target_transform)) =
+                    // Hit Stop: 4 to 6 frames freeze for crunchy weight!
+                    hit_stop.trigger(if dash.is_crit { 0.088 } else { 0.065 });
+
+                    // Camera Shake
+                    camera_shake.add_trauma(if dash.is_crit { 0.48 } else { 0.30 });
+
+                    if let Ok((target_ent, mut target_stats, target_transform, mut target_squash)) =
                         target_query.get_mut(dash.target_entity)
                     {
                         let actual_dmg =
-                            (dash.damage * (100.0 / (100.0 + target_stats.def))).max(4.0);
+                            (dash.damage * (100.0 / (100.0 + target_stats.def))).max(5.0);
                         target_stats.hp -= actual_dmg;
+
+                        // Target squashes under heavy blow
+                        target_squash.target_scale = Vec3::new(1.35, 0.68, 1.35);
 
                         let text = if dash.is_crit {
                             format!("-{:.0} CRIT!", actual_dmg)
@@ -624,39 +808,91 @@ pub fn update_dash_animations(
                         };
                         spawn_floating_text(
                             &mut commands,
+                            &mut rng,
                             dash.target,
                             &text,
                             col,
-                            if dash.is_crit { 19.0 } else { 14.5 },
+                            if dash.is_crit { 20.0 } else { 15.0 },
                         );
 
-                        // --- ATTACK IMPACT VFX ---
                         let hit_pos = target_transform.translation + Vec3::new(0.0, 1.1, 0.0);
 
+                        // Flash dynamic point light at impact point
+                        let flash_color = if dash.class == UnitClass::Knight {
+                            Color::srgb(1.0, 0.82, 0.25)
+                        } else {
+                            Color::srgb(1.0, 0.18, 0.18)
+                        };
+                        commands.spawn((
+                            PointLight {
+                                color: flash_color,
+                                intensity: 85_000.0,
+                                range: 7.0,
+                                shadows_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_translation(hit_pos),
+                            PointLightFlash {
+                                timer: Timer::from_seconds(0.14, TimerMode::Once),
+                                initial_intensity: 85_000.0,
+                            },
+                        ));
+
                         if dash.class == UnitClass::Knight {
-                            // Luminous blade slash arc across target
+                            // Luminous Blade Slash Trail Arc
                             commands.spawn((
-                                Mesh3d(assets_3d.slash_arc.clone()),
-                                MeshMaterial3d(assets_3d.slash_mat.clone()),
+                                Mesh3d(assets_3d.slash_trail_mesh.clone()),
+                                MeshMaterial3d(assets_3d.slash_trail_mat.clone()),
                                 Transform::from_translation(hit_pos)
                                     .with_rotation(
                                         Quat::from_rotation_z(0.6) * Quat::from_rotation_x(0.3),
                                     )
                                     .with_scale(Vec3::splat(0.6)),
                                 CombatVfx {
-                                    timer: Timer::from_seconds(0.24, TimerMode::Once),
+                                    timer: Timer::from_seconds(0.28, TimerMode::Once),
                                     initial_scale: Vec3::splat(0.6),
-                                    target_scale: Vec3::splat(1.6),
-                                    rotate_speed: 6.0,
+                                    target_scale: Vec3::splat(1.8),
+                                    rotate_speed: 7.0,
                                 },
                             ));
+
+                            // Ground Shockwave Ring
+                            commands.spawn((
+                                Mesh3d(assets_3d.shockwave_ring.clone()),
+                                MeshMaterial3d(assets_3d.arena_rim_mat.clone()),
+                                Transform::from_translation(
+                                    target_transform.translation + Vec3::new(0.0, 0.08, 0.0),
+                                ),
+                                CombatVfx {
+                                    timer: Timer::from_seconds(0.25, TimerMode::Once),
+                                    initial_scale: Vec3::splat(0.4),
+                                    target_scale: Vec3::splat(1.5),
+                                    rotate_speed: 0.0,
+                                },
+                            ));
+
+                            // Landing Dust Puff
+                            commands.spawn((
+                                Mesh3d(assets_3d.dust_puff_mesh.clone()),
+                                MeshMaterial3d(assets_3d.dust_mat.clone()),
+                                Transform::from_translation(
+                                    dash.target + Vec3::new(0.0, 0.05, 0.0),
+                                ),
+                                CombatVfx {
+                                    timer: Timer::from_seconds(0.24, TimerMode::Once),
+                                    initial_scale: Vec3::splat(0.5),
+                                    target_scale: Vec3::splat(1.4),
+                                    rotate_speed: 0.0,
+                                },
+                            ));
+
                             spawn_impact_sparks(
                                 &mut commands,
                                 &assets_3d,
                                 &mut rng,
                                 hit_pos,
                                 assets_3d.spark_mat.clone(),
-                                6,
+                                8,
                             );
                         } else {
                             // Twin X-Cross Slashes for Assassin
@@ -666,9 +902,9 @@ pub fn update_dash_animations(
                                 Transform::from_translation(hit_pos)
                                     .with_rotation(Quat::from_rotation_z(0.78)),
                                 CombatVfx {
-                                    timer: Timer::from_seconds(0.24, TimerMode::Once),
+                                    timer: Timer::from_seconds(0.25, TimerMode::Once),
                                     initial_scale: Vec3::splat(0.7),
-                                    target_scale: Vec3::splat(1.5),
+                                    target_scale: Vec3::splat(1.65),
                                     rotate_speed: 0.0,
                                 },
                             ));
@@ -678,24 +914,40 @@ pub fn update_dash_animations(
                                 Transform::from_translation(hit_pos)
                                     .with_rotation(Quat::from_rotation_z(-0.78)),
                                 CombatVfx {
-                                    timer: Timer::from_seconds(0.24, TimerMode::Once),
+                                    timer: Timer::from_seconds(0.25, TimerMode::Once),
                                     initial_scale: Vec3::splat(0.7),
-                                    target_scale: Vec3::splat(1.5),
+                                    target_scale: Vec3::splat(1.65),
                                     rotate_speed: 0.0,
                                 },
                             ));
+
+                            // Shadow Dust
+                            commands.spawn((
+                                Mesh3d(assets_3d.shadow_disc.clone()),
+                                MeshMaterial3d(assets_3d.shadow_aura.clone()),
+                                Transform::from_translation(
+                                    dash.target + Vec3::new(0.0, 0.05, 0.0),
+                                ),
+                                CombatVfx {
+                                    timer: Timer::from_seconds(0.28, TimerMode::Once),
+                                    initial_scale: Vec3::splat(0.4),
+                                    target_scale: Vec3::splat(1.5),
+                                    rotate_speed: 2.0,
+                                },
+                            ));
+
                             spawn_impact_sparks(
                                 &mut commands,
                                 &assets_3d,
                                 &mut rng,
                                 hit_pos,
                                 assets_3d.poison_blade.clone(),
-                                7,
+                                9,
                             );
                         }
 
-                        // Add recoil jolt to the target
-                        let recoil_dir = (dash.target - dash.origin).normalize_or_zero() * 0.28;
+                        // Target Recoil Jolt
+                        let recoil_dir = (dash.target - dash.origin).normalize_or_zero() * 0.32;
                         commands.entity(target_ent).insert(UnitHitRecoil {
                             original_pos: target_transform.translation,
                             recoil_offset: recoil_dir,
@@ -714,9 +966,9 @@ pub fn update_dash_animations(
 
             if dash.timer.finished() {
                 transform.translation = dash.origin;
+                attacker_squash.target_scale = Vec3::ONE;
                 commands.entity(entity).remove::<DashAnimation>();
 
-                // Turn completed! Clear active attacker & start brief cooldown
                 turn_manager.active_attacker = None;
                 turn_manager.cooldown_timer.reset();
             }
@@ -730,10 +982,25 @@ pub fn update_projectiles(
     speed: Res<BattleSpeed>,
     assets_3d: Res<Game3dAssets>,
     mut rng: ResMut<BattleRng>,
+    mut hit_stop: ResMut<HitStopManager>,
+    mut camera_shake: ResMut<CameraShake>,
     mut turn_manager: ResMut<BattleTurnManager>,
     mut query: Query<(Entity, &mut Transform, &mut Projectile3d)>,
-    mut target_query: Query<(Entity, &mut UnitStats, &GridPos, &Transform), Without<Projectile3d>>,
+    mut target_query: Query<
+        (
+            Entity,
+            &mut UnitStats,
+            &GridPos,
+            &Transform,
+            &mut ChibiSquashStretch,
+        ),
+        Without<Projectile3d>,
+    >,
 ) {
+    if hit_stop.active {
+        return;
+    }
+
     let dt = time.delta_secs() * speed.multiplier;
 
     for (proj_entity, mut transform, mut proj) in query.iter_mut() {
@@ -744,7 +1011,6 @@ pub fn update_projectiles(
         current_pos.y += (progress * PI).sin() * proj.arc_height;
         transform.translation = current_pos;
 
-        // Rotate projectile towards travel trajectory
         let dir = (proj.target_pos - proj.start).normalize_or_zero();
         if dir.length_squared() > 0.001 {
             transform.look_to(dir, Vec3::Y);
@@ -753,49 +1019,87 @@ pub fn update_projectiles(
         if proj.timer.finished() {
             if proj.is_heal {
                 // --- CLERIC HEAL IMPACT VFX ---
-                if let Ok((_, mut stats, _, target_transform)) =
+                if let Ok((_, mut stats, _, target_transform, mut target_squash)) =
                     target_query.get_mut(proj.target_entity)
                 {
                     stats.hp = (stats.hp + proj.damage).min(stats.max_hp);
+                    target_squash.target_scale = Vec3::new(0.9, 1.25, 0.9);
+
                     spawn_floating_text(
                         &mut commands,
+                        &mut rng,
                         proj.target_pos,
                         &format!("+{:.0} HEAL", proj.damage),
                         Color::srgb(0.25, 0.95, 0.4),
-                        16.0,
+                        16.5,
                     );
 
-                    // Descending Divine Holy Pillar of Light
+                    let heal_pos = target_transform.translation + Vec3::new(0.0, 1.6, 0.0);
+
+                    // Celestial Holy Light Flash
+                    commands.spawn((
+                        PointLight {
+                            color: Color::srgb(1.0, 0.95, 0.5),
+                            intensity: 95_000.0,
+                            range: 8.0,
+                            shadows_enabled: false,
+                            ..default()
+                        },
+                        Transform::from_translation(heal_pos),
+                        PointLightFlash {
+                            timer: Timer::from_seconds(0.18, TimerMode::Once),
+                            initial_intensity: 95_000.0,
+                        },
+                    ));
+
+                    // Descending Divine Holy Light Pillar
                     commands.spawn((
                         Mesh3d(assets_3d.holy_pillar.clone()),
                         MeshMaterial3d(assets_3d.holy_pillar_mat.clone()),
-                        Transform::from_translation(
-                            target_transform.translation + Vec3::new(0.0, 1.6, 0.0),
-                        )
-                        .with_scale(Vec3::new(0.8, 1.0, 0.8)),
+                        Transform::from_translation(heal_pos).with_scale(Vec3::new(0.8, 1.0, 0.8)),
                         CombatVfx {
-                            timer: Timer::from_seconds(0.38, TimerMode::Once),
+                            timer: Timer::from_seconds(0.40, TimerMode::Once),
                             initial_scale: Vec3::new(0.8, 1.0, 0.8),
-                            target_scale: Vec3::new(1.3, 1.0, 1.3),
+                            target_scale: Vec3::new(1.4, 1.0, 1.4),
                             rotate_speed: 2.0,
                         },
                     ));
+
+                    // Sacred Sanctuary Ground Ring
+                    commands.spawn((
+                        Mesh3d(assets_3d.holy_ground_ring.clone()),
+                        MeshMaterial3d(assets_3d.holy_ground_mat.clone()),
+                        Transform::from_translation(
+                            target_transform.translation + Vec3::new(0.0, 0.08, 0.0),
+                        ),
+                        CombatVfx {
+                            timer: Timer::from_seconds(0.38, TimerMode::Once),
+                            initial_scale: Vec3::splat(0.4),
+                            target_scale: Vec3::splat(1.8),
+                            rotate_speed: 3.0,
+                        },
+                    ));
+
                     spawn_impact_sparks(
                         &mut commands,
                         &assets_3d,
                         &mut rng,
                         target_transform.translation + Vec3::new(0.0, 1.0, 0.0),
                         assets_3d.heal_glow.clone(),
-                        7,
+                        9,
                     );
                 }
             } else {
                 // --- RANGED ATTACK IMPACT VFX ---
-                if let Ok((target_ent, mut stats, _, target_transform)) =
+                hit_stop.trigger(if proj.is_crit { 0.085 } else { 0.060 });
+
+                if let Ok((target_ent, mut stats, _, target_transform, mut target_squash)) =
                     target_query.get_mut(proj.target_entity)
                 {
-                    let actual_dmg = (proj.damage * (100.0 / (100.0 + stats.def))).max(4.0);
+                    let actual_dmg = (proj.damage * (100.0 / (100.0 + stats.def))).max(5.0);
                     stats.hp -= actual_dmg;
+
+                    target_squash.target_scale = Vec3::new(1.32, 0.70, 1.32);
 
                     let text = if proj.is_crit {
                         format!("-{:.0} CRIT!", actual_dmg)
@@ -809,25 +1113,61 @@ pub fn update_projectiles(
                     };
                     spawn_floating_text(
                         &mut commands,
+                        &mut rng,
                         proj.target_pos,
                         &text,
                         col,
-                        if proj.is_crit { 19.0 } else { 14.5 },
+                        if proj.is_crit { 20.0 } else { 15.0 },
                     );
 
                     let hit_pos = target_transform.translation + Vec3::new(0.0, 1.0, 0.0);
 
                     if proj.class == UnitClass::Archer {
-                        // Archer green spark impact
+                        camera_shake.add_trauma(if proj.is_crit { 0.40 } else { 0.20 });
+
+                        // Emerald Snipe Flash Light
+                        commands.spawn((
+                            PointLight {
+                                color: Color::srgb(0.25, 1.0, 0.45),
+                                intensity: 75_000.0,
+                                range: 6.0,
+                                shadows_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_translation(hit_pos),
+                            PointLightFlash {
+                                timer: Timer::from_seconds(0.12, TimerMode::Once),
+                                initial_intensity: 75_000.0,
+                            },
+                        ));
+
                         spawn_impact_sparks(
                             &mut commands,
                             &assets_3d,
                             &mut rng,
                             hit_pos,
                             assets_3d.arrow_glow.clone(),
-                            5,
+                            7,
                         );
                     } else if proj.class == UnitClass::Mage {
+                        camera_shake.add_trauma(0.55); // Heavy AOE screen shake!
+
+                        // Arcane Violet Blast Flash Light
+                        commands.spawn((
+                            PointLight {
+                                color: Color::srgb(0.85, 0.35, 1.0),
+                                intensity: 110_000.0,
+                                range: 8.0,
+                                shadows_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_translation(hit_pos),
+                            PointLightFlash {
+                                timer: Timer::from_seconds(0.16, TimerMode::Once),
+                                initial_intensity: 110_000.0,
+                            },
+                        ));
+
                         // Mage Expanding Violet Shockwave Ring
                         commands.spawn((
                             Mesh3d(assets_3d.shockwave_ring.clone()),
@@ -836,10 +1176,10 @@ pub fn update_projectiles(
                                 target_transform.translation + Vec3::new(0.0, 0.12, 0.0),
                             ),
                             CombatVfx {
-                                timer: Timer::from_seconds(0.35, TimerMode::Once),
+                                timer: Timer::from_seconds(0.36, TimerMode::Once),
                                 initial_scale: Vec3::splat(0.3),
-                                target_scale: Vec3::splat(2.2),
-                                rotate_speed: 4.0,
+                                target_scale: Vec3::splat(2.5),
+                                rotate_speed: 4.5,
                             },
                         ));
                         spawn_impact_sparks(
@@ -848,12 +1188,12 @@ pub fn update_projectiles(
                             &mut rng,
                             hit_pos,
                             assets_3d.lightning.clone(),
-                            8,
+                            10,
                         );
                     }
 
                     // Recoil jolt on hit
-                    let recoil_dir = (proj.target_pos - proj.start).normalize_or_zero() * 0.22;
+                    let recoil_dir = (proj.target_pos - proj.start).normalize_or_zero() * 0.28;
                     commands.entity(target_ent).insert(UnitHitRecoil {
                         original_pos: target_transform.translation,
                         recoil_offset: recoil_dir,
@@ -863,9 +1203,14 @@ pub fn update_projectiles(
 
                 // Mage Row AOE Splash
                 if let Some((row, target_faction)) = proj.aoe_row {
-                    let splash_dmg = proj.damage * 0.45;
-                    for (other_ent, mut other_stats, other_grid, other_transform) in
-                        target_query.iter_mut()
+                    let splash_dmg = proj.damage * 0.48;
+                    for (
+                        other_ent,
+                        mut other_stats,
+                        other_grid,
+                        other_transform,
+                        mut other_squash,
+                    ) in target_query.iter_mut()
                     {
                         if other_ent != proj.target_entity
                             && other_grid.row == row
@@ -873,8 +1218,10 @@ pub fn update_projectiles(
                             && other_stats.hp > 0.0
                         {
                             let actual_splash =
-                                (splash_dmg * (100.0 / (100.0 + other_stats.def))).max(3.0);
+                                (splash_dmg * (100.0 / (100.0 + other_stats.def))).max(3.5);
                             other_stats.hp -= actual_splash;
+                            other_squash.target_scale = Vec3::new(1.25, 0.75, 1.25);
+
                             let pos = grid_to_world_pos(
                                 other_grid.col,
                                 other_grid.row,
@@ -882,10 +1229,11 @@ pub fn update_projectiles(
                             );
                             spawn_floating_text(
                                 &mut commands,
+                                &mut rng,
                                 pos,
                                 &format!("-{:.0} SPLASH", actual_splash),
-                                Color::srgb(0.85, 0.45, 1.0),
-                                12.5,
+                                Color::srgb(0.88, 0.45, 1.0),
+                                13.0,
                             );
                             spawn_impact_sparks(
                                 &mut commands,
@@ -893,17 +1241,15 @@ pub fn update_projectiles(
                                 &mut rng,
                                 other_transform.translation + Vec3::new(0.0, 0.9, 0.0),
                                 assets_3d.lightning.clone(),
-                                4,
+                                6,
                             );
                         }
                     }
                 }
             }
 
-            // Despawn projectile entity
             commands.entity(proj_entity).despawn_recursive();
 
-            // Turn completed! Clear active attacker & start brief cooldown
             turn_manager.active_attacker = None;
             turn_manager.cooldown_timer.reset();
         }
@@ -919,7 +1265,6 @@ pub fn check_unit_deaths(
 ) {
     for (entity, stats, mut vis, mut transform) in units.iter_mut() {
         if stats.hp <= 0.0 {
-            // Defeated unit sinks into arena floor and hides
             transform.translation.y = -2.0;
             *vis = Visibility::Hidden;
             commands.entity(entity).insert(DeadUnit);

@@ -47,8 +47,46 @@ pub struct SpeedText;
 #[derive(Component)]
 pub struct TooltipText;
 
+// --- Components for Hero Inspection Card ---
+#[derive(Component)]
+pub struct InspectHeroAvatar;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum InspectStatType {
+    Hp,
+    Atk,
+    Def,
+    Spd,
+}
+
+#[derive(Component)]
+pub struct InspectStatBar(pub InspectStatType);
+
+#[derive(Component)]
+pub struct InspectStatText(pub InspectStatType);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum InspectHeaderField {
+    Name,
+    Faction,
+    Role,
+}
+
+#[derive(Component)]
+pub struct InspectHeader(pub InspectHeaderField);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum InspectSkillField {
+    Name,
+    Type,
+    Desc,
+}
+
+#[derive(Component)]
+pub struct InspectSkill(pub InspectSkillField);
+
 pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
-    // Top Bar UI
+    // 1. Top Bar UI
     commands
         .spawn((Node {
             position_type: PositionType::Absolute,
@@ -115,7 +153,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         UnitCountText,
                     ));
                     col.spawn((
-                        Text::new("L-Click Arena: Place / Swap Unit  |  R-Click: Remove Unit"),
+                        Text::new("L-Click: Place/Inspect  |  R-Click: Remove Unit"),
                         TextFont {
                             font_size: 12.0,
                             ..default()
@@ -152,7 +190,329 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                 ));
         });
 
-    // Tooltip Banner above the bench
+    // 2. Modern Hero Inspection Card (Right Panel)
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(82.0),
+                right: Val::Px(16.0),
+                width: Val::Px(285.0),
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(14.0)),
+                row_gap: Val::Px(10.0),
+                border: UiRect::all(Val::Px(1.5)),
+                ..default()
+            },
+            BorderColor(Color::srgba(0.35, 0.55, 0.85, 0.5)),
+            BackgroundColor(Color::srgba(0.07, 0.09, 0.14, 0.92)),
+            BorderRadius::all(Val::Px(10.0)),
+        ))
+        .with_children(|panel| {
+            // Header Row: Avatar + Name + Faction Badge
+            panel
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    column_gap: Val::Px(10.0),
+                    ..default()
+                })
+                .with_children(|header| {
+                    header.spawn((
+                        ImageNode {
+                            image: textures.knight.clone(),
+                            ..default()
+                        },
+                        Node {
+                            width: Val::Px(46.0),
+                            height: Val::Px(46.0),
+                            ..default()
+                        },
+                        BorderRadius::all(Val::Px(6.0)),
+                        InspectHeroAvatar,
+                    ));
+
+                    header
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(2.0),
+                            ..default()
+                        })
+                        .with_children(|info| {
+                            info.spawn(Node {
+                                flex_direction: FlexDirection::Row,
+                                align_items: AlignItems::Center,
+                                column_gap: Val::Px(8.0),
+                                ..default()
+                            })
+                            .with_children(|name_row| {
+                                name_row.spawn((
+                                    Text::new("Knight"),
+                                    TextFont {
+                                        font_size: 16.5,
+                                        ..default()
+                                    },
+                                    TextColor(Color::WHITE),
+                                    InspectHeader(InspectHeaderField::Name),
+                                ));
+                                name_row.spawn((
+                                    Text::new("ALLY"),
+                                    TextFont {
+                                        font_size: 10.5,
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb(0.3, 0.7, 1.0)),
+                                    InspectHeader(InspectHeaderField::Faction),
+                                ));
+                            });
+
+                            info.spawn((
+                                Text::new("Frontline Iron Vanguard (Tank)"),
+                                TextFont {
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.9, 0.82, 0.4)),
+                                InspectHeader(InspectHeaderField::Role),
+                            ));
+                        });
+                });
+
+            // Thin Divider
+            panel.spawn((
+                Node {
+                    height: Val::Px(1.0),
+                    margin: UiRect::vertical(Val::Px(2.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.12)),
+            ));
+
+            // Section: Visual Stat Bars
+            panel
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(6.0),
+                    ..default()
+                })
+                .with_children(|stats_sec| {
+                    // HP Bar
+                    stats_sec.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|row| {
+                        row.spawn((
+                            Text::new("HP (Health)"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::srgb(0.4, 0.9, 0.5)),
+                        ));
+                        row.spawn((
+                            Text::new("180 / 180"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::WHITE),
+                            InspectStatText(InspectStatType::Hp),
+                        ));
+                    });
+                    stats_sec.spawn((
+                        Node {
+                            height: Val::Px(7.0),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.12, 0.16, 0.20)),
+                        BorderRadius::all(Val::Px(3.0)),
+                    )).with_child((
+                        Node {
+                            height: Val::Percent(100.0),
+                            width: Val::Percent(90.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.25, 0.85, 0.45)),
+                        BorderRadius::all(Val::Px(3.0)),
+                        InspectStatBar(InspectStatType::Hp),
+                    ));
+
+                    // ATK Bar
+                    stats_sec.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|row| {
+                        row.spawn((
+                            Text::new("ATK (Power)"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::srgb(1.0, 0.45, 0.3)),
+                        ));
+                        row.spawn((
+                            Text::new("25"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::WHITE),
+                            InspectStatText(InspectStatType::Atk),
+                        ));
+                    });
+                    stats_sec.spawn((
+                        Node {
+                            height: Val::Px(7.0),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.12, 0.16, 0.20)),
+                        BorderRadius::all(Val::Px(3.0)),
+                    )).with_child((
+                        Node {
+                            height: Val::Percent(100.0),
+                            width: Val::Percent(50.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(1.0, 0.4, 0.25)),
+                        BorderRadius::all(Val::Px(3.0)),
+                        InspectStatBar(InspectStatType::Atk),
+                    ));
+
+                    // DEF Bar
+                    stats_sec.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|row| {
+                        row.spawn((
+                            Text::new("DEF (Armor)"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::srgb(0.4, 0.65, 1.0)),
+                        ));
+                        row.spawn((
+                            Text::new("40"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::WHITE),
+                            InspectStatText(InspectStatType::Def),
+                        ));
+                    });
+                    stats_sec.spawn((
+                        Node {
+                            height: Val::Px(7.0),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.12, 0.16, 0.20)),
+                        BorderRadius::all(Val::Px(3.0)),
+                    )).with_child((
+                        Node {
+                            height: Val::Percent(100.0),
+                            width: Val::Percent(80.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.35, 0.65, 1.0)),
+                        BorderRadius::all(Val::Px(3.0)),
+                        InspectStatBar(InspectStatType::Def),
+                    ));
+
+                    // SPD Bar
+                    stats_sec.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|row| {
+                        row.spawn((
+                            Text::new("SPD (Agility)"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::srgb(0.95, 0.85, 0.3)),
+                        ));
+                        row.spawn((
+                            Text::new("18"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::WHITE),
+                            InspectStatText(InspectStatType::Spd),
+                        ));
+                    });
+                    stats_sec.spawn((
+                        Node {
+                            height: Val::Px(7.0),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.12, 0.16, 0.20)),
+                        BorderRadius::all(Val::Px(3.0)),
+                    )).with_child((
+                        Node {
+                            height: Val::Percent(100.0),
+                            width: Val::Percent(45.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.95, 0.85, 0.3)),
+                        BorderRadius::all(Val::Px(3.0)),
+                        InspectStatBar(InspectStatType::Spd),
+                    ));
+                });
+
+            // Thin Divider
+            panel.spawn((
+                Node {
+                    height: Val::Px(1.0),
+                    margin: UiRect::vertical(Val::Px(2.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.12)),
+            ));
+
+            // Section: Skill Breakdown Box
+            panel
+                .spawn((
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        padding: UiRect::all(Val::Px(8.0)),
+                        row_gap: Val::Px(4.0),
+                        border: UiRect::all(Val::Px(1.0)),
+                        ..default()
+                    },
+                    BorderColor(Color::srgba(0.8, 0.7, 0.2, 0.3)),
+                    BackgroundColor(Color::srgba(0.12, 0.15, 0.22, 0.8)),
+                    BorderRadius::all(Val::Px(6.0)),
+                ))
+                .with_children(|skill_box| {
+                    skill_box.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|title_row| {
+                        title_row.spawn((
+                            Text::new("Iron Bulwark & Cleave"),
+                            TextFont {
+                                font_size: 12.5,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.9, 0.3)),
+                            InspectSkill(InspectSkillField::Name),
+                        ));
+                        title_row.spawn((
+                            Text::new("[Melee]"),
+                            TextFont {
+                                font_size: 10.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.5, 0.8, 1.0)),
+                            InspectSkill(InspectSkillField::Type),
+                        ));
+                    });
+
+                    skill_box.spawn((
+                        Text::new("Leaps forward with heavy shield bash, slashing with luminous steel blade. Mitigates high damage through fortified defense."),
+                        TextFont {
+                            font_size: 11.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgba(0.9, 0.92, 0.95, 0.85)),
+                        InspectSkill(InspectSkillField::Desc),
+                    ));
+                });
+        });
+
+    // 3. Tooltip Banner above the bench
     commands
         .spawn((Node {
             position_type: PositionType::Absolute,
@@ -173,7 +533,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
             TooltipText,
         ));
 
-    // Bottom Bench & Placement Controls
+    // 4. Bottom Bench & Placement Controls
     commands
         .spawn((
             Node {
@@ -376,6 +736,116 @@ pub fn update_unit_count_ui(
     }
 }
 
+pub fn update_hero_inspection_system(
+    hovered: Res<HoveredTile>,
+    selected: Res<SelectedBenchUnit>,
+    textures: Res<GameTextures>,
+    units: Query<(&Unit, &GridPos, &UnitStats), Without<DeadUnit>>,
+    mut avatar_query: Query<&mut ImageNode, With<InspectHeroAvatar>>,
+    mut header_query: Query<(&InspectHeader, &mut Text, Option<&mut TextColor>)>,
+    mut bar_query: Query<(&InspectStatBar, &mut Node)>,
+    mut text_query: Query<(&InspectStatText, &mut Text), Without<InspectHeader>>,
+    mut skill_query: Query<
+        (&InspectSkill, &mut Text),
+        (Without<InspectHeader>, Without<InspectStatText>),
+    >,
+) {
+    let mut inspected_unit: Option<(UnitClass, Faction, UnitStats)> = None;
+
+    if let Some(tile) = &hovered.tile {
+        if let Some((unit, _, stats)) = units
+            .iter()
+            .find(|(_, g, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
+        {
+            inspected_unit = Some((unit.class, unit.faction, *stats));
+        }
+    }
+
+    if inspected_unit.is_none() {
+        if let Some(class) = selected.unit_class {
+            inspected_unit = Some((class, Faction::Player, class.base_stats()));
+        }
+    }
+
+    let (class, faction, stats) = inspected_unit.unwrap_or_else(|| {
+        (
+            UnitClass::Knight,
+            Faction::Player,
+            UnitClass::Knight.base_stats(),
+        )
+    });
+
+    if let Ok(mut img) = avatar_query.get_single_mut() {
+        img.image = textures.get_unit_texture(class);
+    }
+
+    for (header, mut txt, text_col) in header_query.iter_mut() {
+        match header.0 {
+            InspectHeaderField::Name => {
+                *txt = Text::new(class.name());
+            }
+            InspectHeaderField::Faction => {
+                if let Some(mut col) = text_col {
+                    match faction {
+                        Faction::Player => {
+                            *txt = Text::new("ALLY");
+                            col.0 = Color::srgb(0.3, 0.7, 1.0);
+                        }
+                        Faction::Enemy => {
+                            *txt = Text::new("ENEMY");
+                            col.0 = Color::srgb(1.0, 0.3, 0.3);
+                        }
+                    }
+                }
+            }
+            InspectHeaderField::Role => {
+                *txt = Text::new(class.role_title());
+            }
+        }
+    }
+
+    for (stat_bar, mut node) in bar_query.iter_mut() {
+        let ratio = match stat_bar.0 {
+            InspectStatType::Hp => (stats.hp / stats.max_hp).clamp(0.0, 1.0),
+            InspectStatType::Atk => (stats.atk / 55.0).clamp(0.0, 1.0),
+            InspectStatType::Def => (stats.def / 50.0).clamp(0.0, 1.0),
+            InspectStatType::Spd => (stats.speed / 40.0).clamp(0.0, 1.0),
+        };
+        node.width = Val::Percent(ratio * 100.0);
+    }
+
+    for (stat_txt, mut txt) in text_query.iter_mut() {
+        match stat_txt.0 {
+            InspectStatType::Hp => {
+                *txt = Text::new(format!("{:.0} / {:.0}", stats.hp, stats.max_hp));
+            }
+            InspectStatType::Atk => {
+                *txt = Text::new(format!("{:.0}", stats.atk));
+            }
+            InspectStatType::Def => {
+                *txt = Text::new(format!("{:.0}", stats.def));
+            }
+            InspectStatType::Spd => {
+                *txt = Text::new(format!("{:.0}", stats.speed));
+            }
+        }
+    }
+
+    for (sk, mut txt) in skill_query.iter_mut() {
+        match sk.0 {
+            InspectSkillField::Name => {
+                *txt = Text::new(class.skill_name());
+            }
+            InspectSkillField::Type => {
+                *txt = Text::new(format!("[{}]", class.skill_type()));
+            }
+            InspectSkillField::Desc => {
+                *txt = Text::new(class.skill_description());
+            }
+        }
+    }
+}
+
 pub fn update_bench_ui(
     selected: Res<SelectedBenchUnit>,
     mut buttons: Query<(&BenchButton, &mut BorderColor, &mut BackgroundColor)>,
@@ -500,7 +970,6 @@ pub fn handle_preset_button(
                 }
             }
 
-            // 2 Knights in frontline (col 2, row 0 and 2)
             spawn_unit(
                 &mut commands,
                 &assets_3d,
@@ -517,7 +986,6 @@ pub fn handle_preset_button(
                 2,
                 2,
             );
-            // 1 Assassin in frontline center (col 2, row 1)
             spawn_unit(
                 &mut commands,
                 &assets_3d,
@@ -526,7 +994,6 @@ pub fn handle_preset_button(
                 2,
                 1,
             );
-            // 1 Archer in backline (col 0, row 0)
             spawn_unit(
                 &mut commands,
                 &assets_3d,
@@ -535,7 +1002,6 @@ pub fn handle_preset_button(
                 0,
                 0,
             );
-            // 1 Cleric in backline (col 0, row 2)
             spawn_unit(
                 &mut commands,
                 &assets_3d,
@@ -629,7 +1095,7 @@ pub fn update_tooltip_system(
             .find(|(_, g, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
         {
             *text = Text::new(format!(
-                "{} {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} — {}",
+                "Hovering: {} {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0}",
                 unit.class.icon(),
                 unit.class.name(),
                 if unit.faction == Faction::Player {
@@ -642,7 +1108,6 @@ pub fn update_tooltip_system(
                 stats.atk,
                 stats.def,
                 stats.speed,
-                unit.class.description()
             ));
             return;
         }
@@ -651,14 +1116,13 @@ pub fn update_tooltip_system(
     if let Some(class) = selected.unit_class {
         let stats = class.base_stats();
         *text = Text::new(format!(
-            "Selected: {} {} - HP: {:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} — {}",
+            "Selected: {} {} - HP: {:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} (Click on blue grid to place)",
             class.icon(),
             class.name(),
             stats.hp,
             stats.atk,
             stats.def,
             stats.speed,
-            class.description()
         ));
         return;
     }
