@@ -7,6 +7,10 @@ Tài liệu này hệ thống hóa toàn bộ mã nguồn của game theo từng
 ## 📁 1. Sơ Đồ Cấu Trúc File & Trách Nhiệm
 
 ```
+assets/
+└── models/         # Thư mục chứa các file mô hình 3D ngoài (.glb) tự động nạp
+    └── README.md   # Hướng dẫn chi tiết cách tải và xuất file từ VRoid / Mixamo / Quaternius
+
 src/
 ├── main.rs         # Điểm khởi chạy (Entry Point), cấu hình Cửa sổ, Camera & Đăng ký Hệ thống (Systems)
 ├── types.rs        # Định nghĩa Dữ liệu chung: GameState, Faction, UnitClass, UnitStats, GridPos
@@ -15,6 +19,7 @@ src/
 ├── units.rs        # Khởi tạo Tướng 3D: Ghép nối giải phẫu trang bị, Thanh Máu & Thể Lực 3D, Bobbing & Squash-Stretch
 ├── battle.rs       # Cơ chế Chiến Đấu: Turn Bar (ATB), AI chọn mục tiêu, Lướt chém, Đạn đạo, Game Feel, Số sát thương
 ├── stages.rs       # Dữ liệu Ải PvE: Cấu hình 5 Màn chơi (Stage 1 -> 5), Đội hình quái, Vị trí xuất hiện
+├── model_loader.rs # Bộ Nạp Mô Hình 3D Ngoại (.glb) & Quản Lý Animation Xương (VRoid / Mixamo / Quaternius)
 └── ui.rs           # Giao diện người dùng 2D (HUD): Thanh trên, Bảng thông tin tướng, Hàng ghế chờ, Thắng/Thua
 ```
 
@@ -56,19 +61,30 @@ src/
 
 ---
 
-### 4. `src/units.rs` — Lắp Ráp Ngoại Hình & Animation Tướng
+### 4. `src/model_loader.rs` — Bộ Nạp Mô Hình 3D & Animation (.GLB / .GLTF)
 - **Chức năng**:
-  - Hàm `spawn_unit()`: Ghép nối các bộ phận 3D thủ công (thân, đầu, mũ, giáp ngực, vũ khí, khiên, áo choàng, thánh scepter, halo...).
+  - Quét thư mục `assets/models/` tìm kiếm các file `.glb` của 5 hệ phái (`knight.glb`, `archer.glb`, `mage.glb`, `assassin.glb`, `cleric.glb`).
+  - Xây dựng `AnimationGraph` tự động kết nối các clip hoạt ảnh (Idle, Attack, Run, Hit, Die).
+  - Tự động gán `AnimationPlayer` và kích hoạt vòng lặp Idle mượt mà cho mô hình ngoại nạp từ VRoid Studio, Quaternius, Kenney hoặc Mixamo.
+- **Khi nào cần sửa**:
+  - Thêm hệ phái mới cần nạp mô hình riêng.
+  - Thay đổi ánh xạ (mapping) hoặc tốc độ của các clip hoạt ảnh.
+
+---
+
+### 5. `src/units.rs` — Lắp Ráp Ngoại Hình & Animation Tướng
+- **Chức năng**:
+  - Hàm `spawn_unit()`: Tự động phát hiện nếu có mô hình 3D ngoại (`.glb`) thì nạp mô hình đó, nếu chưa có thì tự động fallback hiển thị mô hình 3D Chibi thủ công (không bao giờ crash game).
   - Quản lý phân cấp hiển thị (`Visibility`, `InheritedVisibility`, `ViewVisibility`).
   - Thanh máu kép 3D trôi nổi trên đầu: Thanh HP (đổi màu Xanh -> Vàng -> Đỏ) và Thanh thể lực (Cyan Action Bar).
   - Animation thở phập phồng (`IdleBobbing`), xoay vật phẩm (`SpinningItem`), hạt ma thuật bay quanh trượng (`OrbitingMote`), co giãn hình thể Anime (`ChibiSquashStretch`).
 - **Khi nào cần sửa**:
-  - Muốn chỉnh sửa hình dáng, vũ khí, mũ giáp của từng tướng.
-  - Thay thế mô hình thủ công bằng mô hình nạp từ file 3D ngoài (`.glb` / `.gltf`).
+  - Muốn chỉnh sửa hình dáng, vũ khí, mũ giáp của tướng thủ công.
+  - Tinh chỉnh vị trí bệ tướng hoặc thanh máu 3D trên đầu.
 
 ---
 
-### 5. `src/battle.rs` — Trọng Tâm Cơ Chế Chiến Đấu & Game Feel
+### 6. `src/battle.rs` — Trọng Tâm Cơ Chế Chiến Đấu & Game Feel
 - **Chức năng**:
   - **Action Gauge**: Tướng nạp thanh thể lực dựa trên chỉ số `speed`. Đạt 100 điểm thì ra chiêu độc lập.
   - **AI Nhắm Mục Tiêu**:
@@ -89,7 +105,7 @@ src/
 
 ---
 
-### 6. `src/stages.rs` — Quản Lý Màn Chơi (PvE Campaign)
+### 7. `src/stages.rs` — Quản Lý Màn Chơi (PvE Campaign)
 - **Chức năng**:
   - Lưu trữ danh sách cấu hình của các ải từ 1 đến 5:
     - Tên ải & Mô tả chiến thuật gợi ý.
@@ -100,7 +116,7 @@ src/
 
 ---
 
-### 7. `src/ui.rs` — Giao Diện Người Dùng 2D (HUD & Menu)
+### 8. `src/ui.rs` — Giao Diện Người Dùng 2D (HUD & Menu)
 - **Chức năng**:
   - **Top Bar**: Tên ải hiện tại, số lượng tướng đã xuất trận (tối đa 3), nút điều chỉnh tốc độ trận đấu (1x / 2x / 3x).
   - **Hero Inspection Card (Kính lúp SOI TƯỚNG)**: Bảng kính mờ góc trên phải hiển thị Avatar, Tên, Tộc hệ, Cột máu/công/thủ/tốc và Mô tả kỹ năng chi tiết khi hover chuột vào tướng.
@@ -112,39 +128,12 @@ src/
 
 ---
 
-### 8. `src/main.rs` — Bộ Khởi Động & Điều Phối
+### 9. `src/main.rs` — Bộ Khởi Động & Điều Phối
 - **Chức năng**:
   - Thiết lập cửa sổ game (1280x720, resizable).
   - Cấu hình Camera 3D và Camera 2D UI Overlay.
-  - Khởi tạo tất cả Resources (`BattleTurnManager`, `CameraShake`, `HitStopManager`, `CurrentStage`...).
+  - Khởi tạo tất cả Resources (`BattleTurnManager`, `CameraShake`, `HitStopManager`, `GltfModelAssets`, `CurrentStage`...).
   - Đăng ký vòng lặp các hệ thống Bevy (`Startup`, `Update`, `OnEnter`, `in_state`).
 - **Khi nào cần sửa**:
   - Thêm một hệ thống mới (`add_systems`) hoặc resource mới.
   - Đổi màu nền trời (`ClearColor`) hoặc cường độ ánh sáng môi trường (`AmbientLight`).
-
----
-
-## 🚀 3. Hướng Dẫn Quy Trình Thêm Mới Nhanh (Step-by-Step)
-
-### A. Cách thêm 1 Tướng / Class Mới (vd: `Paladin`):
-1. **`src/types.rs`**: Thêm `Paladin` vào `enum UnitClass` và khai báo chỉ số cơ bản trong `UnitClass::base_stats()`.
-2. **`src/assets_3d.rs`**: Thêm vật liệu trang bị cho Paladin (vd: búa thánh, khiên tròn hoàng gia).
-3. **`src/units.rs`**: Trong `match unit_class` của `spawn_unit`, bổ sung nhánh `UnitClass::Paladin => { ... }` ghép búa và giáp.
-4. **`src/battle.rs`**: Trong `battle_tick_system`, thêm hành vi chiến đấu của Paladin (tấn công mục tiêu nào, hiệu ứng chiêu thức gì).
-5. **`src/ui.rs`**: Thêm Paladin vào danh sách ghế chờ `BENCH_CLASSES` và bổ sung thông tin mô tả chiêu vào `update_hero_inspection_system`.
-
-### B. Cách thêm Ải Mới (vd: Stage 6):
-1. Mở file **`src/stages.rs`**.
-2. Thêm một block `StageConfig` mới vào mảng `get_stage_config(stage_num)`:
-```rust
-6 => StageConfig {
-    name: "Stage 6: Dragon Shrine",
-    description: "Beware the twin Paladins guarding the backline Mage!",
-    enemies: vec![
-        (UnitClass::Knight, 0, 1),
-        (UnitClass::Mage, 2, 0),
-        (UnitClass::Archer, 2, 2),
-    ],
-},
-```
-3. Cập nhật số ải tối đa trong điều kiện `if current_stage.0 < 6` ở `src/ui.rs`.

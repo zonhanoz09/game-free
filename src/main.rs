@@ -1,6 +1,7 @@
 mod assets_3d;
 mod battle;
 mod board;
+mod model_loader;
 mod stages;
 mod types;
 mod ui;
@@ -11,6 +12,7 @@ use battle::*;
 use bevy::prelude::*;
 use bevy::render::camera::ClearColorConfig;
 use board::*;
+use model_loader::*;
 use types::*;
 use ui::*;
 use units::*;
@@ -63,6 +65,7 @@ fn main() {
         .init_resource::<CameraShake>()
         .init_resource::<GameTextures>()
         .init_resource::<Game3dAssets>()
+        .init_resource::<GltfModelAssets>()
         .insert_resource(ClearColor(Color::srgb(0.05, 0.07, 0.11)))
         .insert_resource(AmbientLight {
             color: Color::srgb(0.68, 0.74, 0.88),
@@ -71,9 +74,16 @@ fn main() {
         // Setup systems
         .add_systems(
             Startup,
-            (setup_cameras, setup_board, setup_ui, setup_stage_enemies).chain(),
+            (
+                setup_cameras,
+                setup_gltf_models,
+                setup_board,
+                setup_ui,
+                setup_stage_enemies,
+            )
+                .chain(),
         )
-        // Group 1: Arena animations & tiles
+        // Group 1: Arena animations, tiles & external 3D glTF animation binder
         .add_systems(
             Update,
             (
@@ -81,6 +91,7 @@ fn main() {
                 animate_idle_bobbing,
                 animate_spinning_items,
                 animate_orbiting_motes,
+                auto_bind_gltf_animations,
                 update_cursor_hover,
                 update_tile_visuals,
             ),

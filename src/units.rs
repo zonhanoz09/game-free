@@ -1,7 +1,8 @@
-use crate::assets_3d::Game3dAssets;
+﻿use crate::assets_3d::Game3dAssets;
 use crate::battle::{ActionGauge, HitStopManager};
 use crate::board::grid_to_world_pos;
 use crate::types::*;
+use crate::model_loader::{CustomGltfModelRoot, GltfModelAssets};
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
 
@@ -62,6 +63,7 @@ pub struct OrbitingMote {
 pub fn spawn_unit(
     commands: &mut Commands,
     assets_3d: &Game3dAssets,
+    gltf_assets: &GltfModelAssets,
     unit_class: UnitClass,
     faction: Faction,
     col: usize,
@@ -99,25 +101,30 @@ pub fn spawn_unit(
         });
 
     // Spawn Unit Root with full Visibility Hierarchy (ensuring all children render properly)
-    commands
-        .spawn((
-            Unit {
-                class: unit_class,
-                faction,
-            },
-            stats,
-            GridPos { col, row, faction },
-            UnitVisualRoot,
-            IdleBobbing {
-                base_y: world_pos.y,
-                phase,
-            },
-            ChibiSquashStretch::default(),
-            Transform::from_translation(world_pos).with_rotation(rotation),
-            Visibility::default(),
-            InheritedVisibility::default(),
-            ViewVisibility::default(),
-        ))
+    let mut unit_cmd = commands.spawn((
+        Unit {
+            class: unit_class,
+            faction,
+        },
+        stats,
+        GridPos { col, row, faction },
+        UnitVisualRoot,
+        IdleBobbing {
+            base_y: world_pos.y,
+            phase,
+        },
+        ChibiSquashStretch::default(),
+        Transform::from_translation(world_pos).with_rotation(rotation),
+        Visibility::default(),
+        InheritedVisibility::default(),
+        ViewVisibility::default(),
+    ));
+
+    if gltf_assets.has_model(unit_class) {
+        unit_cmd.insert(CustomGltfModelRoot { class: unit_class });
+    }
+
+    unit_cmd
         .with_children(|parent| {
             // --- 1. Base Pedestal & Glowing Faction Rune Ring ---
             parent.spawn((
@@ -133,7 +140,14 @@ pub fn spawn_unit(
             ));
 
             // --- 2. Class Specific 3D Model Anatomy & Gear ---
-            match unit_class {
+            if gltf_assets.has_model(unit_class) {
+                // High-fidelity rigged 3D glTF model (VRoid / Quaternius / Mixamo / Kenney)
+                parent.spawn((
+                    SceneRoot(gltf_assets.models[&unit_class].clone()),
+                    Transform::from_xyz(0.0, 0.05, 0.0).with_scale(Vec3::splat(1.0)),
+                ));
+            } else {
+                match unit_class {
                 UnitClass::Knight => {
                     // Armored Greaves / Legs
                     parent.spawn((
@@ -584,6 +598,7 @@ pub fn spawn_unit(
                     ));
                 }
             }
+        }
 
             // --- 3. Enhanced 3D Overhead Floating Dual Health & Stamina HUD ---
             parent

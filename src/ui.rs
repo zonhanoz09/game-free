@@ -1,4 +1,5 @@
-use crate::assets_3d::Game3dAssets;
+﻿use crate::assets_3d::Game3dAssets;
+use crate::model_loader::GltfModelAssets;
 use crate::board::HoveredTile;
 use crate::stages::get_stage_def;
 use crate::types::*;
@@ -954,6 +955,7 @@ pub fn handle_clear_button(
 pub fn handle_preset_button(
     mut commands: Commands,
     assets_3d: Res<Game3dAssets>,
+    gltf_assets: Res<GltfModelAssets>,
     mut buttons: Query<&Interaction, (Changed<Interaction>, With<PresetButton>)>,
     units: Query<(Entity, &Unit)>,
     current_state: Res<State<GameState>>,
@@ -973,6 +975,7 @@ pub fn handle_preset_button(
             spawn_unit(
                 &mut commands,
                 &assets_3d,
+                &gltf_assets,
                 UnitClass::Knight,
                 Faction::Player,
                 2,
@@ -981,6 +984,7 @@ pub fn handle_preset_button(
             spawn_unit(
                 &mut commands,
                 &assets_3d,
+                &gltf_assets,
                 UnitClass::Knight,
                 Faction::Player,
                 2,
@@ -989,6 +993,7 @@ pub fn handle_preset_button(
             spawn_unit(
                 &mut commands,
                 &assets_3d,
+                &gltf_assets,
                 UnitClass::Assassin,
                 Faction::Player,
                 2,
@@ -997,6 +1002,7 @@ pub fn handle_preset_button(
             spawn_unit(
                 &mut commands,
                 &assets_3d,
+                &gltf_assets,
                 UnitClass::Archer,
                 Faction::Player,
                 0,
@@ -1005,6 +1011,7 @@ pub fn handle_preset_button(
             spawn_unit(
                 &mut commands,
                 &assets_3d,
+                &gltf_assets,
                 UnitClass::Cleric,
                 Faction::Player,
                 0,
@@ -1017,6 +1024,7 @@ pub fn handle_preset_button(
 pub fn handle_tile_mouse_placement(
     mut commands: Commands,
     assets_3d: Res<Game3dAssets>,
+    gltf_assets: Res<GltfModelAssets>,
     mouse: Res<ButtonInput<MouseButton>>,
     hovered: Res<HoveredTile>,
     selected: Res<SelectedBenchUnit>,
@@ -1048,6 +1056,7 @@ pub fn handle_tile_mouse_placement(
                 spawn_unit(
                     &mut commands,
                     &assets_3d,
+                    &gltf_assets,
                     unit_class,
                     Faction::Player,
                     target_col,
@@ -1062,6 +1071,7 @@ pub fn handle_tile_mouse_placement(
                     spawn_unit(
                         &mut commands,
                         &assets_3d,
+                        &gltf_assets,
                         unit_class,
                         Faction::Player,
                         target_col,
@@ -1133,6 +1143,7 @@ pub fn update_tooltip_system(
 pub fn setup_stage_enemies(
     mut commands: Commands,
     assets_3d: Res<Game3dAssets>,
+    gltf_assets: Res<GltfModelAssets>,
     stage: Res<CurrentStage>,
     units: Query<(Entity, &Unit)>,
     mut title_query: Query<&mut Text, (With<StageTitleText>, Without<StageDescText>)>,
@@ -1156,6 +1167,7 @@ pub fn setup_stage_enemies(
         spawn_unit(
             &mut commands,
             &assets_3d,
+            &gltf_assets,
             enemy.unit_class,
             Faction::Enemy,
             enemy.col,
@@ -1167,6 +1179,7 @@ pub fn setup_stage_enemies(
 pub fn reset_player_units_for_placement(
     mut commands: Commands,
     assets_3d: Res<Game3dAssets>,
+    gltf_assets: Res<GltfModelAssets>,
     mut units: Query<(Entity, &Unit, &GridPos, &mut Transform, &mut Visibility), Without<DeadUnit>>,
     dead_units: Query<(Entity, &Unit, &GridPos), With<DeadUnit>>,
 ) {
@@ -1185,6 +1198,7 @@ pub fn reset_player_units_for_placement(
             spawn_unit(
                 &mut commands,
                 &assets_3d,
+                &gltf_assets,
                 unit.class,
                 Faction::Player,
                 grid.col,
