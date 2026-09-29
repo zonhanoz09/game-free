@@ -52,13 +52,13 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
     commands
         .spawn((Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(10.0),
+            top: Val::Px(12.0),
             left: Val::Px(0.0),
             right: Val::Px(0.0),
             height: Val::Px(64.0),
             justify_content: JustifyContent::SpaceBetween,
             align_items: AlignItems::Center,
-            padding: UiRect::horizontal(Val::Px(30.0)),
+            padding: UiRect::horizontal(Val::Px(32.0)),
             ..default()
         },))
         .with_children(|parent| {
@@ -70,20 +70,20 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                 })
                 .with_children(|col| {
                     col.spawn((
-                        Text::new("CHIẾN THUẬT 3x3 - ĐẤU TRƯỜNG 3D"),
+                        Text::new("3v3 TACTICAL ARENA - 3D AUTO-BATTLER"),
                         TextFont {
                             font_size: 19.0,
                             ..default()
                         },
-                        TextColor(Color::srgb(0.9, 0.95, 1.0)),
+                        TextColor(Color::srgb(0.92, 0.96, 1.0)),
                     ));
                     col.spawn((
-                        Text::new("Màn 1: Đội Tiên Phong"),
+                        Text::new("Stage 1: Vanguard Frontline"),
                         TextFont {
-                            font_size: 13.5,
+                            font_size: 14.0,
                             ..default()
                         },
-                        TextColor(Color::srgb(0.95, 0.8, 0.3)),
+                        TextColor(Color::srgb(0.98, 0.82, 0.3)),
                         StageTitleText,
                     ));
                     col.spawn((
@@ -92,7 +92,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                             font_size: 11.5,
                             ..default()
                         },
-                        TextColor(Color::srgba(0.85, 0.85, 0.85, 0.8)),
+                        TextColor(Color::srgba(0.85, 0.85, 0.9, 0.8)),
                         StageDescText,
                     ));
                 });
@@ -106,21 +106,21 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                 })
                 .with_children(|col| {
                     col.spawn((
-                        Text::new("Số quân: 0 / 5"),
+                        Text::new("Units: 0 / 5"),
                         TextFont {
-                            font_size: 16.0,
+                            font_size: 16.5,
                             ..default()
                         },
-                        TextColor(Color::srgb(0.3, 0.9, 0.5)),
+                        TextColor(Color::srgb(0.35, 0.95, 0.55)),
                         UnitCountText,
                     ));
                     col.spawn((
-                        Text::new("Chuột trái sàn đấu: Đặt quân | Chuột phải: Gỡ bỏ"),
+                        Text::new("L-Click Arena: Place / Swap Unit  |  R-Click: Remove Unit"),
                         TextFont {
                             font_size: 12.0,
                             ..default()
                         },
-                        TextColor(Color::srgba(0.85, 0.85, 0.85, 0.75)),
+                        TextColor(Color::srgba(0.85, 0.88, 0.92, 0.78)),
                     ));
                 });
 
@@ -129,7 +129,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                 .spawn((
                     Button,
                     Node {
-                        width: Val::Px(110.0),
+                        width: Val::Px(115.0),
                         height: Val::Px(36.0),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
@@ -142,7 +142,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     SpeedToggleButton,
                 ))
                 .with_child((
-                    Text::new("Tốc độ: 1x"),
+                    Text::new("Speed: 1x"),
                     TextFont {
                         font_size: 14.0,
                         ..default()
@@ -166,7 +166,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
         .with_child((
             Text::new(""),
             TextFont {
-                font_size: 13.0,
+                font_size: 13.5,
                 ..default()
             },
             TextColor(Color::srgb(1.0, 0.95, 0.7)),
@@ -213,7 +213,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         row.spawn((
                             Button,
                             Node {
-                                width: Val::Px(136.0),
+                                width: Val::Px(142.0),
                                 height: Val::Px(56.0),
                                 flex_direction: FlexDirection::Row,
                                 justify_content: JustifyContent::Start,
@@ -256,21 +256,21 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                             })
                             .with_children(|txt_col| {
                                 txt_col.spawn((
-                                    Text::new(class.name_vi()),
+                                    Text::new(class.name()),
                                     TextFont {
-                                        font_size: 13.0,
+                                        font_size: 13.5,
                                         ..default()
                                     },
                                     TextColor(Color::WHITE),
                                 ));
                                 txt_col.spawn((
                                     Text::new(format!(
-                                        "HP:{} C:{}",
+                                        "HP:{} ATK:{}",
                                         class.base_stats().max_hp as i32,
                                         class.base_stats().atk as i32
                                     )),
                                     TextFont {
-                                        font_size: 10.0,
+                                        font_size: 10.5,
                                         ..default()
                                     },
                                     TextColor(Color::srgba(0.9, 0.9, 0.9, 0.8)),
@@ -304,7 +304,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         PresetButton,
                     ))
                     .with_child((
-                        Text::new("Đội hình mẫu"),
+                        Text::new("Preset Squad"),
                         TextFont {
                             font_size: 13.0,
                             ..default()
@@ -329,9 +329,9 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         StartBattleButton,
                     ))
                     .with_child((
-                        Text::new("BẮT ĐẦU CHIẾN ĐẤU"),
+                        Text::new("BATTLE START"),
                         TextFont {
-                            font_size: 15.0,
+                            font_size: 15.5,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -352,7 +352,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         ClearBoardButton,
                     ))
                     .with_child((
-                        Text::new("Xóa hết"),
+                        Text::new("Clear Board"),
                         TextFont {
                             font_size: 13.0,
                             ..default()
@@ -372,7 +372,7 @@ pub fn update_unit_count_ui(
         .filter(|u| u.faction == Faction::Player)
         .count();
     for mut text in text_query.iter_mut() {
-        *text = Text::new(format!("Số quân: {} / {}", player_units, MAX_PLAYER_UNITS));
+        *text = Text::new(format!("Units: {} / {}", player_units, MAX_PLAYER_UNITS));
     }
 }
 
@@ -431,7 +431,7 @@ pub fn handle_speed_toggle(
                 speed.multiplier = 1.0;
             }
             for mut text in text_query.iter_mut() {
-                *text = Text::new(format!("Tốc độ: {:.0}x", speed.multiplier));
+                *text = Text::new(format!("Speed: {:.0}x", speed.multiplier));
             }
         }
     }
@@ -629,13 +629,13 @@ pub fn update_tooltip_system(
             .find(|(_, g, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
         {
             *text = Text::new(format!(
-                "{} {} [{}] - HP: {:.0}/{:.0} | Công: {:.0} | Giáp: {:.0} | Tốc: {:.0} — {}",
+                "{} {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} — {}",
                 unit.class.icon(),
-                unit.class.name_vi(),
+                unit.class.name(),
                 if unit.faction == Faction::Player {
-                    "Phe Ta"
+                    "Ally"
                 } else {
-                    "Phe Địch"
+                    "Enemy"
                 },
                 stats.hp,
                 stats.max_hp,
@@ -651,9 +651,9 @@ pub fn update_tooltip_system(
     if let Some(class) = selected.unit_class {
         let stats = class.base_stats();
         *text = Text::new(format!(
-            "Đang chọn: {} {} - HP: {:.0} | Công: {:.0} | Giáp: {:.0} | Tốc: {:.0} — {}",
+            "Selected: {} {} - HP: {:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} — {}",
             class.icon(),
-            class.name_vi(),
+            class.name(),
             stats.hp,
             stats.atk,
             stats.def,
@@ -743,23 +743,23 @@ pub fn show_victory_ui(mut commands: Commands) {
                 row_gap: Val::Px(16.0),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.05, 0.15, 0.08, 0.88)),
+            BackgroundColor(Color::srgba(0.04, 0.14, 0.07, 0.90)),
             ResultUiRoot,
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("CHIẾN THẮNG!"),
+                Text::new("VICTORY!"),
                 TextFont {
-                    font_size: 44.0,
+                    font_size: 46.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.88, 0.2)),
             ));
 
             parent.spawn((
-                Text::new("Bạn đã tiêu diệt toàn bộ đội hình đối phương trên sàn đấu!"),
+                Text::new("You have vanquished the entire enemy force upon the arena!"),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 16.5,
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -788,7 +788,7 @@ pub fn show_victory_ui(mut commands: Commands) {
                             NextStageButton,
                         ))
                         .with_child((
-                            Text::new("MÀN TIẾP THEO >>"),
+                            Text::new("NEXT STAGE >>"),
                             TextFont {
                                 font_size: 16.0,
                                 ..default()
@@ -811,7 +811,7 @@ pub fn show_victory_ui(mut commands: Commands) {
                             RetryButton,
                         ))
                         .with_child((
-                            Text::new("Chơi lại màn này"),
+                            Text::new("Retry Stage"),
                             TextFont {
                                 font_size: 14.0,
                                 ..default()
@@ -835,25 +835,23 @@ pub fn show_defeat_ui(mut commands: Commands) {
                 row_gap: Val::Px(16.0),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.2, 0.05, 0.08, 0.88)),
+            BackgroundColor(Color::srgba(0.2, 0.04, 0.07, 0.90)),
             ResultUiRoot,
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("THẤT BẠI!"),
+                Text::new("DEFEAT!"),
                 TextFont {
-                    font_size: 44.0,
+                    font_size: 46.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.3, 0.3)),
             ));
 
             parent.spawn((
-                Text::new(
-                    "Toàn bộ anh hùng đã ngã xuống! Hãy điều chỉnh vị trí hoặc dàn trận lại.",
-                ),
+                Text::new("Your champions have fallen! Adjust your positioning and try again."),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 16.5,
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -875,7 +873,7 @@ pub fn show_defeat_ui(mut commands: Commands) {
                     RetryButton,
                 ))
                 .with_child((
-                    Text::new("THỬ LẠI <<"),
+                    Text::new("RETRY <<"),
                     TextFont {
                         font_size: 16.0,
                         ..default()

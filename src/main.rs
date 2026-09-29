@@ -41,7 +41,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Chiến Thuật 3x3 - Đấu Trường 3D (Auto-Battler)".to_string(),
+                title: "3v3 Tactical Arena - 3D Auto-Battler".to_string(),
                 resolution: (1280.0, 720.0).into(),
                 resizable: true,
                 ..default()
@@ -53,28 +53,33 @@ fn main() {
         .init_resource::<CurrentStage>()
         .init_resource::<SelectedBenchUnit>()
         .init_resource::<BattleRng>()
+        .init_resource::<BattleTurnManager>()
         .init_resource::<HoveredTile>()
         .init_resource::<GameTextures>()
         .init_resource::<Game3dAssets>()
         .insert_resource(ClearColor(Color::srgb(0.05, 0.07, 0.11)))
         .insert_resource(AmbientLight {
-            color: Color::srgb(0.65, 0.72, 0.85),
-            brightness: 320.0,
+            color: Color::srgb(0.68, 0.74, 0.88),
+            brightness: 340.0,
         })
         // Setup systems
         .add_systems(
             Startup,
             (setup_cameras, setup_board, setup_ui, setup_stage_enemies).chain(),
         )
-        // Always active systems (animations, visual updates, floating texts)
+        // Always active systems (animations, visual updates, floating texts, VFX)
         .add_systems(
             Update,
             (
                 animate_brazier_flames,
                 animate_idle_bobbing,
+                animate_spinning_items,
+                animate_orbiting_motes,
                 update_tile_visuals,
                 update_unit_health_bars,
                 update_floating_text,
+                update_combat_vfx,
+                update_turn_spotlight,
                 handle_speed_toggle,
             ),
         )

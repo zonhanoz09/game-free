@@ -30,6 +30,14 @@ pub struct SpinningItem {
     pub speed: f32,
 }
 
+#[derive(Component)]
+pub struct OrbitingMote {
+    pub radius: f32,
+    pub speed: f32,
+    pub phase: f32,
+    pub base_pos: Vec3,
+}
+
 pub fn spawn_unit(
     commands: &mut Commands,
     assets_3d: &Game3dAssets,
@@ -47,9 +55,17 @@ pub fn spawn_unit(
         Faction::Enemy => Quat::from_rotation_y(-FRAC_PI_2),
     };
 
-    let (base_mat, ring_mat) = match faction {
-        Faction::Player => (assets_3d.player_base.clone(), assets_3d.player_ring.clone()),
-        Faction::Enemy => (assets_3d.enemy_base.clone(), assets_3d.enemy_ring.clone()),
+    let (base_mat, ring_mat, cape_mat) = match faction {
+        Faction::Player => (
+            assets_3d.player_base.clone(),
+            assets_3d.player_ring.clone(),
+            assets_3d.player_cape.clone(),
+        ),
+        Faction::Enemy => (
+            assets_3d.enemy_base.clone(),
+            assets_3d.enemy_ring.clone(),
+            assets_3d.enemy_cape.clone(),
+        ),
     };
 
     let phase = (col as f32 * 1.3)
@@ -90,10 +106,10 @@ pub fn spawn_unit(
                 Transform::from_xyz(0.0, 0.05, 0.0),
             ));
 
-            // --- 2. Class Specific 3D Model Anatomy ---
+            // --- 2. Class Specific 3D Model Anatomy & Gear ---
             match unit_class {
                 UnitClass::Knight => {
-                    // Armored Legs
+                    // Armored Greaves / Legs
                     parent.spawn((
                         Mesh3d(assets_3d.cylinder.clone()),
                         MeshMaterial3d(assets_3d.knight_armor.clone()),
@@ -135,7 +151,15 @@ pub fn spawn_unit(
                             .with_scale(Vec3::new(0.10, 0.42, 0.04)),
                     ));
 
-                    // Left & Right Pauldrons (Shoulder Armor)
+                    // Royal Faction Cape on Back
+                    parent.spawn((
+                        Mesh3d(assets_3d.cape.clone()),
+                        MeshMaterial3d(cape_mat),
+                        Transform::from_xyz(0.0, 0.75, -0.22)
+                            .with_rotation(Quat::from_rotation_x(-0.15)),
+                    ));
+
+                    // Left & Right Pauldrons (Shoulder Armor with gold bevel)
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.knight_armor.clone()),
@@ -144,9 +168,22 @@ pub fn spawn_unit(
                     ));
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(-0.40, 1.20, 0.0)
+                            .with_scale(Vec3::new(0.18, 0.06, 0.28)),
+                    ));
+
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.knight_armor.clone()),
                         Transform::from_xyz(0.40, 1.10, 0.0)
                             .with_scale(Vec3::new(0.24, 0.22, 0.32)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(0.40, 1.20, 0.0)
+                            .with_scale(Vec3::new(0.18, 0.06, 0.28)),
                     ));
 
                     // Knight Greathelm
@@ -172,7 +209,7 @@ pub fn spawn_unit(
                             .with_scale(Vec3::new(0.18, 0.32, 0.18)),
                     ));
 
-                    // Left Hand - Large Tower Shield
+                    // Left Hand - Large Tower Shield with Golden Boss
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.shield_front.clone()),
@@ -185,13 +222,24 @@ pub fn spawn_unit(
                         Transform::from_xyz(-0.45, 0.80, 0.22)
                             .with_scale(Vec3::new(0.09, 0.86, 0.08)),
                     ));
+                    // Central Shield Boss Medallion
+                    parent.spawn((
+                        Mesh3d(assets_3d.small_sphere.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(-0.51, 0.80, 0.22).with_scale(Vec3::splat(1.5)),
+                    ));
 
-                    // Right Hand - Steel Longsword
+                    // Right Hand - Steel Longsword with Pommel & Crossguard
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.gold_trim.clone()),
                         Transform::from_xyz(0.46, 0.72, 0.20)
                             .with_scale(Vec3::new(0.32, 0.06, 0.06)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.small_sphere.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(0.46, 0.52, 0.20),
                     ));
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
@@ -223,11 +271,26 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.0, 0.78, 0.0).with_scale(Vec3::new(0.48, 0.60, 0.32)),
                     ));
 
-                    // Leather Belt
+                    // Ranger Leather Half-Cloak
+                    parent.spawn((
+                        Mesh3d(assets_3d.cape.clone()),
+                        MeshMaterial3d(assets_3d.archer_tunic.clone()),
+                        Transform::from_xyz(-0.08, 0.72, -0.18)
+                            .with_rotation(Quat::from_rotation_x(-0.12))
+                            .with_scale(Vec3::new(0.75, 0.85, 1.0)),
+                    ));
+
+                    // Leather Belt & Buckle
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.archer_leather.clone()),
                         Transform::from_xyz(0.0, 0.52, 0.0).with_scale(Vec3::new(0.50, 0.10, 0.34)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(0.0, 0.52, 0.18)
+                            .with_scale(Vec3::new(0.12, 0.10, 0.03)),
                     ));
 
                     // Hooded Head
@@ -246,7 +309,7 @@ pub fn spawn_unit(
                             .with_scale(Vec3::new(0.08, 0.35, 0.08)),
                     ));
 
-                    // Back Quiver
+                    // Back Quiver with 3 glowing arrows
                     parent.spawn((
                         Mesh3d(assets_3d.cylinder.clone()),
                         MeshMaterial3d(assets_3d.archer_leather.clone()),
@@ -254,20 +317,32 @@ pub fn spawn_unit(
                             .with_rotation(Quat::from_rotation_z(0.25))
                             .with_scale(Vec3::new(0.12, 0.62, 0.12)),
                     ));
-                    // Glowing Arrow Fletchings in quiver
                     parent.spawn((
-                        Mesh3d(assets_3d.sphere.clone()),
+                        Mesh3d(assets_3d.small_sphere.clone()),
                         MeshMaterial3d(assets_3d.arrow_glow.clone()),
-                        Transform::from_xyz(0.22, 1.35, -0.22).with_scale(Vec3::splat(0.08)),
+                        Transform::from_xyz(0.22, 1.35, -0.22).with_scale(Vec3::splat(1.2)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.small_sphere.clone()),
+                        MeshMaterial3d(assets_3d.arrow_glow.clone()),
+                        Transform::from_xyz(0.16, 1.38, -0.18).with_scale(Vec3::splat(1.0)),
                     ));
 
-                    // Left Hand - Longbow
+                    // Left Hand - Composite Recurve Bow
                     parent.spawn((
                         Mesh3d(assets_3d.cylinder.clone()),
                         MeshMaterial3d(assets_3d.archer_wood.clone()),
                         Transform::from_xyz(-0.42, 0.85, 0.25)
                             .with_scale(Vec3::new(0.05, 0.95, 0.05)),
                     ));
+                    // Silver Bowstring
+                    parent.spawn((
+                        Mesh3d(assets_3d.cylinder.clone()),
+                        MeshMaterial3d(assets_3d.steel_blade.clone()),
+                        Transform::from_xyz(-0.42, 0.85, 0.16)
+                            .with_scale(Vec3::new(0.015, 0.90, 0.015)),
+                    ));
+
                     // Nocked Arrow ready to fire
                     parent.spawn((
                         Mesh3d(assets_3d.arrow_shaft.clone()),
@@ -291,11 +366,17 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.0, 0.45, 0.0).with_scale(Vec3::new(0.55, 0.85, 0.55)),
                     ));
 
-                    // Upper Robe Torso
+                    // Upper Robe Torso with Rune Stole
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.mage_robe.clone()),
                         Transform::from_xyz(0.0, 0.92, 0.0).with_scale(Vec3::new(0.48, 0.52, 0.32)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(0.0, 0.88, 0.17)
+                            .with_scale(Vec3::new(0.18, 0.45, 0.03)),
                     ));
 
                     // Wizard Head
@@ -319,7 +400,7 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.0, 1.74, 0.0).with_scale(Vec3::new(0.34, 0.72, 0.34)),
                     ));
 
-                    // Gold Hat Band
+                    // Gold Hat Band & Star Buckle
                     parent.spawn((
                         Mesh3d(assets_3d.cylinder.clone()),
                         MeshMaterial3d(assets_3d.gold_trim.clone()),
@@ -334,12 +415,47 @@ pub fn spawn_unit(
                             .with_scale(Vec3::new(0.04, 1.6, 0.04)),
                     ));
 
-                    // Floating Pulsing Arcane Crystal Orb
+                    // Floating Pulsing Arcane Crystal Orb with Soft Point Light
+                    let staff_orb_pos = Vec3::new(0.45, 1.72, 0.18);
                     parent.spawn((
                         Mesh3d(assets_3d.sphere.clone()),
                         MeshMaterial3d(assets_3d.mage_crystal.clone()),
-                        Transform::from_xyz(0.45, 1.72, 0.18).with_scale(Vec3::splat(0.18)),
+                        Transform::from_translation(staff_orb_pos).with_scale(Vec3::splat(0.18)),
                         SpinningItem { speed: 3.0 },
+                    ));
+                    parent.spawn((
+                        PointLight {
+                            color: Color::srgb(0.75, 0.3, 1.0),
+                            intensity: 2200.0,
+                            range: 4.0,
+                            shadows_enabled: false,
+                            ..default()
+                        },
+                        Transform::from_translation(staff_orb_pos + Vec3::new(0.0, 0.1, 0.0)),
+                    ));
+
+                    // 2 Orbiting Magical Satellite Motes
+                    parent.spawn((
+                        Mesh3d(assets_3d.small_sphere.clone()),
+                        MeshMaterial3d(assets_3d.lightning.clone()),
+                        Transform::from_translation(staff_orb_pos + Vec3::new(0.24, 0.0, 0.0)),
+                        OrbitingMote {
+                            radius: 0.26,
+                            speed: 4.0,
+                            phase: 0.0,
+                            base_pos: staff_orb_pos,
+                        },
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.small_sphere.clone()),
+                        MeshMaterial3d(assets_3d.lightning.clone()),
+                        Transform::from_translation(staff_orb_pos + Vec3::new(-0.24, 0.0, 0.0)),
+                        OrbitingMote {
+                            radius: 0.26,
+                            speed: 4.0,
+                            phase: 3.1415,
+                            base_pos: staff_orb_pos,
+                        },
                     ));
                 }
 
@@ -358,6 +474,13 @@ pub fn spawn_unit(
                             .with_scale(Vec3::new(0.20, 0.38, 0.20)),
                     ));
 
+                    // Stealth Shadow Mist Ring at Feet
+                    parent.spawn((
+                        Mesh3d(assets_3d.shadow_disc.clone()),
+                        MeshMaterial3d(assets_3d.shadow_aura.clone()),
+                        Transform::from_xyz(0.0, 0.06, 0.0),
+                    ));
+
                     // Stealth Midnight Torso
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
@@ -365,7 +488,7 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.0, 0.72, 0.0).with_scale(Vec3::new(0.46, 0.52, 0.28)),
                     ));
 
-                    // Flowing Blood-Crimson Ninja Scarf
+                    // Flowing Blood-Crimson Ninja Scarf with Twin Tails
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.assassin_scarf.clone()),
@@ -377,6 +500,13 @@ pub fn spawn_unit(
                         Transform::from_xyz(-0.12, 0.85, -0.28)
                             .with_rotation(Quat::from_rotation_x(0.4))
                             .with_scale(Vec3::new(0.14, 0.55, 0.06)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.assassin_scarf.clone()),
+                        Transform::from_xyz(0.08, 0.80, -0.32)
+                            .with_rotation(Quat::from_rotation_x(0.48))
+                            .with_scale(Vec3::new(0.12, 0.60, 0.05)),
                     ));
 
                     // Ninja Masked Head
@@ -398,20 +528,33 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.08, 1.20, 0.18).with_scale(Vec3::splat(0.05)),
                     ));
 
-                    // Dual Reverse-Grip Poison Daggers
+                    // Dual Reverse-Grip Poison Daggers with Crossguards
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
-                        MeshMaterial3d(assets_3d.poison_blade.clone()),
-                        Transform::from_xyz(-0.42, 0.62, 0.20)
-                            .with_rotation(Quat::from_rotation_x(-0.4))
-                            .with_scale(Vec3::new(0.04, 0.44, 0.08)),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(-0.42, 0.72, 0.20)
+                            .with_scale(Vec3::new(0.16, 0.04, 0.06)),
                     ));
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.poison_blade.clone()),
-                        Transform::from_xyz(0.42, 0.62, 0.20)
-                            .with_rotation(Quat::from_rotation_x(-0.4))
-                            .with_scale(Vec3::new(0.04, 0.44, 0.08)),
+                        Transform::from_xyz(-0.42, 0.50, 0.20)
+                            .with_rotation(Quat::from_rotation_x(-0.35))
+                            .with_scale(Vec3::new(0.04, 0.46, 0.08)),
+                    ));
+
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.gold_trim.clone()),
+                        Transform::from_xyz(0.42, 0.72, 0.20)
+                            .with_scale(Vec3::new(0.16, 0.04, 0.06)),
+                    ));
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.poison_blade.clone()),
+                        Transform::from_xyz(0.42, 0.50, 0.20)
+                            .with_rotation(Quat::from_rotation_x(-0.35))
+                            .with_scale(Vec3::new(0.04, 0.46, 0.08)),
                     ));
                 }
 
@@ -430,7 +573,7 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.0, 0.92, 0.0).with_scale(Vec3::new(0.48, 0.55, 0.32)),
                     ));
 
-                    // Golden Stole Sash
+                    // Golden Stole Sash across Chest
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.cleric_gold.clone()),
@@ -445,7 +588,7 @@ pub fn spawn_unit(
                         Transform::from_xyz(0.0, 1.28, 0.0).with_scale(Vec3::splat(0.26)),
                     ));
 
-                    // Floating Glowing Holy Halo
+                    // Floating Glowing Holy Halo with Soft Spin
                     parent.spawn((
                         Mesh3d(assets_3d.torus_halo.clone()),
                         MeshMaterial3d(assets_3d.cleric_halo.clone()),
@@ -454,24 +597,42 @@ pub fn spawn_unit(
                         SpinningItem { speed: 1.5 },
                     ));
 
-                    // Right Hand - Celestial Holy Scepter
+                    // Right Hand - Celestial Holy Scepter with Sun Disc & Warm Light
+                    let scepter_top = Vec3::new(0.44, 1.58, 0.20);
                     parent.spawn((
                         Mesh3d(assets_3d.cylinder.clone()),
                         MeshMaterial3d(assets_3d.cleric_scepter.clone()),
                         Transform::from_xyz(0.44, 0.85, 0.20)
                             .with_scale(Vec3::new(0.035, 1.4, 0.035)),
                     ));
-                    // Sun Disc & Cross on top
                     parent.spawn((
                         Mesh3d(assets_3d.sphere.clone()),
                         MeshMaterial3d(assets_3d.heal_glow.clone()),
-                        Transform::from_xyz(0.44, 1.58, 0.20).with_scale(Vec3::splat(0.16)),
+                        Transform::from_translation(scepter_top).with_scale(Vec3::splat(0.16)),
                     ));
                     parent.spawn((
                         Mesh3d(assets_3d.cube.clone()),
                         MeshMaterial3d(assets_3d.cleric_gold.clone()),
-                        Transform::from_xyz(0.44, 1.58, 0.20)
+                        Transform::from_translation(scepter_top)
                             .with_scale(Vec3::new(0.30, 0.06, 0.04)),
+                    ));
+                    parent.spawn((
+                        PointLight {
+                            color: Color::srgb(1.0, 0.9, 0.4),
+                            intensity: 2200.0,
+                            range: 4.0,
+                            shadows_enabled: false,
+                            ..default()
+                        },
+                        Transform::from_translation(scepter_top + Vec3::new(0.0, 0.1, 0.0)),
+                    ));
+
+                    // Left Hand - Sacred Prayer Scripture Tome
+                    parent.spawn((
+                        Mesh3d(assets_3d.cube.clone()),
+                        MeshMaterial3d(assets_3d.cleric_gold.clone()),
+                        Transform::from_xyz(-0.38, 0.85, 0.20)
+                            .with_scale(Vec3::new(0.12, 0.22, 0.16)),
                     ));
                 }
             }
@@ -505,20 +666,34 @@ pub fn spawn_unit(
 pub fn animate_idle_bobbing(
     time: Res<Time>,
     mut bob_query: Query<(&mut Transform, &IdleBobbing), (With<UnitVisualRoot>, Without<DeadUnit>)>,
-    mut spin_query: Query<(&mut Transform, &SpinningItem), Without<UnitVisualRoot>>,
 ) {
     let t = time.elapsed_secs();
-    let dt = time.delta_secs();
-
-    // Bobbing breath
     for (mut transform, bob) in bob_query.iter_mut() {
         let offset = (t * 3.2 + bob.phase).sin() * 0.025;
         transform.translation.y = bob.base_y + offset;
     }
+}
 
-    // Spinning halos & arcane crystals
+pub fn animate_spinning_items(
+    time: Res<Time>,
+    mut spin_query: Query<(&mut Transform, &SpinningItem), Without<UnitVisualRoot>>,
+) {
+    let dt = time.delta_secs();
     for (mut transform, spin) in spin_query.iter_mut() {
         transform.rotate_y(spin.speed * dt);
+    }
+}
+
+pub fn animate_orbiting_motes(
+    time: Res<Time>,
+    mut mote_query: Query<(&mut Transform, &OrbitingMote), Without<UnitVisualRoot>>,
+) {
+    let t = time.elapsed_secs();
+    for (mut transform, mote) in mote_query.iter_mut() {
+        let angle = t * mote.speed + mote.phase;
+        let x = angle.cos() * mote.radius;
+        let z = angle.sin() * mote.radius;
+        transform.translation = mote.base_pos + Vec3::new(x, 0.0, z);
     }
 }
 

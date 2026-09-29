@@ -7,8 +7,8 @@ pub const BOARD_ROWS: usize = 3;
 pub const TILE_SIZE: f32 = 1.7;
 pub const TILE_HEIGHT: f32 = 0.14;
 
-pub const PLAYER_COL_X: [f32; 3] = [-5.4, -3.4, -1.4]; // Hau (0), Trung (1), Tien (2)
-pub const ENEMY_COL_X: [f32; 3] = [1.4, 3.4, 5.4]; // Tien (0), Trung (1), Hau (2)
+pub const PLAYER_COL_X: [f32; 3] = [-5.4, -3.4, -1.4]; // Back (0), Mid (1), Front (2)
+pub const ENEMY_COL_X: [f32; 3] = [1.4, 3.4, 5.4]; // Front (0), Mid (1), Back (2)
 pub const ROW_Z: [f32; 3] = [-2.3, 0.0, 2.3];
 
 pub const TILE_SURFACE_Y: f32 = 0.14;
@@ -33,21 +33,21 @@ pub enum Faction {
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Component, Reflect)]
 pub enum UnitClass {
-    Knight,   // Hiep Si: Tanker, can chien, giap day
-    Archer,   // Cung Thu: Ban xa, tia muc tieu yeu nhat
-    Mage,     // Phap Su: Sat thuong phep lan toan hang
-    Assassin, // Sat Thu: Nhay ra sau am sat, bao kich cao
-    Cleric,   // Muc Su: Hoi phuc dong minh nguy cap
+    Knight,   // Vanguard Tanker: Heavy armor & shield, melee clash
+    Archer,   // Sniper: Long range, snipes lowest HP enemy
+    Mage,     // Arcane Mage: Launches explosive magic orb with row splash
+    Assassin, // Shadow Assassin: Dashes to enemy backline with high critical rate
+    Cleric,   // Holy Priestess: Channels divine light to heal most injured ally
 }
 
 impl UnitClass {
-    pub fn name_vi(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         match self {
-            UnitClass::Knight => "Hiệp Sĩ",
-            UnitClass::Archer => "Cung Thủ",
-            UnitClass::Mage => "Pháp Sư",
-            UnitClass::Assassin => "Sát Thủ",
-            UnitClass::Cleric => "Mục Sư",
+            UnitClass::Knight => "Knight",
+            UnitClass::Archer => "Archer",
+            UnitClass::Mage => "Mage",
+            UnitClass::Assassin => "Assassin",
+            UnitClass::Cleric => "Cleric",
         }
     }
 
@@ -64,66 +64,66 @@ impl UnitClass {
 
     pub fn icon(&self) -> &'static str {
         match self {
-            UnitClass::Knight => "[Kiếm-Khiên]",
-            UnitClass::Archer => "[Cung-Tên]",
-            UnitClass::Mage => "[Phép-Thuật]",
-            UnitClass::Assassin => "[Song-Đao]",
-            UnitClass::Cleric => "[Thánh-Điện]",
+            UnitClass::Knight => "[Sword & Shield]",
+            UnitClass::Archer => "[Bow & Arrow]",
+            UnitClass::Mage => "[Arcane Magic]",
+            UnitClass::Assassin => "[Dual Daggers]",
+            UnitClass::Cleric => "[Holy Sanctuary]",
         }
     }
 
     pub fn color(&self) -> Color {
         match self {
-            UnitClass::Knight => Color::srgb(0.23, 0.51, 0.96), // Blue
-            UnitClass::Archer => Color::srgb(0.13, 0.77, 0.37), // Green
-            UnitClass::Mage => Color::srgb(0.66, 0.33, 0.97),   // Violet
-            UnitClass::Assassin => Color::srgb(0.94, 0.27, 0.27), // Crimson
-            UnitClass::Cleric => Color::srgb(0.96, 0.72, 0.15), // Amber/Gold
+            UnitClass::Knight => Color::srgb(0.23, 0.51, 0.96), // Royal Blue
+            UnitClass::Archer => Color::srgb(0.13, 0.77, 0.37), // Forest Green
+            UnitClass::Mage => Color::srgb(0.66, 0.33, 0.97),   // Arcane Violet
+            UnitClass::Assassin => Color::srgb(0.94, 0.27, 0.27), // Crimson Red
+            UnitClass::Cleric => Color::srgb(0.96, 0.72, 0.15), // Divine Gold
         }
     }
 
     pub fn base_stats(&self) -> UnitStats {
         match self {
             UnitClass::Knight => UnitStats {
-                max_hp: 170.0,
-                hp: 170.0,
-                atk: 24.0,
+                max_hp: 175.0,
+                hp: 175.0,
+                atk: 25.0,
                 def: 9.0,
                 speed: 10.0,
                 range: 1,
                 crit_rate: 0.05,
             },
             UnitClass::Archer => UnitStats {
-                max_hp: 80.0,
-                hp: 80.0,
-                atk: 34.0,
+                max_hp: 85.0,
+                hp: 85.0,
+                atk: 36.0,
                 def: 2.0,
                 speed: 14.0,
                 range: 9,
                 crit_rate: 0.22,
             },
             UnitClass::Mage => UnitStats {
-                max_hp: 70.0,
-                hp: 70.0,
-                atk: 30.0,
+                max_hp: 75.0,
+                hp: 75.0,
+                atk: 32.0,
                 def: 1.0,
                 speed: 9.5,
                 range: 9,
                 crit_rate: 0.10,
             },
             UnitClass::Assassin => UnitStats {
-                max_hp: 85.0,
-                hp: 85.0,
-                atk: 42.0,
+                max_hp: 90.0,
+                hp: 90.0,
+                atk: 44.0,
                 def: 3.0,
                 speed: 18.0,
                 range: 1,
                 crit_rate: 0.38,
             },
             UnitClass::Cleric => UnitStats {
-                max_hp: 75.0,
-                hp: 75.0,
-                atk: 18.0,
+                max_hp: 80.0,
+                hp: 80.0,
+                atk: 20.0,
                 def: 3.0,
                 speed: 11.5,
                 range: 9,
@@ -134,11 +134,19 @@ impl UnitClass {
 
     pub fn description(&self) -> &'static str {
         match self {
-            UnitClass::Knight => "Hàng trước kiên cố, giáp dày và khiên lớn thu hút hỏa lực địch.",
-            UnitClass::Archer => "Bắn tên chính xác tầm xa, ưu tiên hạ mục tiêu ít máu nhất.",
-            UnitClass::Mage => "Cầu ma pháp nổ sét gây sát thương lan cho toàn bộ hàng địch.",
-            UnitClass::Assassin => "Tốc độ chớp nhoáng, nhảy thẳng ra hậu phương ám sát hàng sau.",
-            UnitClass::Cleric => "Cầu nguyện ánh sáng hồi phục sinh lực cho đồng đội yếu nhất.",
+            UnitClass::Knight => {
+                "Frontline vanguard with heavy plate armor and tower shield to absorb enemy fire."
+            }
+            UnitClass::Archer => {
+                "Ranged sniper targeting the lowest HP enemy with lethal precision."
+            }
+            UnitClass::Mage => {
+                "Launches arcane explosive orbs dealing splash damage across the entire enemy row."
+            }
+            UnitClass::Assassin => {
+                "High-speed shadow step targeting enemy backline with deadly critical strikes."
+            }
+            UnitClass::Cleric => "Chants holy prayers to restore health to the most wounded ally.",
         }
     }
 }
