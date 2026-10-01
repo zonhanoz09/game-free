@@ -1,54 +1,41 @@
-mod assets_3d;
+#![allow(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::collapsible_if
+)]
+
+mod audio;
 mod battle;
 mod board;
-mod model_loader;
+mod economy;
 mod stages;
+mod synergies;
 mod types;
 mod ui;
 mod units;
 
-use assets_3d::Game3dAssets;
+use audio::*;
 use battle::*;
 use bevy::prelude::*;
-use bevy::render::camera::ClearColorConfig;
 use board::*;
-use model_loader::*;
+use economy::*;
+use synergies::*;
 use types::*;
 use ui::*;
 use units::*;
 
-#[derive(Component)]
-pub struct MainCamera3d;
-
 fn setup_cameras(mut commands: Commands) {
-    // Primary 3D Camera for the 3D Colosseum Arena & Champions
-    commands.spawn((
-        Camera3d::default(),
-        Camera {
-            order: 0,
-            ..default()
-        },
-        Transform::from_xyz(0.0, 14.2, 14.6).looking_at(Vec3::new(0.0, 0.4, 0.0), Vec3::Y),
-        MainCamera3d,
-    ));
-
-    // Secondary 2D Camera for the 2D UI Overlay & Floating Combat Texts
-    commands.spawn((
-        Camera2d,
-        Camera {
-            order: 1,
-            clear_color: ClearColorConfig::None,
-            ..default()
-        },
-    ));
+    info!("[GAME INIT] Game starting up...");
+    // Single 2D Camera for 2D Arena, Champions, Combat Effects, and UI
+    commands.spawn((Camera2d, MainCamera2d));
 }
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "3v3 Tactical Arena - 3D Auto-Battler".to_string(),
-                resolution: (1280.0, 720.0).into(),
+                title: "3v3 Tactical Arena - 2D Auto-Battler".to_string(),
+                resolution: (1280.0_f32, 720.0_f32).into(),
                 resizable: true,
                 ..default()
             }),
@@ -58,56 +45,45 @@ fn main() {
         .init_resource::<BattleSpeed>()
         .init_resource::<CurrentStage>()
         .init_resource::<SelectedBenchUnit>()
+        .init_resource::<SoundManager>()
+        .add_event::<PlaySoundEvent>()
+        .init_resource::<PlayerEconomy>()
         .init_resource::<BattleRng>()
         .init_resource::<BattleTurnManager>()
         .init_resource::<HoveredTile>()
         .init_resource::<HitStopManager>()
-        .init_resource::<CameraShake>()
+        .init_resource::<CameraShake2d>()
         .init_resource::<GameTextures>()
-        .init_resource::<Game3dAssets>()
-        .init_resource::<GltfModelAssets>()
-        .insert_resource(ClearColor(Color::srgb(0.05, 0.07, 0.11)))
-        .insert_resource(AmbientLight {
-            color: Color::srgb(0.68, 0.74, 0.88),
-            brightness: 380.0,
-        })
+        .insert_resource(ClearColor(Color::srgb(0.04, 0.06, 0.09)))
         // Setup systems
         .add_systems(
             Startup,
-            (
-                setup_cameras,
-                setup_gltf_models,
-                setup_board,
-                setup_ui,
-                setup_stage_enemies,
-            )
-                .chain(),
+            (setup_cameras, setup_board, setup_ui, setup_stage_enemies).chain(),
         )
-        // Group 1: Arena animations, tiles & external 3D glTF animation binder
+        // Group 1: Arena visual animations, cursor hover & tile visuals
         .add_systems(
             Update,
             (
-                animate_brazier_flames,
+                animate_torches,
                 animate_idle_bobbing,
-                animate_spinning_items,
-                animate_orbiting_motes,
-                auto_bind_gltf_animations,
                 update_cursor_hover,
                 update_tile_visuals,
             ),
         )
-        // Group 2: Game Feel (Hit Stop, Camera Shake, Dynamic Flash Lights, Combat VFX)
+        // Group 2: Combat Game Feel (Hit Stop, 2D Camera Shake, VFX, Particles, Recoil, Spotlight, Audio)
         .add_systems(
             Update,
             (
                 update_hit_stop_system,
                 update_camera_shake,
-                update_flash_lights,
                 update_combat_vfx,
+                update_spark_particles,
+                update_hit_recoil,
                 update_turn_spotlight,
+                sound_event_listener,
             ),
         )
-        // Group 3: HUD, Floating texts, Hero Inspection & Speed
+        // Group 3: HUD, Floating Combat Text, Hero Inspection Card, Gold & Synergies
         .add_systems(
             Update,
             (
@@ -115,6 +91,8 @@ fn main() {
                 update_floating_text,
                 update_hero_inspection_system,
                 handle_speed_toggle,
+                update_gold_display_system,
+                update_synergies_ui,
             ),
         )
         // Placement Phase Systems
@@ -122,6 +100,7 @@ fn main() {
             OnEnter(GameState::Placement),
             (
                 on_exit_battle,
+                show_placement_ui_on_placement,
                 setup_stage_enemies,
                 reset_player_units_for_placement,
                 teardown_result_ui,
@@ -139,11 +118,16 @@ fn main() {
                 handle_tile_mouse_placement,
                 update_tooltip_system,
                 update_unit_count_ui,
+                handle_reroll_and_lock_buttons,
+                auto_star_fusion_system,
             )
                 .run_if(in_state(GameState::Placement)),
         )
         // Battle Phase Systems
-        .add_systems(OnEnter(GameState::Battle), on_enter_battle)
+        .add_systems(
+            OnEnter(GameState::Battle),
+            (on_enter_battle, hide_placement_ui_on_battle).chain(),
+        )
         .add_systems(
             Update,
             (
@@ -169,3 +153,4 @@ fn main() {
         )
         .run();
 }
+

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "bevy-ecs": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/bevy-ecs/SKILL.md",
+      "computedHash": "c5095bf5b4bbe1fddb6b255c60f23074c3c8139e96047c29056267169dbceb1b"
+    },
+    "love2d-core": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/love2d-core/SKILL.md",
+      "computedHash": "c416da9eb17fe40433d55bf3b8a6e27c03ab04e5fa5bfa058839db826f99c3e1"
+    },
+    "pygame-core": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/pygame-core/SKILL.md",
+      "computedHash": "331708ee677a9fc63e8db30f9aeec44ef94c920b62866fa2f4e82e7e214e9793"
+    },
+    "roblox-characters": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-characters/SKILL.md",
+      "computedHash": "c944444accc8514c35d6d8534bcb4cd93ee87e00c798e027c8eb7476bffb3fe7"
+    },
+    "roblox-datastores": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-datastores/SKILL.md",
+      "computedHash": "80e4720e6eb1fdcb2a5ad3383845c3ce9035ce85aeb243399ab1ebc918e41776"
+    },
+    "roblox-luau": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-luau/SKILL.md",
+      "computedHash": "5c09ad058e7d6a9165d5055605fb70cb0740110c6380be6826cf0201ed85eb49"
+    },
+    "roblox-networking": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-networking/SKILL.md",
+      "computedHash": "c3430f3f8cb678ba635fd3c0d81de68a8b3963f14dc99f3655c2bf1a26e437dc"
+    },
+    "roblox-physics": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-physics/SKILL.md",
+      "computedHash": "3e6506bd9308277917285a73d8e17bc5102f40f353339c48ac7b043aaaf109f5"
+    },
+    "roblox-studio-workflow": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-studio-workflow/SKILL.md",
+      "computedHash": "e05fddf6ecc619b2fba8788e1bb361585aa5f92daff973395353738bffe27c5f"
+    },
+    "roblox-ui": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/other-engines/roblox-ui/SKILL.md",
+      "computedHash": "01c8c63d655e0e52465a4d61757b004b6b75b13e1420e06249f800166826f0d8"
+    }
+  }
+}

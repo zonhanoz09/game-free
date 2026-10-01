@@ -1,9 +1,11 @@
-﻿use crate::assets_3d::Game3dAssets;
-use crate::model_loader::GltfModelAssets;
+use crate::battle::ActionGauge;
+use crate::audio::{PlaySoundEvent, SoundEffect};
 use crate::board::HoveredTile;
+use crate::economy::{unit_cost, GoldDisplayText, PlayerEconomy, ShopLockToggle, ShopRerollButton};
 use crate::stages::get_stage_def;
+use crate::synergies::{SynergyContainer, SynergyCountText, SynergyRow, SynergyType};
 use crate::types::*;
-use crate::units::{Unit, spawn_unit};
+use crate::units::{Unit, spawn_unit, spawn_unit_ext};
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -55,6 +57,7 @@ pub struct InspectHeroAvatar;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum InspectStatType {
     Hp,
+    Mana,
     Atk,
     Def,
     Spd,
@@ -81,6 +84,8 @@ pub enum InspectSkillField {
     Name,
     Type,
     Desc,
+    UltName,
+    UltDesc,
 }
 
 #[derive(Component)]
@@ -109,7 +114,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                 })
                 .with_children(|col| {
                     col.spawn((
-                        Text::new("3v3 TACTICAL ARENA - 3D AUTO-BATTLER"),
+                        Text::new("3v3 TACTICAL ARENA - 2D AUTO-BATTLER"),
                         TextFont {
                             font_size: 19.0,
                             ..default()
@@ -154,9 +159,18 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         UnitCountText,
                     ));
                     col.spawn((
-                        Text::new("L-Click: Place/Inspect  |  R-Click: Remove Unit"),
+                        Text::new("🪙 15G (+6G next)"),
                         TextFont {
-                            font_size: 12.0,
+                            font_size: 14.5,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(1.0, 0.85, 0.2)),
+                        GoldDisplayText,
+                    ));
+                    col.spawn((
+                        Text::new("L-Click: Place/Inspect  |  R-Click: Sell/Refund"),
+                        TextFont {
+                            font_size: 11.5,
                             ..default()
                         },
                         TextColor(Color::srgba(0.85, 0.88, 0.92, 0.78)),
@@ -189,6 +203,81 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     TextColor(Color::WHITE),
                     SpeedText,
                 ));
+        });
+
+    // 1.5 Team Synergies Panel (Left Edge)
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(82.0),
+                left: Val::Px(16.0),
+                width: Val::Px(175.0),
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(10.0)),
+                row_gap: Val::Px(7.0),
+                border: UiRect::all(Val::Px(1.5)),
+                ..default()
+            },
+            BorderColor(Color::srgba(0.35, 0.55, 0.85, 0.5)),
+            BackgroundColor(Color::srgba(0.07, 0.09, 0.14, 0.92)),
+            BorderRadius::all(Val::Px(10.0)),
+            SynergyContainer,
+        ))
+        .with_children(|panel| {
+            panel.spawn((
+                Text::new("TEAM SYNERGIES"),
+                TextFont {
+                    font_size: 13.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.85, 0.3)),
+            ));
+
+            let syns = [
+                SynergyType::Vanguard,
+                SynergyType::Sharpshooter,
+                SynergyType::Arcanist,
+                SynergyType::Shadow,
+                SynergyType::Divine,
+            ];
+
+            for syn in syns {
+                panel
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            justify_content: JustifyContent::SpaceBetween,
+                            align_items: AlignItems::Center,
+                            padding: UiRect::axes(Val::Px(6.0), Val::Px(4.0)),
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BorderColor(Color::srgba(1.0, 1.0, 1.0, 0.1)),
+                        BackgroundColor(Color::srgba(0.12, 0.15, 0.22, 0.6)),
+                        BorderRadius::all(Val::Px(5.0)),
+                        SynergyRow(syn),
+                    ))
+                    .with_children(|row| {
+                        row.spawn((
+                            Text::new(format!("{} {}", syn.icon(), syn.name().split(" ").next().unwrap())),
+                            TextFont {
+                                font_size: 11.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        ));
+                        row.spawn((
+                            Text::new(format!("0/{}", syn.threshold())),
+                            TextFont {
+                                font_size: 11.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgba(0.8, 0.8, 0.8, 0.7)),
+                            SynergyCountText(syn),
+                        ));
+                    });
+            }
         });
 
     // 2. Modern Hero Inspection Card (Right Panel)
@@ -333,6 +422,44 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         BackgroundColor(Color::srgb(0.25, 0.85, 0.45)),
                         BorderRadius::all(Val::Px(3.0)),
                         InspectStatBar(InspectStatType::Hp),
+                    ));
+
+                    // MP (Mana) Bar
+                    stats_sec.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|row| {
+                        row.spawn((
+                            Text::new("MP (Mana)"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::srgb(0.3, 0.75, 1.0)),
+                        ));
+                        row.spawn((
+                            Text::new("0 / 100"),
+                            TextFont { font_size: 11.0, ..default() },
+                            TextColor(Color::WHITE),
+                            InspectStatText(InspectStatType::Mana),
+                        ));
+                    });
+                    stats_sec.spawn((
+                        Node {
+                            height: Val::Px(7.0),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.12, 0.16, 0.20)),
+                        BorderRadius::all(Val::Px(3.0)),
+                    )).with_child((
+                        Node {
+                            height: Val::Percent(100.0),
+                            width: Val::Percent(0.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.25, 0.65, 1.0)),
+                        BorderRadius::all(Val::Px(3.0)),
+                        InspectStatBar(InspectStatType::Mana),
                     ));
 
                     // ATK Bar
@@ -511,6 +638,57 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         InspectSkill(InspectSkillField::Desc),
                     ));
                 });
+
+            // Section: Ultimate Skill Breakdown Box
+            panel
+                .spawn((
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        padding: UiRect::all(Val::Px(8.0)),
+                        row_gap: Val::Px(4.0),
+                        border: UiRect::all(Val::Px(1.0)),
+                        ..default()
+                    },
+                    BorderColor(Color::srgba(1.0, 0.85, 0.2, 0.6)),
+                    BackgroundColor(Color::srgba(0.22, 0.18, 0.08, 0.85)),
+                    BorderRadius::all(Val::Px(6.0)),
+                ))
+                .with_children(|ult_box| {
+                    ult_box.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    }).with_children(|title_row| {
+                        title_row.spawn((
+                            Text::new("Aegis Fortress"),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.88, 0.25)),
+                            InspectSkill(InspectSkillField::UltName),
+                        ));
+                        title_row.spawn((
+                            Text::new("[ULTIMATE]"),
+                            TextFont {
+                                font_size: 9.5,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.85, 0.2)),
+                        ));
+                    });
+
+                    ult_box.spawn((
+                        Text::new("Leaps into enemy frontline with massive bash, granting +80 shield and disrupting enemy action."),
+                        TextFont {
+                            font_size: 10.5,
+                            ..default()
+                        },
+                        TextColor(Color::srgba(0.98, 0.95, 0.85, 0.9)),
+                        InspectSkill(InspectSkillField::UltDesc),
+                    ));
+                });
         });
 
     // 3. Tooltip Banner above the bench
@@ -626,15 +804,16 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                                 ));
                                 txt_col.spawn((
                                     Text::new(format!(
-                                        "HP:{} ATK:{}",
+                                        "{}🪙 | HP:{} ATK:{}",
+                                        unit_cost(class),
                                         class.base_stats().max_hp as i32,
                                         class.base_stats().atk as i32
                                     )),
                                     TextFont {
-                                        font_size: 10.5,
+                                        font_size: 10.0,
                                         ..default()
                                     },
-                                    TextColor(Color::srgba(0.9, 0.9, 0.9, 0.8)),
+                                    TextColor(Color::srgba(1.0, 0.85, 0.2, 0.9)),
                                 ));
                             });
                         });
@@ -702,7 +881,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(110.0),
+                            width: Val::Px(100.0),
                             height: Val::Px(36.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -715,7 +894,55 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     .with_child((
                         Text::new("Clear Board"),
                         TextFont {
-                            font_size: 13.0,
+                            font_size: 12.5,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+
+                    // Reroll Shop Button (2G)
+                    row.spawn((
+                        Button,
+                        Node {
+                            width: Val::Px(110.0),
+                            height: Val::Px(36.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BorderColor(Color::srgb(1.0, 0.8, 0.2)),
+                        BackgroundColor(Color::srgb(0.28, 0.20, 0.12)),
+                        BorderRadius::all(Val::Px(6.0)),
+                        ShopRerollButton,
+                    ))
+                    .with_child((
+                        Text::new("🎲 Roll 2G"),
+                        TextFont {
+                            font_size: 12.5,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(1.0, 0.88, 0.3)),
+                    ));
+
+                    // Lock Shop Button
+                    row.spawn((
+                        Button,
+                        Node {
+                            width: Val::Px(90.0),
+                            height: Val::Px(36.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.22, 0.25, 0.32)),
+                        BorderRadius::all(Val::Px(6.0)),
+                        ShopLockToggle,
+                    ))
+                    .with_child((
+                        Text::new("🔒 Lock"),
+                        TextFont {
+                            font_size: 12.5,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -808,6 +1035,7 @@ pub fn update_hero_inspection_system(
     for (stat_bar, mut node) in bar_query.iter_mut() {
         let ratio = match stat_bar.0 {
             InspectStatType::Hp => (stats.hp / stats.max_hp).clamp(0.0, 1.0),
+            InspectStatType::Mana => (stats.mana / stats.max_mana).clamp(0.0, 1.0),
             InspectStatType::Atk => (stats.atk / 55.0).clamp(0.0, 1.0),
             InspectStatType::Def => (stats.def / 50.0).clamp(0.0, 1.0),
             InspectStatType::Spd => (stats.speed / 40.0).clamp(0.0, 1.0),
@@ -820,11 +1048,18 @@ pub fn update_hero_inspection_system(
             InspectStatType::Hp => {
                 *txt = Text::new(format!("{:.0} / {:.0}", stats.hp, stats.max_hp));
             }
+            InspectStatType::Mana => {
+                *txt = Text::new(format!("{:.0} / {:.0}", stats.mana, stats.max_mana));
+            }
             InspectStatType::Atk => {
                 *txt = Text::new(format!("{:.0}", stats.atk));
             }
             InspectStatType::Def => {
-                *txt = Text::new(format!("{:.0}", stats.def));
+                if stats.shield > 0.0 {
+                    *txt = Text::new(format!("{:.0} (+{:.0} Shld)", stats.def, stats.shield));
+                } else {
+                    *txt = Text::new(format!("{:.0}", stats.def));
+                }
             }
             InspectStatType::Spd => {
                 *txt = Text::new(format!("{:.0}", stats.speed));
@@ -842,6 +1077,12 @@ pub fn update_hero_inspection_system(
             }
             InspectSkillField::Desc => {
                 *txt = Text::new(class.skill_description());
+            }
+            InspectSkillField::UltName => {
+                *txt = Text::new(class.ultimate_name());
+            }
+            InspectSkillField::UltDesc => {
+                *txt = Text::new(class.ultimate_desc());
             }
         }
     }
@@ -877,13 +1118,17 @@ pub fn update_bench_ui(
 pub fn handle_bench_clicks(
     mut selected: ResMut<SelectedBenchUnit>,
     mut buttons: Query<(&Interaction, &BenchButton), (Changed<Interaction>, With<Button>)>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     for (interaction, bench_btn) in buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
             if selected.unit_class == Some(bench_btn.0) {
                 selected.unit_class = None;
+                info!("[UI] Bench selection deselected");
             } else {
                 selected.unit_class = Some(bench_btn.0);
+                info!("[UI] Bench hero selected: {:?} (Cost: {}G)", bench_btn.0, unit_cost(bench_btn.0));
             }
         }
     }
@@ -893,9 +1138,11 @@ pub fn handle_speed_toggle(
     mut speed: ResMut<BattleSpeed>,
     mut buttons: Query<&Interaction, (Changed<Interaction>, With<SpeedToggleButton>)>,
     mut text_query: Query<&mut Text, With<SpeedText>>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     for interaction in buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
             if speed.multiplier == 1.0 {
                 speed.multiplier = 2.0;
             } else {
@@ -904,29 +1151,58 @@ pub fn handle_speed_toggle(
             for mut text in text_query.iter_mut() {
                 *text = Text::new(format!("Speed: {:.0}x", speed.multiplier));
             }
+            info!("[UI] Battle speed toggled: {:.0}x", speed.multiplier);
         }
     }
 }
 
 pub fn handle_start_battle_button(
+    mut commands: Commands,
+    textures: Res<GameTextures>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     units: Query<(&Unit, &UnitStats), Without<DeadUnit>>,
-    mut buttons: Query<&Interaction, (Changed<Interaction>, With<StartBattleButton>)>,
+    mut buttons: Query<(&Interaction, &mut BackgroundColor), With<StartBattleButton>>,
     mut next_state: ResMut<NextState<GameState>>,
     current_state: Res<State<GameState>>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
     }
 
-    for interaction in buttons.iter_mut() {
-        if *interaction == Interaction::Pressed {
-            let player_count = units
-                .iter()
-                .filter(|(u, _)| u.faction == Faction::Player)
-                .count();
-            if player_count > 0 {
-                next_state.set(GameState::Battle);
+    let mut clicked = false;
+    for (interaction, mut bg) in buttons.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                *bg = BackgroundColor(Color::srgb(0.10, 0.45, 0.20));
+                clicked = true;
             }
+            Interaction::Hovered => {
+                *bg = BackgroundColor(Color::srgb(0.22, 0.85, 0.40));
+            }
+            Interaction::None => {
+                *bg = BackgroundColor(Color::srgb(0.15, 0.65, 0.30));
+            }
+        }
+    }
+
+    let space_pressed = keyboard.just_pressed(KeyCode::Space);
+
+    if clicked || space_pressed {
+        sound_events.send(PlaySoundEvent(SoundEffect::Click));
+        let player_count = units
+            .iter()
+            .filter(|(u, _)| u.faction == Faction::Player)
+            .count();
+        if player_count > 0 {
+            info!("[UI] ⚔️ Battle Start triggered! (Active player heroes: {})", player_count);
+            next_state.set(GameState::Battle);
+        } else {
+            info!("[UI] ⚔️ Battle Start triggered with 0 units: Auto-deployed starter squad (Knight, Archer, Assassin)!");
+            spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
+            spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
+            spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
+            next_state.set(GameState::Battle);
         }
     }
 }
@@ -936,6 +1212,8 @@ pub fn handle_clear_button(
     mut buttons: Query<&Interaction, (Changed<Interaction>, With<ClearBoardButton>)>,
     units: Query<(Entity, &Unit)>,
     current_state: Res<State<GameState>>,
+    mut economy: ResMut<PlayerEconomy>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
@@ -943,22 +1221,31 @@ pub fn handle_clear_button(
 
     for interaction in buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+            let mut refunded_count = 0;
+            let mut total_refund = 0;
             for (entity, unit) in units.iter() {
                 if unit.faction == Faction::Player {
+                    let cost = unit_cost(unit.class);
+                    economy.gold += cost;
+                    total_refund += cost;
+                    refunded_count += 1;
                     commands.entity(entity).despawn_recursive();
                 }
             }
+            info!("[UI] Board cleared: {} heroes sold for +{}G -> Total Gold: {}G", refunded_count, total_refund, economy.gold);
         }
     }
 }
 
 pub fn handle_preset_button(
     mut commands: Commands,
-    assets_3d: Res<Game3dAssets>,
-    gltf_assets: Res<GltfModelAssets>,
+    textures: Res<GameTextures>,
     mut buttons: Query<&Interaction, (Changed<Interaction>, With<PresetButton>)>,
     units: Query<(Entity, &Unit)>,
     current_state: Res<State<GameState>>,
+    mut economy: ResMut<PlayerEconomy>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
@@ -966,70 +1253,37 @@ pub fn handle_preset_button(
 
     for interaction in buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
             for (entity, unit) in units.iter() {
                 if unit.faction == Faction::Player {
+                    economy.gold += unit_cost(unit.class);
                     commands.entity(entity).despawn_recursive();
                 }
             }
 
-            spawn_unit(
-                &mut commands,
-                &assets_3d,
-                &gltf_assets,
-                UnitClass::Knight,
-                Faction::Player,
-                2,
-                0,
-            );
-            spawn_unit(
-                &mut commands,
-                &assets_3d,
-                &gltf_assets,
-                UnitClass::Knight,
-                Faction::Player,
-                2,
-                2,
-            );
-            spawn_unit(
-                &mut commands,
-                &assets_3d,
-                &gltf_assets,
-                UnitClass::Assassin,
-                Faction::Player,
-                2,
-                1,
-            );
-            spawn_unit(
-                &mut commands,
-                &assets_3d,
-                &gltf_assets,
-                UnitClass::Archer,
-                Faction::Player,
-                0,
-                0,
-            );
-            spawn_unit(
-                &mut commands,
-                &assets_3d,
-                &gltf_assets,
-                UnitClass::Cleric,
-                Faction::Player,
-                0,
-                2,
-            );
+            if economy.gold >= 7 {
+                economy.gold -= 7;
+                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
+                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 2);
+                spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 1);
+                info!("[UI] Preset squad deployed (Cost: 7G) -> Remaining Gold: {}G", economy.gold);
+            } else {
+                info!("[UI] Cannot deploy preset squad: Need 7G (Current: {}G)", economy.gold);
+            }
         }
     }
 }
 
 pub fn handle_tile_mouse_placement(
     mut commands: Commands,
-    assets_3d: Res<Game3dAssets>,
-    gltf_assets: Res<GltfModelAssets>,
+    textures: Res<GameTextures>,
     mouse: Res<ButtonInput<MouseButton>>,
     hovered: Res<HoveredTile>,
     selected: Res<SelectedBenchUnit>,
     units: Query<(Entity, &Unit, &GridPos), Without<DeadUnit>>,
     current_state: Res<State<GameState>>,
+    mut economy: ResMut<PlayerEconomy>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
@@ -1051,40 +1305,52 @@ pub fn handle_tile_mouse_placement(
 
     if mouse.just_pressed(MouseButton::Left) {
         if let Some(unit_class) = selected.unit_class {
-            if let Some((old_ent, _, _)) = existing_on_tile {
-                commands.entity(old_ent).despawn_recursive();
-                spawn_unit(
-                    &mut commands,
-                    &assets_3d,
-                    &gltf_assets,
-                    unit_class,
-                    Faction::Player,
-                    target_col,
-                    target_row,
-                );
-            } else {
-                let current_count = units
-                    .iter()
-                    .filter(|(_, u, _)| u.faction == Faction::Player)
-                    .count();
-                if current_count < MAX_PLAYER_UNITS {
+            let cost = unit_cost(unit_class);
+            if let Some((old_ent, old_unit, _)) = existing_on_tile {
+                let old_cost = unit_cost(old_unit.class);
+                if economy.gold + old_cost >= cost {
+                    economy.gold = economy.gold + old_cost - cost;
+                    commands.entity(old_ent).despawn_recursive();
                     spawn_unit(
                         &mut commands,
-                        &assets_3d,
-                        &gltf_assets,
+                        &textures,
                         unit_class,
                         Faction::Player,
                         target_col,
                         target_row,
                     );
+                    info!("[PLACEMENT] Replaced {:?} with {:?} at ({}, {}) -> Remaining Gold: {}G", old_unit.class, unit_class, target_col, target_row, economy.gold);
+                    sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                }
+            } else {
+                let current_count = units
+                    .iter()
+                    .filter(|(_, u, _)| u.faction == Faction::Player)
+                    .count();
+                if current_count < MAX_PLAYER_UNITS && economy.gold >= cost {
+                    economy.gold -= cost;
+                    spawn_unit(
+                        &mut commands,
+                        &textures,
+                        unit_class,
+                        Faction::Player,
+                        target_col,
+                        target_row,
+                    );
+                    info!("[PLACEMENT] Deployed {:?} to ({}, {}) (Cost: {}G) -> Remaining Gold: {}G", unit_class, target_col, target_row, cost, economy.gold);
+                    sound_events.send(PlaySoundEvent(SoundEffect::Click));
                 }
             }
         }
     }
 
     if mouse.just_pressed(MouseButton::Right) {
-        if let Some((old_ent, _, _)) = existing_on_tile {
+        if let Some((old_ent, old_unit, _)) = existing_on_tile {
+            let refund = unit_cost(old_unit.class);
+            economy.gold += refund;
             commands.entity(old_ent).despawn_recursive();
+            info!("[PLACEMENT] Sold {:?} at ({}, {}) (Refund: +{}G) -> Total Gold: {}G", old_unit.class, target_col, target_row, refund, economy.gold);
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
         }
     }
 }
@@ -1142,12 +1408,11 @@ pub fn update_tooltip_system(
 
 pub fn setup_stage_enemies(
     mut commands: Commands,
-    assets_3d: Res<Game3dAssets>,
-    gltf_assets: Res<GltfModelAssets>,
+    textures: Res<GameTextures>,
     stage: Res<CurrentStage>,
     units: Query<(Entity, &Unit)>,
     mut title_query: Query<&mut Text, (With<StageTitleText>, Without<StageDescText>)>,
-    mut desc_query: Query<&mut Text, With<StageDescText>>,
+    mut desc_query: Query<&mut Text, (With<StageDescText>, Without<StageTitleText>)>,
 ) {
     for (entity, unit) in units.iter() {
         if unit.faction == Faction::Enemy {
@@ -1156,39 +1421,65 @@ pub fn setup_stage_enemies(
     }
 
     let stage_def = get_stage_def(stage.stage_idx);
+    info!("[STAGE] Loaded Stage #{}: {} - {}", stage.stage_idx, stage_def.title, stage_def.description);
     for mut text in title_query.iter_mut() {
-        *text = Text::new(stage_def.title);
+        *text = Text::new(&stage_def.title);
     }
     for mut text in desc_query.iter_mut() {
-        *text = Text::new(stage_def.description);
+        *text = Text::new(&stage_def.description);
     }
 
     for enemy in stage_def.enemies {
-        spawn_unit(
+        spawn_unit_ext(
             &mut commands,
-            &assets_3d,
-            &gltf_assets,
+            &textures,
             enemy.unit_class,
             Faction::Enemy,
             enemy.col,
             enemy.row,
+            enemy.star_level,
+            enemy.is_boss,
         );
+    }
+
+    // Pre-spawn starter squad for player if no units exist yet
+    let player_count = units.iter().filter(|(_, u)| u.faction == Faction::Player).count();
+    if player_count == 0 {
+        spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
+        spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
+        spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
     }
 }
 
 pub fn reset_player_units_for_placement(
     mut commands: Commands,
-    assets_3d: Res<Game3dAssets>,
-    gltf_assets: Res<GltfModelAssets>,
-    mut units: Query<(Entity, &Unit, &GridPos, &mut Transform, &mut Visibility), Without<DeadUnit>>,
+    textures: Res<GameTextures>,
+    mut units: Query<
+        (
+            Entity,
+            &Unit,
+            &GridPos,
+            &mut Transform,
+            &mut Visibility,
+            &mut UnitStats,
+            Option<&mut ActionGauge>,
+        ),
+        Without<DeadUnit>,
+    >,
     dead_units: Query<(Entity, &Unit, &GridPos), With<DeadUnit>>,
 ) {
     use crate::board::grid_to_world_pos;
-    for (_, unit, grid, mut transform, mut vis) in units.iter_mut() {
+    for (_, unit, grid, mut transform, mut vis, mut stats, maybe_gauge) in units.iter_mut() {
         if unit.faction == Faction::Player {
             let pos = grid_to_world_pos(grid.col, grid.row, Faction::Player);
-            transform.translation = pos;
+            transform.translation = Vec3::new(pos.x, pos.y, 10.0 + (grid.row as f32 * -0.5));
             *vis = Visibility::Inherited;
+            stats.hp = stats.max_hp;
+            stats.shield = 0.0;
+            stats.mana = 0.0;
+            if let Some(mut gauge) = maybe_gauge {
+                gauge.current = 0.0;
+            }
         }
     }
 
@@ -1197,8 +1488,7 @@ pub fn reset_player_units_for_placement(
             commands.entity(entity).despawn_recursive();
             spawn_unit(
                 &mut commands,
-                &assets_3d,
-                &gltf_assets,
+                &textures,
                 unit.class,
                 Faction::Player,
                 grid.col,
@@ -1372,17 +1662,77 @@ pub fn handle_result_buttons(
     mut stage: ResMut<CurrentStage>,
     next_btn: Query<&Interaction, (Changed<Interaction>, With<NextStageButton>)>,
     retry_btn: Query<&Interaction, (Changed<Interaction>, With<RetryButton>)>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     for interaction in next_btn.iter() {
         if *interaction == Interaction::Pressed {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
             stage.stage_idx += 1;
+            info!("[STAGE] Advancing to Next Stage (Index: {})", stage.stage_idx);
             next_state.set(GameState::Placement);
         }
     }
 
     for interaction in retry_btn.iter() {
         if *interaction == Interaction::Pressed {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+            info!("[STAGE] Retrying Stage (Index: {})", stage.stage_idx);
             next_state.set(GameState::Placement);
         }
+    }
+}
+
+pub fn update_gold_display_system(
+    economy: Res<PlayerEconomy>,
+    mut text_query: Query<&mut Text, With<GoldDisplayText>>,
+) {
+    let interest = (economy.gold / 10).clamp(0, 5);
+    for mut text in text_query.iter_mut() {
+        *text = Text::new(format!("🪙 {}G (+{}G next)", economy.gold, 5 + interest));
+    }
+}
+
+pub fn handle_reroll_and_lock_buttons(
+    mut economy: ResMut<PlayerEconomy>,
+    mut rng: ResMut<crate::battle::BattleRng>,
+    mut reroll_buttons: Query<&Interaction, (Changed<Interaction>, With<ShopRerollButton>)>,
+    mut lock_buttons: Query<(&Interaction, &mut BorderColor), (Changed<Interaction>, With<ShopLockToggle>)>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
+) {
+    for interaction in reroll_buttons.iter_mut() {
+        if *interaction == Interaction::Pressed {
+            if economy.reroll(&mut rng) {
+                sound_events.send(PlaySoundEvent(SoundEffect::Click));
+            }
+        }
+    }
+
+    for (interaction, mut border) in lock_buttons.iter_mut() {
+        if *interaction == Interaction::Pressed {
+            economy.shop_locked = !economy.shop_locked;
+            if economy.shop_locked {
+                border.0 = Color::srgb(1.0, 0.85, 0.2);
+            } else {
+                border.0 = Color::srgba(1.0, 1.0, 1.0, 0.1);
+            }
+            info!("[SHOP] Shop Lock toggled -> Locked: {}", economy.shop_locked);
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+        }
+    }
+}
+
+pub fn hide_placement_ui_on_battle(
+    mut query: Query<&mut Visibility, With<PlacementUiRoot>>,
+) {
+    for mut vis in query.iter_mut() {
+        *vis = Visibility::Hidden;
+    }
+}
+
+pub fn show_placement_ui_on_placement(
+    mut query: Query<&mut Visibility, With<PlacementUiRoot>>,
+) {
+    for mut vis in query.iter_mut() {
+        *vis = Visibility::Inherited;
     }
 }

@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 
-pub const TILE_SIZE: f32 = 1.35;
-pub const TILE_GAP: f32 = 0.18;
-pub const TILE_HEIGHT: f32 = 0.15;
 pub const GRID_COLS: usize = 3;
 pub const GRID_ROWS: usize = 3;
 pub const MAX_PLAYER_UNITS: usize = 5;
+
+// 2D Pixel Layout Constants
+pub const TILE_SIZE: f32 = 88.0;
+pub const TILE_GAP: f32 = 14.0;
+pub const ARENA_CENTER_X: f32 = -60.0;
+pub const ARENA_CENTER_Y: f32 = 30.0;
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GameState {
@@ -35,10 +38,13 @@ pub enum UnitClass {
 pub struct UnitStats {
     pub max_hp: f32,
     pub hp: f32,
+    pub mana: f32,
+    pub max_mana: f32,
     pub atk: f32,
     pub def: f32,
     pub speed: f32,
     pub crit_rate: f32,
+    pub shield: f32,
 }
 
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
@@ -157,6 +163,36 @@ impl UnitClass {
         }
     }
 
+    pub fn ultimate_name(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => "Aegis Fortress",
+            UnitClass::Archer => "Arrow Barrage",
+            UnitClass::Mage => "Judgment Thunderstorm",
+            UnitClass::Assassin => "Shadow Execution",
+            UnitClass::Cleric => "Divine Benediction",
+        }
+    }
+
+    pub fn ultimate_desc(&self) -> &'static str {
+        match self {
+            UnitClass::Knight => {
+                "Slams a giant shockwave barrier, dealing 220% ATK damage, gaining 80 Shield and disrupting target Action Gauge."
+            }
+            UnitClass::Archer => {
+                "Leaps backwards and rains down 5 piercing arrows upon all living enemies with +50% bonus Crit Rate."
+            }
+            UnitClass::Mage => {
+                "Summons apocalyptic lightning across the entire enemy arena, dealing 160% ATK AoE magic damage to all living foes."
+            }
+            UnitClass::Assassin => {
+                "Teleports behind the weakest enemy and executes a lethal 3-strike flurry for 280% ATK damage, restoring 50 Mana on kill."
+            }
+            UnitClass::Cleric => {
+                "Calls down heavenly grace, healing all allies for 160% ATK + 45 HP and accelerating their Action Gauge by +25%."
+            }
+        }
+    }
+
     #[allow(dead_code)]
     pub fn description(&self) -> &'static str {
         match self {
@@ -173,59 +209,75 @@ impl UnitClass {
             UnitClass::Knight => UnitStats {
                 max_hp: 180.0,
                 hp: 180.0,
+                mana: 0.0,
+                max_mana: 100.0,
                 atk: 25.0,
                 def: 40.0,
                 speed: 18.0,
                 crit_rate: 0.10,
+                shield: 0.0,
             },
             UnitClass::Archer => UnitStats {
                 max_hp: 110.0,
                 hp: 110.0,
+                mana: 0.0,
+                max_mana: 100.0,
                 atk: 38.0,
                 def: 15.0,
                 speed: 26.0,
                 crit_rate: 0.35,
+                shield: 0.0,
             },
             UnitClass::Mage => UnitStats {
                 max_hp: 95.0,
                 hp: 95.0,
+                mana: 0.0,
+                max_mana: 100.0,
                 atk: 45.0,
                 def: 10.0,
                 speed: 22.0,
                 crit_rate: 0.20,
+                shield: 0.0,
             },
             UnitClass::Assassin => UnitStats {
                 max_hp: 100.0,
                 hp: 100.0,
+                mana: 0.0,
+                max_mana: 100.0,
                 atk: 50.0,
                 def: 12.0,
                 speed: 34.0,
                 crit_rate: 0.45,
+                shield: 0.0,
             },
             UnitClass::Cleric => UnitStats {
                 max_hp: 125.0,
                 hp: 125.0,
+                mana: 0.0,
+                max_mana: 100.0,
                 atk: 20.0,
                 def: 22.0,
                 speed: 20.0,
                 crit_rate: 0.05,
+                shield: 0.0,
             },
         }
     }
 
     pub fn color(&self) -> Color {
         match self {
-            UnitClass::Knight => Color::srgb(0.2, 0.4, 0.8),
-            UnitClass::Archer => Color::srgb(0.2, 0.7, 0.2),
-            UnitClass::Mage => Color::srgb(0.6, 0.2, 0.8),
-            UnitClass::Assassin => Color::srgb(0.8, 0.2, 0.2),
-            UnitClass::Cleric => Color::srgb(0.9, 0.8, 0.2),
+            UnitClass::Knight => Color::srgb(0.2, 0.45, 0.85),
+            UnitClass::Archer => Color::srgb(0.2, 0.75, 0.3),
+            UnitClass::Mage => Color::srgb(0.65, 0.25, 0.85),
+            UnitClass::Assassin => Color::srgb(0.85, 0.2, 0.25),
+            UnitClass::Cleric => Color::srgb(0.95, 0.82, 0.25),
         }
     }
 }
 
 #[derive(Resource)]
 pub struct GameTextures {
+    pub background: Handle<Image>,
     pub knight: Handle<Image>,
     pub archer: Handle<Image>,
     pub mage: Handle<Image>,
@@ -237,6 +289,7 @@ impl FromWorld for GameTextures {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.resource::<AssetServer>();
         Self {
+            background: asset_server.load("textures/background.png"),
             knight: asset_server.load("textures/knight.png"),
             archer: asset_server.load("textures/archer.png"),
             mage: asset_server.load("textures/mage.png"),
@@ -255,5 +308,44 @@ impl GameTextures {
             UnitClass::Assassin => self.assassin.clone(),
             UnitClass::Cleric => self.cleric.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hero_classes_stats_and_mana() {
+        let classes = [
+            UnitClass::Knight,
+            UnitClass::Archer,
+            UnitClass::Mage,
+            UnitClass::Assassin,
+            UnitClass::Cleric,
+        ];
+
+        for class in classes {
+            let stats = class.base_stats();
+            assert!(stats.max_hp > 0.0);
+            assert_eq!(stats.hp, stats.max_hp);
+            assert_eq!(stats.mana, 0.0);
+            assert_eq!(stats.max_mana, 100.0);
+            assert_eq!(stats.shield, 0.0);
+            assert!(stats.atk > 0.0);
+            assert!(stats.speed > 0.0);
+            assert!(!class.ultimate_name().is_empty());
+            assert!(!class.ultimate_desc().is_empty());
+            assert!(!class.name().is_empty());
+        }
+    }
+
+    #[test]
+    fn test_ultimate_skills_distinct() {
+        assert_eq!(UnitClass::Knight.ultimate_name(), "Aegis Fortress");
+        assert_eq!(UnitClass::Archer.ultimate_name(), "Arrow Barrage");
+        assert_eq!(UnitClass::Mage.ultimate_name(), "Judgment Thunderstorm");
+        assert_eq!(UnitClass::Assassin.ultimate_name(), "Shadow Execution");
+        assert_eq!(UnitClass::Cleric.ultimate_name(), "Divine Benediction");
     }
 }
