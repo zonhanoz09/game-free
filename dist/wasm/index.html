@@ -973,6 +973,96 @@
         .lineup-zone.middle { border-color: rgba(245, 158, 11, 0.65); }
         .lineup-zone.back { border-color: rgba(56, 189, 248, 0.65); }
 
+        .formation-editor {
+            display: grid;
+            grid-template-columns: minmax(0, 1.3fr) minmax(250px, 0.7fr);
+            gap: 14px;
+        }
+        .formation-board {
+            display: grid;
+            grid-template-columns: 72px repeat(3, minmax(72px, 1fr));
+            gap: 7px;
+            padding: 10px;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            background: radial-gradient(circle at center, rgba(49, 46, 129, 0.32), rgba(15, 23, 42, 0.95));
+        }
+        .formation-row-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            letter-spacing: 0.4px;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+        }
+        .formation-row-label.front { color: #fca5a5; background: rgba(127, 29, 29, 0.32); }
+        .formation-row-label.middle { color: #fcd34d; background: rgba(120, 53, 15, 0.32); }
+        .formation-row-label.back { color: #7dd3fc; background: rgba(7, 89, 133, 0.32); }
+        .formation-cell {
+            min-height: 112px;
+            padding: 7px;
+            border: 2px dashed #475569;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.72);
+            color: #64748b;
+            cursor: pointer;
+            transition: border-color 0.15s, transform 0.15s, background 0.15s;
+        }
+        .formation-cell:hover, .formation-cell.drag-over {
+            border-color: #a5b4fc;
+            background: rgba(49, 46, 129, 0.48);
+            transform: translateY(-1px);
+        }
+        .formation-cell.filled {
+            border-style: solid;
+            border-color: #818cf8;
+            color: #fff;
+        }
+        .formation-cell .formation-card-icon { font-size: 1.8rem; text-align: center; }
+        .formation-cell .formation-card-name {
+            margin-top: 4px;
+            font-size: 0.67rem;
+            line-height: 1.2;
+            text-align: center;
+            font-weight: 800;
+        }
+        .formation-cell .formation-card-meta {
+            margin-top: 3px;
+            color: #cbd5e1;
+            font-size: 0.6rem;
+            text-align: center;
+        }
+        .formation-collection {
+            max-height: 355px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 7px;
+        }
+        .formation-card {
+            padding: 8px;
+            border: 1px solid #334155;
+            border-radius: 9px;
+            background: #131c31;
+            color: #fff;
+            cursor: grab;
+            text-align: center;
+        }
+        .formation-card:hover, .formation-card.selected {
+            border-color: #a5b4fc;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+        }
+        .formation-card.assigned { opacity: 0.55; }
+        @media (max-width: 820px) {
+            .formation-editor { grid-template-columns: 1fr; }
+            .formation-board { grid-template-columns: 54px repeat(3, minmax(64px, 1fr)); }
+            .formation-cell { min-height: 96px; }
+        }
+
         .dock-slot {
             background: rgba(15, 23, 42, 0.8);
             border: 2px dashed #475569;
@@ -2489,21 +2579,21 @@
                             </div>
                         </div>
 
-                        <!-- 3 Slots -->
-                        <div style="display:flex; flex-direction:column; gap:10px;" id="deck-lineup-slots">
-                            <div class="dock-slot" id="dock-slot-0" onclick="window.onDockSlotClick(0)">
-                                <div style="font-size:0.75rem; color:#94a3b8;"><b>Vị trí 1 (Tiên Phong):</b> Chỉ nhận Đỡ Đòn</div>
+                        <div class="formation-editor">
+                            <div>
+                                <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:7px;">Kéo thẻ vào ô hoặc chọn thẻ rồi bấm ô trống. Tối đa 3 thẻ xuất trận.</div>
+                                <div class="formation-board" id="formation-board" aria-label="Bàn xếp đội hình 3 x 3"></div>
+                                <div style="display:flex; justify-content:space-between; gap:8px; margin-top:8px; color:#94a3b8; font-size:0.66rem;">
+                                    <span>🛡️ Đầu: Đỡ Đòn · +25% HP</span>
+                                    <span>⚔️ Giữa: Sát Thủ/Xạ Thủ · +20% ATK</span>
+                                    <span>✨ Cuối: Hỗ Trợ/Pháp Sư · +30 Tiên Cơ</span>
+                                </div>
                             </div>
-                            <div class="dock-slot" id="dock-slot-1" onclick="window.onDockSlotClick(1)">
-                                <div style="font-size:0.75rem; color:#94a3b8;"><b>Vị trí 2 (Chủ Lực):</b> Chỉ nhận Sát Thủ / Xạ Thủ</div>
-                            </div>
-                            <div class="dock-slot" id="dock-slot-2" onclick="window.onDockSlotClick(2)">
-                                <div style="font-size:0.75rem; color:#94a3b8;"><b>Vị trí 3 (Hỗ Trợ):</b> Chỉ nhận Hỗ Trợ / Pháp Sư</div>
+                            <div>
+                                <div style="font-size:0.75rem; font-weight:800; color:#cbd5e1; margin-bottom:7px;">THẺ CÓ THỂ XẾP</div>
+                                <div id="formation-card-list" class="formation-collection"></div>
                             </div>
                         </div>
-                        <div class="lineup-zone front"><div class="lineup-zone-title">🛡️ TIÊN PHONG <span>+25% HP</span></div><div class="lineup-zone-hint">Chỉ thẻ Đỡ Đòn. Tăng lượng máu khi xuất trận.</div></div>
-                        <div class="lineup-zone middle"><div class="lineup-zone-title">⚔️ CHỦ LỰC <span>+20% SÁT THƯƠNG</span></div><div class="lineup-zone-hint">Chỉ thẻ Sát Thủ hoặc Xạ Thủ. Tăng sát thương.</div></div>
-                        <div class="lineup-zone back"><div class="lineup-zone-title">✨ HỖ TRỢ <span>+30 TIÊN CƠ</span></div><div class="lineup-zone-hint">Chỉ thẻ Hỗ Trợ hoặc Pháp Sư. Tăng tốc độ, xác định đánh trước.</div></div>
 
                         <!-- Synergies Box -->
                         <div style="background:#0f172a; border:1px solid #1e293b; border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:6px;">
@@ -3073,7 +3163,8 @@
                 const reserveCards = allCards.filter(card => !activeLineup.includes(card.id));
                 const cardsForEngine = [...activeCards, ...reserveCards].map((card, index) => {
                     const slot = activeLineup.indexOf(card.id);
-                    const rule = slot >= 0 ? LINEUP_ROLE_RULES[slot] : null;
+                    const row = slot >= 0 ? Math.floor(slot / 3) : -1;
+                    const rule = row >= 0 ? LINEUP_ROLE_RULES[row] : null;
                     const info = cardDefinition(card);
                     return {
                         ...card,
@@ -3146,6 +3237,7 @@
                         currentUser = data.user;
                         localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
                         renderUserProfile();
+                        loadSavedLineup();
                         syncDeckToBevy();
                     }
                 } catch(e) {
@@ -3189,7 +3281,9 @@
         let deckRoleFilter = 'all';
         let deckRarityFilter = 'all';
         let deckSearchQuery = '';
-        let activeLineup = []; // Array of up to 3 card IDs
+        let activeLineup = Array(9).fill(null); // 3x3 board; combat uses up to 3 cards
+        let selectedFormationCardId = null;
+        let activeDeckId = null;
         const LINEUP_ROLE_RULES = [
             { name: 'Tiên Phong', roles: ['Đỡ Đòn'], hpBonus: 0.25, atkBonus: 0, initiativeBonus: 0 },
             { name: 'Chủ Lực', roles: ['Sát Thủ', 'Xạ Thủ'], hpBonus: 0, atkBonus: 0.20, initiativeBonus: 0 },
@@ -3224,16 +3318,38 @@
             closeAllModals();
             if (deckModal) deckModal.style.display = 'flex';
 
-            // Initialize active lineup from user cards if not yet selected
-            if (!activeLineup || activeLineup.length === 0) {
-                const userCards = (currentUser && currentUser.cards) ? currentUser.cards : [];
-                activeLineup = [null, null, null];
-                userCards.forEach(card => {
-                    const slot = lineupSlotForCard(card);
-                    if (slot >= 0 && !activeLineup[slot]) activeLineup[slot] = card.id;
+            loadSavedLineup();
+            renderDeckCards();
+        }
+
+        function loadSavedLineup() {
+            const userCards = (currentUser && currentUser.cards) ? currentUser.cards : [];
+            const saved = currentUser && Array.isArray(currentUser.decks) ? currentUser.decks : [];
+            const deck = saved.find(d => d.id === activeDeckId) || saved.find(d => d.deck_name === 'Đội Hình Chiến Thuật') || saved[0];
+            activeDeckId = deck ? deck.id : null;
+            activeLineup = Array(9).fill(null);
+            if (deck && Array.isArray(deck.cards_data)) {
+                deck.cards_data.forEach((entry, fallbackIndex) => {
+                    const card = userCards.find(c => c.id === entry.id);
+                    if (!card) return;
+                    const savedPosition = Number.isInteger(entry.position) ? entry.position : fallbackIndex;
+                    const row = lineupSlotForCard(card);
+                    const position = savedPosition >= 0 && savedPosition < 9 && Math.floor(savedPosition / 3) === row
+                        ? savedPosition : row * 3;
+                    if (row >= 0 && !activeLineup[position] && activeLineup.filter(Boolean).length < 3) {
+                        activeLineup[position] = card.id;
+                    }
                 });
             }
-            renderDeckCards();
+            if (!activeLineup.some(Boolean)) {
+                userCards.forEach(card => {
+                    const row = lineupSlotForCard(card);
+                    const position = row >= 0 ? row * 3 : -1;
+                    if (position >= 0 && !activeLineup[position] && activeLineup.filter(Boolean).length < 3) {
+                        activeLineup[position] = card.id;
+                    }
+                });
+            }
         }
 
         function closeDeckModal() {
@@ -3379,7 +3495,7 @@
 
                             <!-- Lineup Assignment Button -->
                             <button class="btn" style="width:100%; padding:5px; font-size:0.68rem; font-weight:800; background:${isInLineup ? '#065f46' : '#312e81'}; border-color:${isInLineup ? '#10b981' : '#6366f1'}; color:#fff;" onclick="window.toggleCardInLineup('${c.id}')">
-                                ${isInLineup ? `✅ ${LINEUP_ROLE_RULES[cardSlot].name} (Gỡ)` : `⚔️ Xếp vào ${LINEUP_ROLE_RULES[lineupSlotForCard(c)]?.name || 'đội hình'}`}
+                                ${isInLineup ? `✅ ${LINEUP_ROLE_RULES[Math.floor(cardSlot / 3)].name} (Gỡ)` : `⚔️ Xếp vào ${LINEUP_ROLE_RULES[lineupSlotForCard(c)]?.name || 'đội hình'}`}
                             </button>
 
                             <!-- Upgrade Actions Grid -->
@@ -3400,61 +3516,72 @@
                 }).join('');
             }
 
-            // Render Right Dock: 3 Active Slots, Total Power & Synergies
+            renderFormationBoard(allCards);
+            // Render summary: active cards, total power & synergies
             renderActiveDeckDock(allCards);
         }
 
-        // Render Right Dock
+        function renderFormationBoard(allCards) {
+            const board = document.getElementById('formation-board');
+            const list = document.getElementById('formation-card-list');
+            if (!board || !list) return;
+            const rows = [
+                { name: 'TIỀN TUYẾN', cls: 'front', rule: LINEUP_ROLE_RULES[0] },
+                { name: 'CHỦ LỰC', cls: 'middle', rule: LINEUP_ROLE_RULES[1] },
+                { name: 'HỖ TRỢ', cls: 'back', rule: LINEUP_ROLE_RULES[2] }
+            ];
+            board.innerHTML = rows.map((row, rowIndex) => {
+                const cells = [0, 1, 2].map(col => {
+                    const position = rowIndex * 3 + col;
+                    const card = activeLineup[position] ? allCards.find(c => c.id === activeLineup[position]) : null;
+                    const info = card ? cardDefinition(card) : null;
+                    return `<div class="formation-cell ${card ? 'filled' : ''}" data-position="${position}"
+                        ondragover="window.allowFormationDrop(event)" ondrop="window.dropFormationCard(event, ${position})"
+                        onclick="window.placeSelectedFormationCard(${position})">
+                        ${card ? `<div class="formation-card-icon">${info.icon}</div>
+                            <div class="formation-card-name">${info.name}</div>
+                            <div class="formation-card-meta">${'★'.repeat(card.star_level || 1)} · ${row.rule.name}<br><span style="color:#a5b4fc;">Bấm để gỡ</span></div>`
+                            : `<div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                                <div style="font-size:1.4rem;">＋</div><div style="font-size:0.62rem;">${row.rule.roles.join(' / ')}</div>
+                            </div>`}
+                    </div>`;
+                }).join('');
+                return `<div class="formation-row-label ${row.cls}">${row.name}</div>${cells}`;
+            }).join('');
+            list.innerHTML = allCards.map(card => {
+                const info = cardDefinition(card);
+                const assignedPosition = activeLineup.indexOf(card.id);
+                const assigned = assignedPosition !== -1;
+                return `<div class="formation-card ${assigned ? 'assigned' : ''} ${selectedFormationCardId === card.id ? 'selected' : ''}"
+                    draggable="true" ondragstart="window.startFormationDrag(event, '${card.id}')"
+                    onclick="window.selectFormationCard('${card.id}')">
+                    <div style="font-size:1.45rem;">${info.icon}</div>
+                    <div style="font-size:0.66rem; font-weight:800;">${info.name}</div>
+                    <div style="font-size:0.59rem; color:${info.color};">${info.role}</div>
+                    <div style="font-size:0.58rem; color:#94a3b8;">${assigned ? `Ô ${assignedPosition + 1} · Bấm để đổi` : 'Kéo vào bàn'}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // Render formation summary
         function renderActiveDeckDock(allCards) {
             let totalPower = 0;
             const roleCount = {};
-
-            const slotNames = ['Vị trí 1 (Tiên Phong)', 'Vị trí 2 (Chủ Lực)', 'Vị trí 3 (Hỗ Trợ)'];
-
-            for (let i = 0; i < 3; i++) {
-                const slotEl = document.getElementById(`dock-slot-${i}`);
-                if (!slotEl) continue;
-
-                const cardId = activeLineup[i];
+            activeLineup.forEach((cardId, position) => {
                 const card = cardId ? allCards.find(c => c.id === cardId) : null;
-
                 if (card) {
                     const info = cardDefinition(card);
-                    const rule = LINEUP_ROLE_RULES[i];
+                    const rule = LINEUP_ROLE_RULES[Math.floor(position / 3)];
                     const effectiveHp = (info.hp + (card.hp_bonus || 0)) * (1 + rule.hpBonus);
                     const effectiveAtk = (info.atk + (card.atk_bonus || 0)) * (1 + rule.atkBonus);
                     const power = Math.round((effectiveHp / 5 + effectiveAtk * 2 + info.def * 1.5) * (1 + (card.star_level - 1) * 0.25) * (card.is_foil ? 1.2 : 1.0));
                     totalPower += power;
-
                     roleCount[info.role] = (roleCount[info.role] || 0) + 1;
-
-                    slotEl.className = 'dock-slot filled';
-                    slotEl.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:1.35rem;">${info.icon}</span>
-                            <div>
-                                <div style="font-size:0.74rem; font-weight:800; color:#fff;">${info.name}</div>
-                                <div style="font-size:0.64rem; color:#94a3b8;">${slotNames[i]} • ${'★'.repeat(card.star_level)}</div>
-                            </div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:0.68rem; font-weight:800; color:#facc15;">⚡ ${power}</div>
-                            <span style="font-size:0.6rem; color:#38bdf8; font-weight:700;">${rule.hpBonus ? '+25% HP' : rule.atkBonus ? '+20% ATK' : '+30 Tiên Cơ'} • Gỡ</span>
-                        </div>
-                    `;
-                } else {
-                    slotEl.className = 'dock-slot';
-                    slotEl.innerHTML = `
-                        <div style="font-size:0.7rem; color:#64748b;">
-                            <b>${slotNames[i]}:</b> Trống — ${LINEUP_ROLE_RULES[i].roles.join(' / ')}
-                        </div>
-                        <span style="color:#64748b; font-size:1.1rem;">+</span>
-                    `;
                 }
-            }
+            });
 
             const totalPowerEl = document.getElementById('deck-total-power');
-            const initiative = activeLineup.reduce((sum, id, i) => sum + (id ? LINEUP_ROLE_RULES[i].initiativeBonus : 0), 0);
+            const initiative = activeLineup.reduce((sum, id, i) => sum + (id ? LINEUP_ROLE_RULES[Math.floor(i / 3)].initiativeBonus : 0), 0);
             if (totalPowerEl) totalPowerEl.textContent = `⚡ ${totalPower} • +${initiative} Tiên Cơ`;
 
             // Calculate Synergies
@@ -3476,30 +3603,61 @@
         }
 
         window.toggleCardInLineup = function(cardId) {
-            const idx = activeLineup.indexOf(cardId);
-            if (idx !== -1) {
-                activeLineup[idx] = null;
-            } else {
-                const card = (currentUser.cards || []).find(c => c.id === cardId);
-                const slot = card ? lineupSlotForCard(card) : -1;
-                if (slot < 0) {
-                    alert('Thẻ này chưa có vị trí hợp lệ trong đội hình.');
-                    return;
-                }
-                if (activeLineup[slot]) {
-                    alert(`Vị trí ${LINEUP_ROLE_RULES[slot].name} đã có thẻ. Gỡ thẻ hiện tại trước.`);
-                    return;
-                }
-                activeLineup[slot] = cardId;
-            }
-            renderDeckCards();
+            selectFormationCard(cardId);
         };
 
-        window.onDockSlotClick = function(slotIndex) {
-            if (activeLineup[slotIndex]) {
-                activeLineup.splice(slotIndex, 1);
-                renderDeckCards();
+        function selectFormationCard(cardId) {
+            selectedFormationCardId = selectedFormationCardId === cardId ? null : cardId;
+            renderDeckCards();
+        }
+
+        function placeFormationCard(cardId, position) {
+            const card = (currentUser.cards || []).find(c => c.id === cardId);
+            const row = Math.floor(position / 3);
+            if (!card || !isCardAllowedInSlot(card, row)) {
+                alert(`Ô này chỉ nhận: ${LINEUP_ROLE_RULES[row].roles.join(' hoặc ')}.`);
+                return;
             }
+            const existing = activeLineup.indexOf(cardId);
+            if (existing !== -1 && existing !== position) {
+                const targetCard = activeLineup[position];
+                activeLineup[position] = cardId;
+                activeLineup[existing] = targetCard || null;
+                selectedFormationCardId = null;
+                renderDeckCards();
+                return;
+            }
+            if (!activeLineup[position] && activeLineup.filter(Boolean).length >= 3) {
+                alert('Đội hình hiện tại tối đa 3 thẻ xuất trận.');
+                return;
+            }
+            activeLineup[position] = cardId;
+            selectedFormationCardId = null;
+            renderDeckCards();
+        }
+
+        window.selectFormationCard = selectFormationCard;
+        window.placeSelectedFormationCard = function(position) {
+            if (activeLineup[position] && !selectedFormationCardId) {
+                activeLineup[position] = null;
+                renderDeckCards();
+            } else if (selectedFormationCardId) {
+                placeFormationCard(selectedFormationCardId, position);
+            }
+        };
+        window.startFormationDrag = function(event, cardId) {
+            event.dataTransfer.setData('text/plain', cardId);
+            selectedFormationCardId = cardId;
+        };
+        window.allowFormationDrop = function(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('drag-over');
+        };
+        window.dropFormationCard = function(event, position) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+            const cardId = event.dataTransfer.getData('text/plain') || selectedFormationCardId;
+            if (cardId) placeFormationCard(cardId, position);
         };
 
         window.saveActiveLineup = async function() {
@@ -3508,18 +3666,26 @@
                 return;
             }
             try {
-                const deckCards = activeLineup.filter(Boolean).map(id => ({ id: id, count: 1 }));
+                const deckCards = activeLineup.map((id, position) => id ? ({ id, count: 1, position }) : null).filter(Boolean);
                 const res = await fetch('/api/decks/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username: currentUser.username,
+                        deck_id: activeDeckId,
                         deck_name: 'Đội Hình Chiến Thuật',
+                        hero_class: 'Tactical',
+                        cardback_id: currentUser.cardback_id || null,
                         cards: deckCards
                     })
                 });
                 const data = await res.json();
                 if (data.success) {
+                    activeDeckId = data.deck ? data.deck.id : activeDeckId;
+                    if (data.user) {
+                        currentUser = data.user;
+                        localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
+                    }
                     alert('💾 Đội hình đã được lưu vĩnh viễn trên OCI và sẵn sàng ra trận!');
                     syncDeckToBevy();
                 } else {

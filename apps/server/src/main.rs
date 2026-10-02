@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Json},
     routing::{get, post},
 };
+use base64::prelude::*;
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -19,55 +20,16 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::{RwLock, mpsc};
-use base64::prelude::*;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
 
+mod config;
+use config::*;
+
 // ==========================================\n// DATA MODELS & PERSISTENCE
 // ==========================================
-fn chrono_now() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let dur = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    format!("{}", dur.as_secs())
-}
-
-fn default_gold() -> u32 {
-    100
-}
-fn default_gems() -> u32 {
-    10
-}
-fn default_level() -> u32 {
-    1
-}
-fn default_rank_tier() -> String {
-    "Đồng".to_string()
-}
-fn default_rank_division() -> u8 {
-    3
-}
-fn default_mmr() -> i32 {
-    1200
-}
-fn default_quantity() -> u32 {
-    1
-}
-fn default_avatar_id() -> String {
-    "avatar_knight".to_string()
-}
-fn default_cardback_id() -> String {
-    "cb_classic".to_string()
-}
-fn default_board_skin() -> String {
-    "board_arena".to_string()
-}
-fn default_user_id() -> String {
-    format!("p_{}", chrono_now())
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UserCard {
@@ -89,6 +51,8 @@ pub struct UserCard {
 pub struct DeckCardEntry {
     pub id: String,
     pub count: u32,
+    #[serde(default)]
+    pub position: Option<usize>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -231,7 +195,10 @@ impl User {
                 };
                 self.rank_tier = next_tier.to_string();
                 self.rank_division = 3;
-                promo_msg = format!("🎉 Chúc mừng! Bạn đã thăng hạng lên bậc {}!", self.rank_tier);
+                promo_msg = format!(
+                    "🎉 Chúc mừng! Bạn đã thăng hạng lên bậc {}!",
+                    self.rank_tier
+                );
                 promoted = true;
             }
         }
@@ -325,6 +292,7 @@ impl User {
                 cards_data: vec![DeckCardEntry {
                     id: starter.id.clone(),
                     count: 1,
+                    position: Some(0),
                 }],
                 is_valid: true,
                 validation_errors: vec![],
@@ -351,7 +319,10 @@ pub fn validate_deck(
         errors.push("Bộ bài cần tối thiểu 1 lá bài!".to_string());
     }
     if total_cards > 30 {
-        errors.push(format!("Bộ bài tối đa 30 lá bài (hiện có {} lá).", total_cards));
+        errors.push(format!(
+            "Bộ bài tối đa 30 lá bài (hiện có {} lá).",
+            total_cards
+        ));
     }
 
     for entry in cards {
@@ -360,14 +331,21 @@ pub fn validate_deck(
         }
         match user_cards.iter().find(|c| c.id == entry.id) {
             Some(card) => {
-                let max_copies = if card.is_starter { 1 } else { card.quantity.max(1).min(2) };
+                let max_copies = if card.is_starter {
+                    1
+                } else {
+                    card.quantity.max(1).min(2)
+                };
                 if entry.count > max_copies {
                     errors.push(format!(
                         "Lá '{}' vượt quá giới hạn (tối đa {} bản sao, đã chọn {}).",
                         card.name, max_copies, entry.count
                     ));
                 }
-                if card.hero_class != hero_class && card.hero_class != "Neutral" {
+                if hero_class != "Tactical"
+                    && card.hero_class != hero_class
+                    && card.hero_class != "Neutral"
+                {
                     errors.push(format!(
                         "Lá '{}' ({}) không phù hợp với Tướng hệ {}.",
                         card.name, card.hero_class, hero_class
@@ -437,7 +415,8 @@ impl OracleAdbClient {
             "https://G7262C948FBC089-GAMEDB.adb.ap-singapore-1.oraclecloudapps.com/ords/admin/_/sql".to_string()
         });
         let user = std::env::var("ORACLE_ADB_USER").unwrap_or_else(|_| "ADMIN".to_string());
-        let pass = std::env::var("ORACLE_ADB_PASSWORD").unwrap_or_else(|_| "TacticalArenaDb2026#".to_string());
+        let pass = std::env::var("ORACLE_ADB_PASSWORD")
+            .unwrap_or_else(|_| "TacticalArenaDb2026#".to_string());
 
         let creds = format!("{}:{}", user, pass);
         let b64 = BASE64_STANDARD.encode(creds.as_bytes());
@@ -482,30 +461,83 @@ impl OracleAdbClient {
 
     pub async fn load_all_users(&self) -> Result<Vec<User>, String> {
         let sql = "SELECT p.id, p.username, p.display_name, p.avatar_id, p.cardback_id, p.board_skin, p.player_level, p.current_exp, p.gold, p.gems, p.created_at, r.rank_tier, r.rank_division, r.rank_stars, r.mmr, r.total_matches, r.wins, r.win_streak, r.best_streak, u.avatar, u.password_hash, u.losses, u.cards_json, u.items_json, u.last_login FROM PLAYERS p LEFT JOIN PLAYER_RATINGS r ON p.id = r.player_id LEFT JOIN USERS u ON p.username = u.username";
-        
+
         let val = self.execute_sql(sql).await?;
         let mut users = Vec::new();
-        
+
         let cards_sql = "SELECT player_id, card_id, hero_class, card_name, quantity, is_foil, star_level, card_level, is_starter, hp_bonus, atk_bonus FROM player_cards";
         let decks_sql = "SELECT id, player_id, deck_name, hero_class, cardback_id, cards_data, is_valid FROM player_decks";
-        
+
         let all_cards_val = self.execute_sql(cards_sql).await.ok();
         let all_decks_val = self.execute_sql(decks_sql).await.ok();
 
         let mut cards_by_player: HashMap<String, Vec<UserCard>> = HashMap::new();
-        if let Some(c_items) = all_cards_val.as_ref().and_then(|v| v["items"][0]["resultSet"]["items"].as_array()) {
+        if let Some(c_items) = all_cards_val
+            .as_ref()
+            .and_then(|v| v["items"][0]["resultSet"]["items"].as_array())
+        {
             for row in c_items {
-                let pid = row.get("player_id").or_else(|| row.get("PLAYER_ID")).and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let cid = row.get("card_id").or_else(|| row.get("CARD_ID")).and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let hclass = row.get("hero_class").or_else(|| row.get("HERO_CLASS")).and_then(|v| v.as_str()).unwrap_or("Knight").to_string();
-                let cname = row.get("card_name").or_else(|| row.get("CARD_NAME")).and_then(|v| v.as_str()).unwrap_or("Chiến Binh").to_string();
-                let qty = row.get("quantity").or_else(|| row.get("QUANTITY")).and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-                let is_foil = row.get("is_foil").or_else(|| row.get("IS_FOIL")).and_then(|v| v.as_u64()).unwrap_or(0) == 1;
-                let s_lvl = row.get("star_level").or_else(|| row.get("STAR_LEVEL")).and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-                let c_lvl = row.get("card_level").or_else(|| row.get("CARD_LEVEL")).and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-                let is_st = row.get("is_starter").or_else(|| row.get("IS_STARTER")).and_then(|v| v.as_u64()).unwrap_or(0) == 1;
-                let hp_b = row.get("hp_bonus").or_else(|| row.get("HP_BONUS")).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
-                let atk_b = row.get("atk_bonus").or_else(|| row.get("ATK_BONUS")).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+                let pid = row
+                    .get("player_id")
+                    .or_else(|| row.get("PLAYER_ID"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let cid = row
+                    .get("card_id")
+                    .or_else(|| row.get("CARD_ID"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let hclass = row
+                    .get("hero_class")
+                    .or_else(|| row.get("HERO_CLASS"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Knight")
+                    .to_string();
+                let cname = row
+                    .get("card_name")
+                    .or_else(|| row.get("CARD_NAME"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Chiến Binh")
+                    .to_string();
+                let qty = row
+                    .get("quantity")
+                    .or_else(|| row.get("QUANTITY"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1) as u32;
+                let is_foil = row
+                    .get("is_foil")
+                    .or_else(|| row.get("IS_FOIL"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+                    == 1;
+                let s_lvl = row
+                    .get("star_level")
+                    .or_else(|| row.get("STAR_LEVEL"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1) as u32;
+                let c_lvl = row
+                    .get("card_level")
+                    .or_else(|| row.get("CARD_LEVEL"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1) as u32;
+                let is_st = row
+                    .get("is_starter")
+                    .or_else(|| row.get("IS_STARTER"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0)
+                    == 1;
+                let hp_b = row
+                    .get("hp_bonus")
+                    .or_else(|| row.get("HP_BONUS"))
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as f32;
+                let atk_b = row
+                    .get("atk_bonus")
+                    .or_else(|| row.get("ATK_BONUS"))
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as f32;
 
                 cards_by_player.entry(pid).or_default().push(UserCard {
                     id: cid,
@@ -523,41 +555,92 @@ impl OracleAdbClient {
         }
 
         let mut decks_by_player: HashMap<String, Vec<PlayerDeck>> = HashMap::new();
-        if let Some(d_items) = all_decks_val.as_ref().and_then(|v| v["items"][0]["resultSet"]["items"].as_array()) {
+        if let Some(d_items) = all_decks_val
+            .as_ref()
+            .and_then(|v| v["items"][0]["resultSet"]["items"].as_array())
+        {
             for row in d_items {
-                let id = row.get("id").or_else(|| row.get("ID")).and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let pid = row.get("player_id").or_else(|| row.get("PLAYER_ID")).and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let dname = row.get("deck_name").or_else(|| row.get("DECK_NAME")).and_then(|v| v.as_str()).unwrap_or("Bộ Bài").to_string();
-                let hclass = row.get("hero_class").or_else(|| row.get("HERO_CLASS")).and_then(|v| v.as_str()).unwrap_or("Knight").to_string();
-                let cback = row.get("cardback_id").or_else(|| row.get("CARDBACK_ID")).and_then(|v| v.as_str()).unwrap_or("cb_classic").to_string();
-                let is_valid = row.get("is_valid").or_else(|| row.get("IS_VALID")).and_then(|v| v.as_u64()).unwrap_or(1) == 1;
-                let raw_data = row.get("cards_data").or_else(|| row.get("CARDS_DATA")).and_then(|v| v.as_str()).unwrap_or("[]");
-                let cards_data: Vec<DeckCardEntry> = serde_json::from_str(raw_data).unwrap_or_default();
+                let id = row
+                    .get("id")
+                    .or_else(|| row.get("ID"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let pid = row
+                    .get("player_id")
+                    .or_else(|| row.get("PLAYER_ID"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let dname = row
+                    .get("deck_name")
+                    .or_else(|| row.get("DECK_NAME"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Bộ Bài")
+                    .to_string();
+                let hclass = row
+                    .get("hero_class")
+                    .or_else(|| row.get("HERO_CLASS"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Knight")
+                    .to_string();
+                let cback = row
+                    .get("cardback_id")
+                    .or_else(|| row.get("CARDBACK_ID"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("cb_classic")
+                    .to_string();
+                let is_valid = row
+                    .get("is_valid")
+                    .or_else(|| row.get("IS_VALID"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1)
+                    == 1;
+                let raw_data = row
+                    .get("cards_data")
+                    .or_else(|| row.get("CARDS_DATA"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("[]");
+                let cards_data: Vec<DeckCardEntry> =
+                    serde_json::from_str(raw_data).unwrap_or_default();
 
-                decks_by_player.entry(pid.clone()).or_default().push(PlayerDeck {
-                    id,
-                    player_id: pid,
-                    deck_name: dname,
-                    hero_class: hclass,
-                    cardback_id: cback,
-                    cards_data,
-                    is_valid,
-                    validation_errors: vec![],
-                    updated_at: chrono_now(),
-                });
+                decks_by_player
+                    .entry(pid.clone())
+                    .or_default()
+                    .push(PlayerDeck {
+                        id,
+                        player_id: pid,
+                        deck_name: dname,
+                        hero_class: hclass,
+                        cardback_id: cback,
+                        cards_data,
+                        is_valid,
+                        validation_errors: vec![],
+                        updated_at: chrono_now(),
+                    });
             }
         }
 
         if let Some(items) = val["items"][0]["resultSet"]["items"].as_array() {
             for row in items {
                 let get_s = |key1: &str, key2: &str| -> String {
-                    row.get(key1).or_else(|| row.get(key2)).and_then(|v| v.as_str()).unwrap_or("").to_string()
+                    row.get(key1)
+                        .or_else(|| row.get(key2))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string()
                 };
                 let get_u = |key1: &str, key2: &str, def: u64| -> u64 {
-                    row.get(key1).or_else(|| row.get(key2)).and_then(|v| v.as_u64()).unwrap_or(def)
+                    row.get(key1)
+                        .or_else(|| row.get(key2))
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(def)
                 };
                 let get_i = |key1: &str, key2: &str, def: i64| -> i64 {
-                    row.get(key1).or_else(|| row.get(key2)).and_then(|v| v.as_i64()).unwrap_or(def)
+                    row.get(key1)
+                        .or_else(|| row.get(key2))
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(def)
                 };
 
                 let username = get_s("username", "USERNAME");
@@ -595,16 +678,41 @@ impl OracleAdbClient {
                 }
 
                 let decks = decks_by_player.remove(&id).unwrap_or_default();
-                let items: Vec<UserItem> = serde_json::from_str(&get_s("items_json", "ITEMS_JSON")).unwrap_or_default();
+                let items: Vec<UserItem> =
+                    serde_json::from_str(&get_s("items_json", "ITEMS_JSON")).unwrap_or_default();
 
                 let mut user = User {
-                    id: if id.is_empty() { format!("p_{}", username) } else { id },
+                    id: if id.is_empty() {
+                        format!("p_{}", username)
+                    } else {
+                        id
+                    },
                     username,
-                    display_name: if display_name.is_empty() { "Người chơi".to_string() } else { display_name },
-                    avatar: if avatar.is_empty() { "knight".to_string() } else { avatar },
-                    avatar_id: if avatar_id.is_empty() { "avatar_knight".to_string() } else { avatar_id },
-                    cardback_id: if cardback_id.is_empty() { "cb_classic".to_string() } else { cardback_id },
-                    board_skin: if board_skin.is_empty() { "board_arena".to_string() } else { board_skin },
+                    display_name: if display_name.is_empty() {
+                        "Người chơi".to_string()
+                    } else {
+                        display_name
+                    },
+                    avatar: if avatar.is_empty() {
+                        "knight".to_string()
+                    } else {
+                        avatar
+                    },
+                    avatar_id: if avatar_id.is_empty() {
+                        "avatar_knight".to_string()
+                    } else {
+                        avatar_id
+                    },
+                    cardback_id: if cardback_id.is_empty() {
+                        "cb_classic".to_string()
+                    } else {
+                        cardback_id
+                    },
+                    board_skin: if board_skin.is_empty() {
+                        "board_arena".to_string()
+                    } else {
+                        board_skin
+                    },
                     password_hash,
                     level,
                     current_exp,
@@ -614,7 +722,11 @@ impl OracleAdbClient {
                     matches,
                     gold,
                     gems,
-                    rank_tier: if rank_tier.is_empty() { "Đồng".to_string() } else { rank_tier },
+                    rank_tier: if rank_tier.is_empty() {
+                        "Đồng".to_string()
+                    } else {
+                        rank_tier
+                    },
                     rank_division,
                     rank_stars,
                     mmr,
@@ -707,7 +819,9 @@ impl OracleAdbClient {
             let dname = deck.deck_name.replace('\'', "''");
             let hclass = deck.hero_class.replace('\'', "''");
             let cback = deck.cardback_id.replace('\'', "''");
-            let cdata = serde_json::to_string(&deck.cards_data).unwrap_or_else(|_| "[]".to_string()).replace('\'', "''");
+            let cdata = serde_json::to_string(&deck.cards_data)
+                .unwrap_or_else(|_| "[]".to_string())
+                .replace('\'', "''");
             let is_v = if deck.is_valid { 1 } else { 0 };
 
             let sql_d = format!(
@@ -724,8 +838,12 @@ impl OracleAdbClient {
         }
 
         // 5. Legacy USERS table
-        let cards_json = serde_json::to_string(&user.cards).unwrap_or_else(|_| "[]".to_string()).replace('\'', "''");
-        let items_json = serde_json::to_string(&user.items).unwrap_or_else(|_| "[]".to_string()).replace('\'', "''");
+        let cards_json = serde_json::to_string(&user.cards)
+            .unwrap_or_else(|_| "[]".to_string())
+            .replace('\'', "''");
+        let items_json = serde_json::to_string(&user.items)
+            .unwrap_or_else(|_| "[]".to_string())
+            .replace('\'', "''");
         let sql_users = format!(
             "MERGE INTO USERS u USING (SELECT '{username}' AS username, '{display_name}' AS display_name, '{avatar}' AS avatar, '{pwd}' AS password_hash, {elo} AS elo, {wins} AS wins, {losses} AS losses, {matches} AS matches, {gold} AS gold, '{cards_json}' AS cards_json, '{items_json}' AS items_json, '{created_at}' AS created_at, '{last_login}' AS last_login FROM DUAL) s ON (u.username = s.username) WHEN MATCHED THEN UPDATE SET u.display_name = s.display_name, u.avatar = s.avatar, u.password_hash = s.password_hash, u.elo = s.elo, u.wins = s.wins, u.losses = s.losses, u.matches = s.matches, u.gold = s.gold, u.cards_json = s.cards_json, u.items_json = s.items_json, u.last_login = s.last_login WHEN NOT MATCHED THEN INSERT (username, display_name, avatar, password_hash, elo, wins, losses, matches, gold, cards_json, items_json, created_at, last_login) VALUES (s.username, s.display_name, s.avatar, s.password_hash, s.elo, s.wins, s.losses, s.matches, s.gold, s.cards_json, s.items_json, s.created_at, s.last_login)",
             username = username,
@@ -793,7 +911,11 @@ impl Database {
             user.ensure_valid_id_and_deck();
         }
 
-        Self { file_path, data, adb: None }
+        Self {
+            file_path,
+            data,
+            adb: None,
+        }
     }
 
     pub async fn new_with_adb(path: impl AsRef<Path>) -> Self {
@@ -809,14 +931,20 @@ impl Database {
         if let Some(ref client) = adb {
             match client.load_all_users().await {
                 Ok(users) => {
-                    println!("[ORACLE AUTONOMOUS DB] Loaded {} users from Oracle Cloud ADB.", users.len());
+                    println!(
+                        "[ORACLE AUTONOMOUS DB] Loaded {} users from Oracle Cloud ADB.",
+                        users.len()
+                    );
                     for u in users {
                         data.users.insert(u.username.clone(), u);
                     }
                     loaded_from_adb = true;
                 }
                 Err(e) => {
-                    eprintln!("[ORACLE ADB WARNING] Could not load from ADB ({}). Falling back to local disk.", e);
+                    eprintln!(
+                        "[ORACLE ADB WARNING] Could not load from ADB ({}). Falling back to local disk.",
+                        e
+                    );
                 }
             }
         }
@@ -825,7 +953,11 @@ impl Database {
             if let Ok(content) = fs::read_to_string(&file_path) {
                 if let Ok(local_data) = serde_json::from_str::<DatabaseData>(&content) {
                     data = local_data;
-                    println!("[LOCAL DB] Loaded {} users and {} matches from local file.", data.users.len(), data.matches.len());
+                    println!(
+                        "[LOCAL DB] Loaded {} users and {} matches from local file.",
+                        data.users.len(),
+                        data.matches.len()
+                    );
                 }
             }
         }
@@ -834,7 +966,11 @@ impl Database {
             user.ensure_valid_id_and_deck();
         }
 
-        Self { file_path, data, adb }
+        Self {
+            file_path,
+            data,
+            adb,
+        }
     }
 
     pub fn set_adb_client(&mut self, adb: OracleAdbClient) {
@@ -850,7 +986,10 @@ impl Database {
         println!("[ORACLE ADB] Loading players and cards from cloud database...");
         let cloud_users = adb.load_all_users().await?;
         let count = cloud_users.len();
-        println!("[ORACLE ADB] Successfully fetched {} players from Oracle ADB.", count);
+        println!(
+            "[ORACLE ADB] Successfully fetched {} players from Oracle ADB.",
+            count
+        );
 
         for mut user in cloud_users {
             user.ensure_valid_id_and_deck();
@@ -868,7 +1007,10 @@ impl Database {
             let user = user.clone();
             tokio::spawn(async move {
                 if let Err(e) = adb.save_user(&user).await {
-                    eprintln!("[ORACLE ADB ERROR] Failed to save user {}: {}", user.username, e);
+                    eprintln!(
+                        "[ORACLE ADB ERROR] Failed to save user {}: {}",
+                        user.username, e
+                    );
                 }
             });
         }
@@ -880,7 +1022,10 @@ impl Database {
             let m = m.clone();
             tokio::spawn(async move {
                 if let Err(e) = adb.record_match(&m).await {
-                    eprintln!("[ORACLE ADB ERROR] Failed to record match {}: {}", m.match_id, e);
+                    eprintln!(
+                        "[ORACLE ADB ERROR] Failed to record match {}: {}",
+                        m.match_id, e
+                    );
                 }
             });
         }
@@ -944,6 +1089,7 @@ impl Database {
             cards_data: vec![DeckCardEntry {
                 id: starter_card.id.clone(),
                 count: 1,
+                position: Some(0),
             }],
             is_valid: true,
             validation_errors: vec![],
@@ -1189,11 +1335,7 @@ impl Database {
         Ok((res_user, msg))
     }
 
-    pub fn foil_card(
-        &mut self,
-        username: &str,
-        card_id: &str,
-    ) -> Result<(User, String), String> {
+    pub fn foil_card(&mut self, username: &str, card_id: &str) -> Result<(User, String), String> {
         let clean = username.trim().to_lowercase();
         let user = self
             .data
@@ -1228,7 +1370,10 @@ impl Database {
         card.hp_bonus += 20.0;
         card.atk_bonus += 6.0;
 
-        let msg = format!("✨ Chúc mừng! Lá '{}' đã trở thành THẺ TINH ANH (Foil Hologram) (+20 HP, +6 ATK)!", card.name);
+        let msg = format!(
+            "✨ Chúc mừng! Lá '{}' đã trở thành THẺ TINH ANH (Foil Hologram) (+20 HP, +6 ATK)!",
+            card.name
+        );
         let res_user = user.clone();
         self.save();
         self.persist_user_adb(&res_user);
@@ -1330,7 +1475,11 @@ impl Database {
             return Err("Không thể xóa! Cần giữ lại ít nhất 1 bộ bài.".to_string());
         }
 
-        let idx = user.decks.iter().position(|d| d.id == deck_id).ok_or("Không tìm thấy bộ bài!")?;
+        let idx = user
+            .decks
+            .iter()
+            .position(|d| d.id == deck_id)
+            .ok_or("Không tìm thấy bộ bài!")?;
         user.decks.remove(idx);
 
         let res_user = user.clone();
@@ -1392,7 +1541,14 @@ impl Database {
         let res_user = user.clone();
         self.save();
         self.persist_user_adb(&res_user);
-        Ok((res_user, gold_earned, exp_earned, gems_earned, leveled_up, promo_msg))
+        Ok((
+            res_user,
+            gold_earned,
+            exp_earned,
+            gems_earned,
+            leveled_up,
+            promo_msg,
+        ))
     }
 
     pub fn record_match(
@@ -1464,13 +1620,7 @@ impl Database {
 // ==========================================
 type Tx = mpsc::UnboundedSender<Message>;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct UnitData {
-    pub col: usize,
-    pub row: usize,
-    pub class: String,
-    pub star_level: u8,
-}
+type UnitData = game_protocol::PvpUnitData;
 
 #[derive(Clone, Debug)]
 pub struct PlayerSession {
@@ -1660,7 +1810,10 @@ async fn handle_profile(
                 .data
                 .matches
                 .iter()
-                .filter(|m| m.host.eq_ignore_ascii_case(&user.username) || m.guest.eq_ignore_ascii_case(&user.username))
+                .filter(|m| {
+                    m.host.eq_ignore_ascii_case(&user.username)
+                        || m.guest.eq_ignore_ascii_case(&user.username)
+                })
                 .take(10)
                 .cloned()
                 .collect();
@@ -1821,7 +1974,9 @@ async fn handle_upgrade_card(
     match db.upgrade_card(&payload.username, &payload.card_id, &payload.upgrade_type) {
         Ok((user, message)) => (
             StatusCode::OK,
-            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "message": message })),
+            Json(
+                serde_json::json!({ "success": true, "user": user.sanitized(), "message": message }),
+            ),
         ),
         Err(msg) => (
             StatusCode::BAD_REQUEST,
@@ -1838,7 +1993,9 @@ async fn handle_foil_card(
     match db.foil_card(&payload.username, &payload.card_id) {
         Ok((user, message)) => (
             StatusCode::OK,
-            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "message": message })),
+            Json(
+                serde_json::json!({ "success": true, "user": user.sanitized(), "message": message }),
+            ),
         ),
         Err(msg) => (
             StatusCode::BAD_REQUEST,
@@ -1855,7 +2012,9 @@ async fn handle_sell_card(
     match db.sell_card(&payload.username, &payload.card_id) {
         Ok((user, refund)) => (
             StatusCode::OK,
-            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "refund": refund })),
+            Json(
+                serde_json::json!({ "success": true, "user": user.sanitized(), "refund": refund }),
+            ),
         ),
         Err(msg) => (
             StatusCode::BAD_REQUEST,
@@ -2379,7 +2538,8 @@ async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             let emote_msg = serde_json::json!({
                                 "type": "HERO_EMOTE",
                                 "emote": emote
-                            }).to_string();
+                            })
+                            .to_string();
                             if current_role.as_deref() == Some("host") {
                                 if let Some(ref g) = room.guest {
                                     let _ = g.tx.send(Message::Text(emote_msg.into()));
@@ -2487,7 +2647,6 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2499,7 +2658,9 @@ mod tests {
         let mut db = Database::new(&test_db_path);
 
         // 1. Register gives starter card + 100G + 10 Gems + Starter Deck
-        let user = db.register("test_hero", "1234", "Hero Test", "knight").expect("register failed");
+        let user = db
+            .register("test_hero", "1234", "Hero Test", "knight")
+            .expect("register failed");
         assert_eq!(user.gold, 100);
         assert_eq!(user.gems, 10);
         assert_eq!(user.cards.len(), 1);
@@ -2520,14 +2681,18 @@ mod tests {
         assert!(!new_card.is_starter);
 
         // 4. Upgrade Archer card level (costs 1 * 20 = 20G)
-        let (user, _msg) = db.upgrade_card("test_hero", &new_card.id, "level").expect("upgrade failed");
+        let (user, _msg) = db
+            .upgrade_card("test_hero", &new_card.id, "level")
+            .expect("upgrade failed");
         assert_eq!(user.gold, 30); // 50 - 20 = 30
         let upgraded = user.cards.iter().find(|c| c.id == new_card.id).unwrap();
         assert_eq!(upgraded.level, 2);
         assert!(upgraded.hp_bonus > 0.0);
 
         // 5. Reward match (PvE victory +45G, +60 EXP, +2 Gems)
-        let (user, earned, exp, gems, _, _) = db.reward_match("test_hero", "pve", true).expect("reward failed");
+        let (user, earned, exp, gems, _, _) = db
+            .reward_match("test_hero", "pve", true)
+            .expect("reward failed");
         assert_eq!(earned, 45);
         assert_eq!(exp, 60);
         assert_eq!(gems, 2);
@@ -2540,13 +2705,23 @@ mod tests {
         }
 
         // 6. Foil upgrade (costs 50 gems)
-        let (user, _msg) = db.foil_card("test_hero", &new_card.id).expect("foil failed");
+        let (user, _msg) = db
+            .foil_card("test_hero", &new_card.id)
+            .expect("foil failed");
         assert_eq!(user.gems, 10); // 60 - 50 = 10
         let foiled = user.cards.iter().find(|c| c.id == new_card.id).unwrap();
         assert!(foiled.is_foil);
 
         // 7. Profile Customization
-        let user = db.customize_profile("test_hero", Some("Đại Tướng".to_string()), Some("avatar_mage".to_string()), Some("cb_dragon".to_string()), Some("board_lava".to_string())).expect("customize failed");
+        let user = db
+            .customize_profile(
+                "test_hero",
+                Some("Đại Tướng".to_string()),
+                Some("avatar_mage".to_string()),
+                Some("cb_dragon".to_string()),
+                Some("board_lava".to_string()),
+            )
+            .expect("customize failed");
         assert_eq!(user.display_name, "Đại Tướng");
         assert_eq!(user.avatar_id, "avatar_mage");
         assert_eq!(user.cardback_id, "cb_dragon");
@@ -2554,26 +2729,51 @@ mod tests {
 
         // 8. Deck Builder Engine & Validation
         let cards_data = vec![
-            DeckCardEntry { id: starter.id.clone(), count: 1 },
-            DeckCardEntry { id: new_card.id.clone(), count: 1 },
+            DeckCardEntry {
+                id: starter.id.clone(),
+                count: 1,
+                position: None,
+            },
+            DeckCardEntry {
+                id: new_card.id.clone(),
+                count: 1,
+                position: None,
+            },
         ];
         // Archer card in Knight deck should fail validation
-        let (is_valid, errors) = validate_deck("Bộ Bài Chiến Binh", "Knight", &cards_data, &user.cards);
+        let (is_valid, errors) =
+            validate_deck("Bộ Bài Chiến Binh", "Knight", &cards_data, &user.cards);
         assert!(!is_valid);
         assert!(errors.iter().any(|e| e.contains("không phù hợp")));
 
         // Valid Archer deck
-        let valid_cards = vec![DeckCardEntry { id: new_card.id.clone(), count: 1 }];
-        let (is_valid_archer, errors_archer) = validate_deck("Bộ Bài Xạ Thủ", "Archer", &valid_cards, &user.cards);
+        let valid_cards = vec![DeckCardEntry {
+            id: new_card.id.clone(),
+            count: 1,
+            position: None,
+        }];
+        let (is_valid_archer, errors_archer) =
+            validate_deck("Bộ Bài Xạ Thủ", "Archer", &valid_cards, &user.cards);
         assert!(is_valid_archer);
         assert!(errors_archer.is_empty());
 
-        let (user, deck) = db.save_deck("test_hero", None, "Bộ Bài Xạ Thủ".to_string(), "Archer".to_string(), Some("cb_dragon".to_string()), valid_cards).expect("save deck failed");
+        let (user, deck) = db
+            .save_deck(
+                "test_hero",
+                None,
+                "Bộ Bài Xạ Thủ".to_string(),
+                "Archer".to_string(),
+                Some("cb_dragon".to_string()),
+                valid_cards,
+            )
+            .expect("save deck failed");
         assert_eq!(user.decks.len(), 2);
         assert!(deck.is_valid);
 
         // 9. Sell the Archer card (non-starter is sellable)
-        let (user, refund) = db.sell_card("test_hero", &new_card.id).expect("sell non-starter failed");
+        let (user, refund) = db
+            .sell_card("test_hero", &new_card.id)
+            .expect("sell non-starter failed");
         assert!(refund > 0);
         assert_eq!(user.cards.len(), 1);
         assert_eq!(user.cards[0].id, starter.id); // only starter remains

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+game-core = { path = "../../crates/core" }
+game-logic = { path = "../../crates/game_logic" }
+game-protocol = { path = "../../crates/protocol" }
+game-data-schema = { path = "../../crates/data_schema" }
 tokio = { version = "1.43", features = ["full"] }
 axum = { version = "0.8", features = ["ws"] }
 tower = "0.5"

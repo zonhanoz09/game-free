@@ -1,11 +1,14 @@
-use crate::battle::ActionGauge;
 use crate::audio::{PlaySoundEvent, SoundEffect};
-use crate::board::{bench_world_pos, grid_to_world_pos, HoveredTile};
-use crate::economy::{refund_amount, unit_cost, GoldDisplayText, PlayerEconomy, ShopLockToggle, ShopRerollButton, StarLevel};
+use crate::battle::ActionGauge;
+use crate::board::{HoveredTile, bench_world_pos, grid_to_world_pos};
+use crate::economy::{
+    GoldDisplayText, PlayerEconomy, ShopLockToggle, ShopRerollButton, StarLevel, refund_amount,
+    unit_cost,
+};
 use crate::stages::get_stage_def;
 use crate::synergies::{SynergyContainer, SynergyCountText, SynergyRow, SynergyType};
 use crate::types::*;
-use crate::units::{spawn_bench_unit, spawn_unit, spawn_unit_ext, Unit};
+use crate::units::{Unit, spawn_bench_unit, spawn_unit, spawn_unit_ext};
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -278,7 +281,11 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     ))
                     .with_children(|row| {
                         row.spawn((
-                            Text::new(format!("{} {}", syn.icon(), syn.name().split(" ").next().unwrap())),
+                            Text::new(format!(
+                                "{} {}",
+                                syn.icon(),
+                                syn.name().split(" ").next().unwrap()
+                            )),
                             TextFont {
                                 font_size: 11.0,
                                 ..default()
@@ -736,7 +743,9 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                 TooltipText,
             ));
             b.spawn((
-                Text::new("[1-4] Mua | [S] Bán | [D] Đổi (2G) | [E] Khóa | [Space] Chiến | [H] Hướng Dẫn"),
+                Text::new(
+                    "[1-4] Mua | [S] Bán | [D] Đổi (2G) | [E] Khóa | [Space] Chiến | [H] Hướng Dẫn",
+                ),
                 TextFont {
                     font: fonts.regular.clone(),
                     font_size: 11.0,
@@ -1013,10 +1022,17 @@ pub fn update_hero_inspection_system(
     mut avatar_query: Query<&mut ImageNode, With<InspectHeroAvatar>>,
     mut header_query: Query<(&InspectHeader, &mut Text, Option<&mut TextColor>)>,
     mut bar_query: Query<(&InspectStatBar, &mut Node), Without<InspectorRoot>>,
-    mut text_query: Query<(&InspectStatText, &mut Text), (Without<InspectHeader>, Without<InspectorRoot>)>,
+    mut text_query: Query<
+        (&InspectStatText, &mut Text),
+        (Without<InspectHeader>, Without<InspectorRoot>),
+    >,
     mut skill_query: Query<
         (&InspectSkill, &mut Text),
-        (Without<InspectHeader>, Without<InspectStatText>, Without<InspectorRoot>),
+        (
+            Without<InspectHeader>,
+            Without<InspectStatText>,
+            Without<InspectorRoot>,
+        ),
     >,
 ) {
     let mut inspected: Option<(UnitClass, Faction, UnitStats)> = None;
@@ -1032,10 +1048,7 @@ pub fn update_hero_inspection_system(
 
     if inspected.is_none() {
         if let Some(slot) = hovered.bench_slot {
-            if let Some((unit, _, stats)) = bench_units
-                .iter()
-                .find(|(_, b, _)| b.slot == slot)
-            {
+            if let Some((unit, _, stats)) = bench_units.iter().find(|(_, b, _)| b.slot == slot) {
                 inspected = Some((unit.class, Faction::Player, *stats));
             }
         }
@@ -1154,8 +1167,18 @@ pub fn update_shop_cards_ui(
     mut avatars: Query<(&ShopCardAvatar, &mut ImageNode, &mut Visibility)>,
     mut names: Query<(&ShopCardName, &mut Text, &mut TextColor)>,
     mut costs: Query<(&ShopCardCost, &mut Text), Without<ShopCardName>>,
-    mut lock_button: Query<(&mut BackgroundColor, &mut BorderColor), (With<ShopLockToggle>, Without<ShopCard>)>,
-    mut lock_text: Query<&mut Text, (With<ShopLockText>, Without<ShopCardName>, Without<ShopCardCost>)>,
+    mut lock_button: Query<
+        (&mut BackgroundColor, &mut BorderColor),
+        (With<ShopLockToggle>, Without<ShopCard>),
+    >,
+    mut lock_text: Query<
+        &mut Text,
+        (
+            With<ShopLockText>,
+            Without<ShopCardName>,
+            Without<ShopCardCost>,
+        ),
+    >,
 ) {
     for (card, mut bg, mut border) in card_buttons.iter_mut() {
         let idx = card.0;
@@ -1239,9 +1262,17 @@ pub fn handle_shop_clicks(
             if let Some(class) = economy.shop_slots[slot_idx] {
                 let cost = unit_cost(class);
                 if economy.gold < cost {
-                    info!("[SHOP] Cannot buy {}: Not enough gold (Have: {}G, Need: {}G)", class.name(), economy.gold, cost);
+                    info!(
+                        "[SHOP] Cannot buy {}: Not enough gold (Have: {}G, Need: {}G)",
+                        class.name(),
+                        economy.gold,
+                        cost
+                    );
                     if let Ok(mut txt) = tooltip.get_single_mut() {
-                        *txt = Text::new(format!("⚠️ Not enough gold! Need {}G, have {}G.", cost, economy.gold));
+                        *txt = Text::new(format!(
+                            "⚠️ Not enough gold! Need {}G, have {}G.",
+                            cost, economy.gold
+                        ));
                     }
                     continue;
                 }
@@ -1251,23 +1282,31 @@ pub fn handle_shop_clicks(
 
                 if let Some(slot) = free_slot {
                     if let Some(bought_class) = economy.buy_slot(slot_idx) {
-                        spawn_bench_unit(
-                            &mut commands,
-                            &textures,
-                            bought_class,
-                            slot,
-                            1,
-                        );
+                        spawn_bench_unit(&mut commands, &textures, bought_class, slot, 1);
                         sound_events.send(PlaySoundEvent(SoundEffect::Click));
-                        info!("[SHOP] Recruited {:?} for {}G -> placed on Reserve Bench Slot #{} (Remaining Gold: {}G)", bought_class, cost, slot + 1, economy.gold);
+                        info!(
+                            "[SHOP] Recruited {:?} for {}G -> placed on Reserve Bench Slot #{} (Remaining Gold: {}G)",
+                            bought_class,
+                            cost,
+                            slot + 1,
+                            economy.gold
+                        );
                         if let Ok(mut txt) = tooltip.get_single_mut() {
-                            *txt = Text::new(format!("Recruited {} for {}G (Placed on Bench #{})", bought_class.name(), cost, slot + 1));
+                            *txt = Text::new(format!(
+                                "Recruited {} for {}G (Placed on Bench #{})",
+                                bought_class.name(),
+                                cost,
+                                slot + 1
+                            ));
                         }
                     }
                 } else {
                     info!("[SHOP] Reserve bench is full (6/6 slots occupied)!");
                     if let Ok(mut txt) = tooltip.get_single_mut() {
-                        *txt = Text::new("⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first.".to_string());
+                        *txt = Text::new(
+                            "⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first."
+                                .to_string(),
+                        );
                     }
                 }
             }
@@ -1342,22 +1381,63 @@ pub fn handle_start_battle_button(
                     lineup.push(crate::net::PvpUnitData {
                         col: g.col,
                         row: g.row,
-                        class: u.class,
+                        class: u.class.name().to_string(),
                         star_level: s.0,
                     });
                 }
             }
             if lineup.is_empty() {
-                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
-                spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
-                spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 1, 2);
-                lineup.push(crate::net::PvpUnitData { col: 2, row: 0, class: UnitClass::Knight, star_level: 1 });
-                lineup.push(crate::net::PvpUnitData { col: 0, row: 1, class: UnitClass::Archer, star_level: 1 });
-                lineup.push(crate::net::PvpUnitData { col: 1, row: 2, class: UnitClass::Assassin, star_level: 1 });
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Knight,
+                    Faction::Player,
+                    2,
+                    0,
+                );
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Archer,
+                    Faction::Player,
+                    0,
+                    1,
+                );
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Assassin,
+                    Faction::Player,
+                    1,
+                    2,
+                );
+                lineup.push(crate::net::PvpUnitData {
+                    col: 2,
+                    row: 0,
+                    class: UnitClass::Knight.name().to_string(),
+                    star_level: 1,
+                });
+                lineup.push(crate::net::PvpUnitData {
+                    col: 0,
+                    row: 1,
+                    class: UnitClass::Archer.name().to_string(),
+                    star_level: 1,
+                });
+                lineup.push(crate::net::PvpUnitData {
+                    col: 1,
+                    row: 2,
+                    class: UnitClass::Assassin.name().to_string(),
+                    star_level: 1,
+                });
             }
             pvp_mgr.is_ready = true;
-            crate::net::send_pvp_message(&crate::net::PvpMessage::PlayerReady { lineup: lineup.clone() });
-            info!("[PVP] Ready & Locked In! Sent lineup of {} heroes.", lineup.len());
+            crate::net::send_pvp_message(&crate::net::PvpMessage::PlayerReady {
+                lineup: lineup.clone(),
+            });
+            info!(
+                "[PVP] Ready & Locked In! Sent lineup of {} heroes.",
+                lineup.len()
+            );
             return;
         }
 
@@ -1366,13 +1446,39 @@ pub fn handle_start_battle_button(
             .filter(|(u, _, _, _)| u.faction == Faction::Player)
             .count();
         if player_count > 0 {
-            info!("[UI] ⚔️ Battle Start triggered! (Active player heroes on board: {})", player_count);
+            info!(
+                "[UI] ⚔️ Battle Start triggered! (Active player heroes on board: {})",
+                player_count
+            );
             next_state.set(GameState::Battle);
         } else {
-            info!("[UI] ⚔️ Battle Start triggered with 0 units on board: Auto-deployed starter squad (Knight, Archer, Assassin)!");
-            spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
-            spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
-            spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
+            info!(
+                "[UI] ⚔️ Battle Start triggered with 0 units on board: Auto-deployed starter squad (Knight, Archer, Assassin)!"
+            );
+            spawn_unit(
+                &mut commands,
+                &textures,
+                UnitClass::Knight,
+                Faction::Player,
+                2,
+                0,
+            );
+            spawn_unit(
+                &mut commands,
+                &textures,
+                UnitClass::Archer,
+                Faction::Player,
+                0,
+                1,
+            );
+            spawn_unit(
+                &mut commands,
+                &textures,
+                UnitClass::Assassin,
+                Faction::Player,
+                2,
+                2,
+            );
             next_state.set(GameState::Battle);
         }
     }
@@ -1437,7 +1543,10 @@ pub fn handle_clear_button(
             }
 
             selected.clear();
-            info!("[UI] Squad cleared: {} heroes sold for +{}G -> Total Gold: {}G", refunded_count, total_refund, economy.gold);
+            info!(
+                "[UI] Squad cleared: {} heroes sold for +{}G -> Total Gold: {}G",
+                refunded_count, total_refund, economy.gold
+            );
         }
     }
 }
@@ -1467,12 +1576,39 @@ pub fn handle_preset_button(
 
             if economy.gold >= 7 {
                 economy.gold -= 7;
-                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
-                spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
-                spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
-                info!("[UI] Preset squad deployed (Cost: 7G) -> Remaining Gold: {}G", economy.gold);
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Knight,
+                    Faction::Player,
+                    2,
+                    0,
+                );
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Archer,
+                    Faction::Player,
+                    0,
+                    1,
+                );
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Assassin,
+                    Faction::Player,
+                    2,
+                    2,
+                );
+                info!(
+                    "[UI] Preset squad deployed (Cost: 7G) -> Remaining Gold: {}G",
+                    economy.gold
+                );
             } else {
-                info!("[UI] Cannot deploy preset squad: Need 7G (Current: {}G)", economy.gold);
+                info!(
+                    "[UI] Cannot deploy preset squad: Need 7G (Current: {}G)",
+                    economy.gold
+                );
             }
         }
     }
@@ -1501,17 +1637,32 @@ pub fn handle_unit_and_tile_interaction(
     if mouse.just_pressed(MouseButton::Right) {
         if let Some(tile) = &hovered.tile {
             if tile.faction == Faction::Player {
-                if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player) {
+                if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| {
+                    g.col == tile.col && g.row == tile.row && g.faction == Faction::Player
+                }) {
                     let refund = refund_amount(unit.class, star.0);
                     economy.gold += refund;
-                    if let Some(e_cmd) = commands.get_entity(ent) { e_cmd.despawn_recursive(); }
+                    if let Some(e_cmd) = commands.get_entity(ent) {
+                        e_cmd.despawn_recursive();
+                    }
                     if selected.entity == Some(ent) {
                         selected.clear();
                     }
                     sound_events.send(PlaySoundEvent(SoundEffect::Click));
-                    info!("[SELL] Sold {}★ {} from Board for +{}G -> Total: {}G", star.0, unit.class.name(), refund, economy.gold);
+                    info!(
+                        "[SELL] Sold {}★ {} from Board for +{}G -> Total: {}G",
+                        star.0,
+                        unit.class.name(),
+                        refund,
+                        economy.gold
+                    );
                     if let Ok(mut txt) = tooltip.get_single_mut() {
-                        *txt = Text::new(format!("Sold {}★ {} for +{}G!", star.0, unit.class.name(), refund));
+                        *txt = Text::new(format!(
+                            "Sold {}★ {} for +{}G!",
+                            star.0,
+                            unit.class.name(),
+                            refund
+                        ));
                     }
                     return;
                 }
@@ -1519,17 +1670,33 @@ pub fn handle_unit_and_tile_interaction(
         }
 
         if let Some(slot) = hovered.bench_slot {
-            if let Some((ent, unit, _, star)) = bench_units.iter().find(|(_, _, b, _)| b.slot == slot) {
+            if let Some((ent, unit, _, star)) =
+                bench_units.iter().find(|(_, _, b, _)| b.slot == slot)
+            {
                 let refund = refund_amount(unit.class, star.0);
                 economy.gold += refund;
-                if let Some(e_cmd) = commands.get_entity(ent) { e_cmd.despawn_recursive(); }
+                if let Some(e_cmd) = commands.get_entity(ent) {
+                    e_cmd.despawn_recursive();
+                }
                 if selected.entity == Some(ent) {
                     selected.clear();
                 }
                 sound_events.send(PlaySoundEvent(SoundEffect::Click));
-                info!("[SELL] Sold {}★ {} from Bench #{} for +{}G -> Total: {}G", star.0, unit.class.name(), slot + 1, refund, economy.gold);
+                info!(
+                    "[SELL] Sold {}★ {} from Bench #{} for +{}G -> Total: {}G",
+                    star.0,
+                    unit.class.name(),
+                    slot + 1,
+                    refund,
+                    economy.gold
+                );
                 if let Ok(mut txt) = tooltip.get_single_mut() {
-                    *txt = Text::new(format!("Sold {}★ {} for +{}G!", star.0, unit.class.name(), refund));
+                    *txt = Text::new(format!(
+                        "Sold {}★ {} for +{}G!",
+                        star.0,
+                        unit.class.name(),
+                        refund
+                    ));
                 }
                 return;
             }
@@ -1543,7 +1710,9 @@ pub fn handle_unit_and_tile_interaction(
                 if tile.faction == Faction::Player {
                     board_units
                         .iter()
-                        .find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player)
+                        .find(|(_, _, g, _)| {
+                            g.col == tile.col && g.row == tile.row && g.faction == Faction::Player
+                        })
                         .map(|(e, u, g, _)| (e, u.class, UnitLocation::Board(*g)))
                 } else {
                     None
@@ -1574,8 +1743,8 @@ pub fn handle_unit_and_tile_interaction(
                                 c2.insert(sel_g);
                             }
                             if true {
-
-                                let p1 = grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
+                                let p1 =
+                                    grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
                                 let p2 = grid_to_world_pos(sel_g.col, sel_g.row, Faction::Player);
                                 if let Ok(mut t) = transforms.get_mut(sel_ent) {
                                     t.translation.x = p1.x;
@@ -1597,7 +1766,6 @@ pub fn handle_unit_and_tile_interaction(
                                 c2.insert(BenchPos { slot: sel_s });
                             }
                             if true {
-
                                 let p1 = bench_world_pos(target_s);
                                 let p2 = bench_world_pos(sel_s);
                                 if let Ok(mut t) = transforms.get_mut(sel_ent) {
@@ -1618,9 +1786,9 @@ pub fn handle_unit_and_tile_interaction(
                                 c2.remove::<BenchPos>().insert(board_g);
                             }
                             if true {
-
                                 let p_bench = bench_world_pos(bench_s);
-                                let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
+                                let p_board =
+                                    grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
                                 if let Ok(mut t) = transforms.get_mut(sel_ent) {
                                     t.translation.x = p_bench.x;
                                     t.translation.y = p_bench.y;
@@ -1641,8 +1809,8 @@ pub fn handle_unit_and_tile_interaction(
                                 c2.remove::<GridPos>().insert(BenchPos { slot: bench_s });
                             }
                             if true {
-
-                                let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
+                                let p_board =
+                                    grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
                                 let p_bench = bench_world_pos(bench_s);
                                 if let Ok(mut t) = transforms.get_mut(sel_ent) {
                                     t.translation.x = p_board.x;
@@ -1684,7 +1852,9 @@ pub fn handle_unit_and_tile_interaction(
                             if let UnitLocation::Bench(_) = sel_loc {
                                 let active_count = board_units.iter().count();
                                 if active_count >= MAX_PLAYER_UNITS {
-                                    info!("[DEPLOY] Board is full (5/5)! Cannot deploy another hero.");
+                                    info!(
+                                        "[DEPLOY] Board is full (5/5)! Cannot deploy another hero."
+                                    );
                                     if let Ok(mut txt) = tooltip.get_single_mut() {
                                         *txt = Text::new("⚠️ Board squad is full (5/5)! Swap with an active hero instead.".to_string());
                                     }
@@ -1704,7 +1874,10 @@ pub fn handle_unit_and_tile_interaction(
                         }
                         selected.clear();
                         sound_events.send(PlaySoundEvent(SoundEffect::Click));
-                        info!("[MOVE] Placed hero on Board ({}, {})", target_g.col, target_g.row);
+                        info!(
+                            "[MOVE] Placed hero on Board ({}, {})",
+                            target_g.col, target_g.row
+                        );
                     }
                 } else if let Some(slot) = hovered.bench_slot {
                     if let Some(mut c) = commands.get_entity(sel_ent) {
@@ -1754,22 +1927,29 @@ pub fn update_tooltip_system(
             "Selected: {}★ {} ({}) - Left-Click empty slot to place, click another hero to swap, Right-Click to sell.",
             star,
             class.name(),
-            if is_bench { "Reserve Bench" } else { "Active Board" }
+            if is_bench {
+                "Reserve Bench"
+            } else {
+                "Active Board"
+            }
         ));
         return;
     }
 
     if let Some(tile) = &hovered.tile {
-        if let Some((unit, _, stats, star)) = board_units
-            .iter()
-            .find(|(_, g, _, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
-        {
+        if let Some((unit, _, stats, star)) = board_units.iter().find(|(_, g, _, _)| {
+            g.col == tile.col && g.row == tile.row && g.faction == tile.faction
+        }) {
             *text = Text::new(format!(
                 "Hovering: {} {}★ {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} (Right-Click to sell)",
                 unit.class.icon(),
                 star.0,
                 unit.class.name(),
-                if unit.faction == Faction::Player { "Ally" } else { "Enemy" },
+                if unit.faction == Faction::Player {
+                    "Ally"
+                } else {
+                    "Enemy"
+                },
                 stats.hp,
                 stats.max_hp,
                 stats.atk,
@@ -1781,9 +1961,7 @@ pub fn update_tooltip_system(
     }
 
     if let Some(slot) = hovered.bench_slot {
-        if let Some((unit, _, stats, star)) = bench_units
-            .iter()
-            .find(|(_, b, _, _)| b.slot == slot)
+        if let Some((unit, _, stats, star)) = bench_units.iter().find(|(_, b, _, _)| b.slot == slot)
         {
             *text = Text::new(format!(
                 "Reserve Bench #{}: {} {}★ {} - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} (Click to deploy/swap, Right-Click to sell)",
@@ -1816,16 +1994,28 @@ pub fn setup_stage_enemies(
     if pvp_mgr.active {
         for (entity, unit) in units.iter() {
             if unit.faction == Faction::Enemy {
-                if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
+                if let Some(e) = commands.get_entity(entity) {
+                    e.despawn_recursive();
+                }
             }
         }
         for mut text in title_query.iter_mut() {
             *text = Text::new(format!("⚔️ Online PvP Arena - Round #{}", pvp_mgr.round));
         }
         for mut text in desc_query.iter_mut() {
-            *text = Text::new(format!("Room: {} | You: {} ({} HP) vs Opponent: {} ({} HP)", pvp_mgr.room_code, pvp_mgr.player_name, pvp_mgr.player_hp, pvp_mgr.opponent_name, pvp_mgr.opponent_hp));
+            *text = Text::new(format!(
+                "Room: {} | You: {} ({} HP) vs Opponent: {} ({} HP)",
+                pvp_mgr.room_code,
+                pvp_mgr.player_name,
+                pvp_mgr.player_hp,
+                pvp_mgr.opponent_name,
+                pvp_mgr.opponent_hp
+            ));
         }
-        let player_count = units.iter().filter(|(_, u)| u.faction == Faction::Player).count();
+        let player_count = units
+            .iter()
+            .filter(|(_, u)| u.faction == Faction::Player)
+            .count();
         if player_count == 0 {
             if !player_deck.cards.is_empty() {
                 let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
@@ -1839,26 +2029,58 @@ pub fn setup_stage_enemies(
                     };
                     if idx < 3 {
                         let (col, row) = board_positions[idx % board_positions.len()];
-                        crate::units::spawn_unit_ext_bonus_with_initiative(&mut commands, &textures, unit_class, Faction::Player, col, row, card.star_level.max(1), false, card.hp_bonus, card.atk_bonus, card.initiative_bonus);
+                        crate::units::spawn_unit_ext_bonus_with_initiative(
+                            &mut commands,
+                            &textures,
+                            unit_class,
+                            Faction::Player,
+                            col,
+                            row,
+                            card.star_level.max(1),
+                            false,
+                            card.hp_bonus,
+                            card.atk_bonus,
+                            card.initiative_bonus,
+                        );
                     } else {
                         let slot = (idx - 3).min(5);
-                        crate::units::spawn_bench_unit_bonus(&mut commands, &textures, unit_class, slot, card.star_level.max(1), card.hp_bonus, card.atk_bonus);
+                        crate::units::spawn_bench_unit_bonus(
+                            &mut commands,
+                            &textures,
+                            unit_class,
+                            slot,
+                            card.star_level.max(1),
+                            card.hp_bonus,
+                            card.atk_bonus,
+                        );
                     }
                 }
             } else {
-                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 1);
+                spawn_unit(
+                    &mut commands,
+                    &textures,
+                    UnitClass::Knight,
+                    Faction::Player,
+                    2,
+                    1,
+                );
             }
         }
         return;
     }
     for (entity, unit) in units.iter() {
         if unit.faction == Faction::Enemy {
-            if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
+            if let Some(e) = commands.get_entity(entity) {
+                e.despawn_recursive();
+            }
         }
     }
 
     let stage_def = get_stage_def(stage.stage_idx);
-    info!("[STAGE] Loaded Stage #{}: {} - {}", stage.stage_idx, stage_def.title, stage_def.description);
+    info!(
+        "[STAGE] Loaded Stage #{}: {} - {}",
+        stage.stage_idx, stage_def.title, stage_def.description
+    );
     for mut text in title_query.iter_mut() {
         *text = Text::new(&stage_def.title);
     }
@@ -1880,29 +2102,59 @@ pub fn setup_stage_enemies(
     }
 
     // Pre-spawn starter squad for player from owned deck
-    let player_count = units.iter().filter(|(_, u)| u.faction == Faction::Player).count();
+    let player_count = units
+        .iter()
+        .filter(|(_, u)| u.faction == Faction::Player)
+        .count();
     if player_count == 0 {
-            if !player_deck.cards.is_empty() {
-                let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
-                for (idx, card) in player_deck.cards.iter().enumerate() {
-                    let unit_class = match card.hero_class.as_str() {
-                        "Archer" => UnitClass::Archer,
-                        "Mage" => UnitClass::Mage,
-                        "Assassin" => UnitClass::Assassin,
-                        "Cleric" => UnitClass::Cleric,
-                        _ => UnitClass::Knight,
-                    };
-                    if idx < 3 {
-                        let (col, row) = board_positions[idx % board_positions.len()];
-                        crate::units::spawn_unit_ext_bonus_with_initiative(&mut commands, &textures, unit_class, Faction::Player, col, row, card.star_level.max(1), false, card.hp_bonus, card.atk_bonus, card.initiative_bonus);
-                    } else {
-                        let slot = (idx - 3).min(5);
-                        crate::units::spawn_bench_unit_bonus(&mut commands, &textures, unit_class, slot, card.star_level.max(1), card.hp_bonus, card.atk_bonus);
-                    }
+        if !player_deck.cards.is_empty() {
+            let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
+            for (idx, card) in player_deck.cards.iter().enumerate() {
+                let unit_class = match card.hero_class.as_str() {
+                    "Archer" => UnitClass::Archer,
+                    "Mage" => UnitClass::Mage,
+                    "Assassin" => UnitClass::Assassin,
+                    "Cleric" => UnitClass::Cleric,
+                    _ => UnitClass::Knight,
+                };
+                if idx < 3 {
+                    let (col, row) = board_positions[idx % board_positions.len()];
+                    crate::units::spawn_unit_ext_bonus_with_initiative(
+                        &mut commands,
+                        &textures,
+                        unit_class,
+                        Faction::Player,
+                        col,
+                        row,
+                        card.star_level.max(1),
+                        false,
+                        card.hp_bonus,
+                        card.atk_bonus,
+                        card.initiative_bonus,
+                    );
+                } else {
+                    let slot = (idx - 3).min(5);
+                    crate::units::spawn_bench_unit_bonus(
+                        &mut commands,
+                        &textures,
+                        unit_class,
+                        slot,
+                        card.star_level.max(1),
+                        card.hp_bonus,
+                        card.atk_bonus,
+                    );
                 }
-            } else {
-                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 1);
             }
+        } else {
+            spawn_unit(
+                &mut commands,
+                &textures,
+                UnitClass::Knight,
+                Faction::Player,
+                2,
+                1,
+            );
+        }
     }
 }
 pub fn reset_player_units_for_placement(
@@ -2126,7 +2378,10 @@ pub fn handle_result_buttons(
         if *interaction == Interaction::Pressed {
             sound_events.send(PlaySoundEvent(SoundEffect::Click));
             stage.stage_idx += 1;
-            info!("[STAGE] Advancing to Next Stage (Index: {})", stage.stage_idx);
+            info!(
+                "[STAGE] Advancing to Next Stage (Index: {})",
+                stage.stage_idx
+            );
             next_state.set(GameState::Placement);
         }
     }
@@ -2189,22 +2444,21 @@ pub fn handle_reroll_and_lock_buttons(
 
     if toggle_lock {
         economy.shop_locked = !economy.shop_locked;
-        info!("[SHOP] Shop lock toggled -> Locked: {}", economy.shop_locked);
+        info!(
+            "[SHOP] Shop lock toggled -> Locked: {}",
+            economy.shop_locked
+        );
         sound_events.send(PlaySoundEvent(SoundEffect::Click));
     }
 }
 
-pub fn hide_placement_ui_on_battle(
-    mut query: Query<&mut Visibility, With<PlacementUiRoot>>,
-) {
+pub fn hide_placement_ui_on_battle(mut query: Query<&mut Visibility, With<PlacementUiRoot>>) {
     for mut vis in query.iter_mut() {
         *vis = Visibility::Hidden;
     }
 }
 
-pub fn show_placement_ui_on_placement(
-    mut query: Query<&mut Visibility, With<PlacementUiRoot>>,
-) {
+pub fn show_placement_ui_on_placement(mut query: Query<&mut Visibility, With<PlacementUiRoot>>) {
     for mut vis in query.iter_mut() {
         *vis = Visibility::Inherited;
     }
@@ -2238,33 +2492,51 @@ pub fn handle_keyboard_gameplay_shortcuts(
         if let Some(class) = economy.shop_slots[slot_idx] {
             let cost = unit_cost(class);
             if economy.gold < cost {
-                info!("[SHOP] Cannot buy {}: Not enough gold (Have: {}G, Need: {}G)", class.name(), economy.gold, cost);
+                info!(
+                    "[SHOP] Cannot buy {}: Not enough gold (Have: {}G, Need: {}G)",
+                    class.name(),
+                    economy.gold,
+                    cost
+                );
                 if let Ok(mut txt) = tooltip.get_single_mut() {
-                    *txt = Text::new(format!("⚠️ Not enough gold! Need {}G, have {}G.", cost, economy.gold));
+                    *txt = Text::new(format!(
+                        "⚠️ Not enough gold! Need {}G, have {}G.",
+                        cost, economy.gold
+                    ));
                 }
             } else {
-                let occupied_slots: Vec<usize> = bench_units.iter().map(|(_, _, b, _)| b.slot).collect();
+                let occupied_slots: Vec<usize> =
+                    bench_units.iter().map(|(_, _, b, _)| b.slot).collect();
                 let free_slot = (0..BENCH_SLOTS).find(|s| !occupied_slots.contains(s));
 
                 if let Some(slot) = free_slot {
                     if let Some(bought_class) = economy.buy_slot(slot_idx) {
-                        spawn_bench_unit(
-                            &mut commands,
-                            &textures,
-                            bought_class,
-                            slot,
-                            1,
-                        );
+                        spawn_bench_unit(&mut commands, &textures, bought_class, slot, 1);
                         sound_events.send(PlaySoundEvent(SoundEffect::Click));
-                        info!("[SHOP] Recruited {:?} for {}G -> placed on Reserve Bench Slot #{} (Remaining Gold: {}G)", bought_class, cost, slot + 1, economy.gold);
+                        info!(
+                            "[SHOP] Recruited {:?} for {}G -> placed on Reserve Bench Slot #{} (Remaining Gold: {}G)",
+                            bought_class,
+                            cost,
+                            slot + 1,
+                            economy.gold
+                        );
                         if let Ok(mut txt) = tooltip.get_single_mut() {
-                            *txt = Text::new(format!("Recruited {} for {}G (Placed on Bench #{}) [HotKey #{}]", bought_class.name(), cost, slot + 1, slot_idx + 1));
+                            *txt = Text::new(format!(
+                                "Recruited {} for {}G (Placed on Bench #{}) [HotKey #{}]",
+                                bought_class.name(),
+                                cost,
+                                slot + 1,
+                                slot_idx + 1
+                            ));
                         }
                     }
                 } else {
                     info!("[SHOP] Reserve bench is full (6/6 slots occupied)!");
                     if let Ok(mut txt) = tooltip.get_single_mut() {
-                        *txt = Text::new("⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first.".to_string());
+                        *txt = Text::new(
+                            "⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first."
+                                .to_string(),
+                        );
                     }
                 }
             }
@@ -2272,14 +2544,20 @@ pub fn handle_keyboard_gameplay_shortcuts(
     }
 
     // 2. Sell unit with S, Delete, or Backspace
-    if keyboard.just_pressed(KeyCode::KeyS) || keyboard.just_pressed(KeyCode::Delete) || keyboard.just_pressed(KeyCode::Backspace) {
+    if keyboard.just_pressed(KeyCode::KeyS)
+        || keyboard.just_pressed(KeyCode::Delete)
+        || keyboard.just_pressed(KeyCode::Backspace)
+    {
         let mut target_to_sell: Option<(Entity, UnitClass, i32, u8)> = None;
 
         // A. Hovered board tile
         if let Some(tile) = &hovered.tile {
             if tile.faction == Faction::Player {
-                if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player) {
-                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| {
+                    g.col == tile.col && g.row == tile.row && g.faction == Faction::Player
+                }) {
+                    target_to_sell =
+                        Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
                 }
             }
         }
@@ -2287,8 +2565,11 @@ pub fn handle_keyboard_gameplay_shortcuts(
         // B. Hovered bench slot
         if target_to_sell.is_none() {
             if let Some(slot) = hovered.bench_slot {
-                if let Some((ent, unit, _, star)) = bench_units.iter().find(|(_, _, b, _)| b.slot == slot) {
-                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                if let Some((ent, unit, _, star)) =
+                    bench_units.iter().find(|(_, _, b, _)| b.slot == slot)
+                {
+                    target_to_sell =
+                        Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
                 }
             }
         }
@@ -2296,10 +2577,16 @@ pub fn handle_keyboard_gameplay_shortcuts(
         // C. Currently selected unit
         if target_to_sell.is_none() {
             if let Some(sel_ent) = selected.entity {
-                if let Some((ent, unit, _, star)) = board_units.iter().find(|(e, _, _, _)| *e == sel_ent) {
-                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
-                } else if let Some((ent, unit, _, star)) = bench_units.iter().find(|(e, _, _, _)| *e == sel_ent) {
-                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                if let Some((ent, unit, _, star)) =
+                    board_units.iter().find(|(e, _, _, _)| *e == sel_ent)
+                {
+                    target_to_sell =
+                        Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                } else if let Some((ent, unit, _, star)) =
+                    bench_units.iter().find(|(e, _, _, _)| *e == sel_ent)
+                {
+                    target_to_sell =
+                        Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
                 }
             }
         }
@@ -2313,9 +2600,20 @@ pub fn handle_keyboard_gameplay_shortcuts(
                 selected.clear();
             }
             sound_events.send(PlaySoundEvent(SoundEffect::Click));
-            info!("[SELL] Hotkey sold {}★ {} for +{}G -> Total: {}G", star, class.name(), refund, economy.gold);
+            info!(
+                "[SELL] Hotkey sold {}★ {} for +{}G -> Total: {}G",
+                star,
+                class.name(),
+                refund,
+                economy.gold
+            );
             if let Ok(mut txt) = tooltip.get_single_mut() {
-                *txt = Text::new(format!("Sold {}★ {} for +{}G! [Key: S]", star, class.name(), refund));
+                *txt = Text::new(format!(
+                    "Sold {}★ {} for +{}G! [Key: S]",
+                    star,
+                    class.name(),
+                    refund
+                ));
             }
         }
     }

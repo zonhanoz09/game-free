@@ -4,6 +4,7 @@ use crate::economy::PlayerEconomy;
 use crate::types::*;
 use crate::units::{BossUnit, ChibiSquashStretch, Unit};
 use bevy::prelude::*;
+use game_logic::mitigate_damage;
 use std::f32::consts::PI;
 
 #[derive(Component)]
@@ -160,7 +161,7 @@ pub fn update_camera_shake(
     time: Res<Time>,
     mut shake: ResMut<CameraShake2d>,
     mut rng: ResMut<BattleRng>,
-    mut cam_query: Query<&mut Transform, With<crate::MainCamera2d>>,
+    mut cam_query: Query<&mut Transform, With<crate::board::MainCamera2d>>,
 ) {
     let dt = time.delta_secs();
     shake.trauma = (shake.trauma - dt * 2.8).max(0.0);
@@ -218,7 +219,11 @@ pub fn on_enter_battle(
     for (unit, mut stats) in player_units.iter_mut() {
         if unit.faction == Faction::Player {
             if vanguard_active {
-                stats.def += if unit.class == UnitClass::Knight { 35.0 } else { 15.0 };
+                stats.def += if unit.class == UnitClass::Knight {
+                    35.0
+                } else {
+                    15.0
+                };
             }
             if sharpshooter_active && unit.class == UnitClass::Archer {
                 stats.atk *= 1.25;
@@ -329,8 +334,12 @@ pub fn update_floating_text(
         if progress > 0.60 {
             let alpha = 1.0 - (progress - 0.60) / 0.40;
             let current = text_color.0.to_srgba();
-            text_color.0 =
-                Color::srgba(current.red, current.green, current.blue, alpha.clamp(0.0, 1.0));
+            text_color.0 = Color::srgba(
+                current.red,
+                current.green,
+                current.blue,
+                alpha.clamp(0.0, 1.0),
+            );
         }
 
         if float.timer.finished() {
@@ -536,12 +545,21 @@ pub fn battle_tick_system(
 
     let is_ultimate = stats.mana >= stats.max_mana;
     if is_ultimate {
-        info!("[ACTION] [ULTIMATE] {:?} {:?} cast ULTIMATE: {}!", faction, class, class.ultimate_name());
+        info!(
+            "[ACTION] [ULTIMATE] {:?} {:?} cast ULTIMATE: {}!",
+            faction,
+            class,
+            class.ultimate_name()
+        );
     } else {
-        info!("[ACTION] {:?} {:?} took turn (Speed: {:.0}, ATB full)", faction, class, stats.speed);
+        info!(
+            "[ACTION] {:?} {:?} took turn (Speed: {:.0}, ATB full)",
+            faction, class, stats.speed
+        );
     }
 
-    if let Ok((_, _, mut actor_stats, _, _, mut gauge, maybe_squash)) = units.get_mut(actor_entity) {
+    if let Ok((_, _, mut actor_stats, _, _, mut gauge, maybe_squash)) = units.get_mut(actor_entity)
+    {
         gauge.current -= 100.0;
         if let Some(mut squash) = maybe_squash {
             squash.target_scale = Vec3::new(0.85, 1.28, 1.0);
@@ -560,7 +578,9 @@ pub fn battle_tick_system(
     turn_manager.acted_this_cycle.insert(actor_entity);
 
     let living_units: std::collections::HashSet<Entity> = units.iter().map(|(e, ..)| e).collect();
-    turn_manager.acted_this_cycle.retain(|e| living_units.contains(e));
+    turn_manager
+        .acted_this_cycle
+        .retain(|e| living_units.contains(e));
     let living_count = living_units.len();
 
     if living_count > 0 && turn_manager.acted_this_cycle.len() >= living_count {
@@ -573,7 +593,9 @@ pub fn battle_tick_system(
     } else {
         crate::net::rust_to_js_pvp(&format!(
             r#"{{"type":"STRIKE_ACTION","acted":{},"total":{},"current_turn":{}}}"#,
-            turn_manager.acted_this_cycle.len(), living_count, turn_manager.cycle_turn_count
+            turn_manager.acted_this_cycle.len(),
+            living_count,
+            turn_manager.cycle_turn_count
         ));
     }
 
@@ -1062,8 +1084,7 @@ pub fn update_dash_animations(
                         mut maybe_gauge,
                     )) = target_query.get_mut(dash.target_entity)
                     {
-                        let raw_dmg =
-                            (dash.damage * (100.0 / (100.0 + target_stats.def))).max(5.0);
+                        let raw_dmg = mitigate_damage(dash.damage, target_stats.def, 5.0);
                         let mut actual_dmg = raw_dmg;
 
                         if target_stats.shield > 0.0 {
@@ -1087,7 +1108,12 @@ pub fn update_dash_animations(
                         target_stats.mana = (target_stats.mana + 12.0).min(target_stats.max_mana);
                         info!(
                             "[COMBAT MELEE] {:?} struck target for {:.1} dmg (Crit: {}, Ult: {}) -> Target HP: {:.1}/{:.1}",
-                            dash.class, actual_dmg, dash.is_crit, dash.is_ultimate, target_stats.hp, target_stats.max_hp
+                            dash.class,
+                            actual_dmg,
+                            dash.is_crit,
+                            dash.is_ultimate,
+                            target_stats.hp,
+                            target_stats.max_hp
                         );
 
                         if dash.is_ultimate && dash.class == UnitClass::Knight {
@@ -1173,14 +1199,22 @@ pub fn update_dash_animations(
                                 CombatVfx2d {
                                     timer: Timer::from_seconds(0.24, TimerMode::Once),
                                     initial_scale: Vec2::splat(0.6),
-                                    target_scale: Vec2::splat(if dash.is_ultimate { 2.4 } else { 1.8 }),
+                                    target_scale: Vec2::splat(if dash.is_ultimate {
+                                        2.4
+                                    } else {
+                                        1.8
+                                    }),
                                     rotate_speed: 6.0,
                                 },
                             ));
 
                             commands.spawn((
                                 Sprite {
-                                    custom_size: Some(Vec2::splat(if dash.is_ultimate { 44.0 } else { 28.0 })),
+                                    custom_size: Some(Vec2::splat(if dash.is_ultimate {
+                                        44.0
+                                    } else {
+                                        28.0
+                                    })),
                                     color: Color::srgba(1.0, 0.9, 0.4, 0.8),
                                     ..default()
                                 },
@@ -1188,7 +1222,11 @@ pub fn update_dash_animations(
                                 CombatVfx2d {
                                     timer: Timer::from_seconds(0.25, TimerMode::Once),
                                     initial_scale: Vec2::splat(0.5),
-                                    target_scale: Vec2::splat(if dash.is_ultimate { 3.0 } else { 2.2 }),
+                                    target_scale: Vec2::splat(if dash.is_ultimate {
+                                        3.0
+                                    } else {
+                                        2.2
+                                    }),
                                     rotate_speed: 0.0,
                                 },
                             ));
@@ -1215,7 +1253,11 @@ pub fn update_dash_animations(
                                 CombatVfx2d {
                                     timer: Timer::from_seconds(0.25, TimerMode::Once),
                                     initial_scale: Vec2::splat(0.7),
-                                    target_scale: Vec2::splat(if dash.is_ultimate { 2.2 } else { 1.65 }),
+                                    target_scale: Vec2::splat(if dash.is_ultimate {
+                                        2.2
+                                    } else {
+                                        1.65
+                                    }),
                                     rotate_speed: 0.0,
                                 },
                             ));
@@ -1233,7 +1275,11 @@ pub fn update_dash_animations(
                                 CombatVfx2d {
                                     timer: Timer::from_seconds(0.25, TimerMode::Once),
                                     initial_scale: Vec2::splat(0.7),
-                                    target_scale: Vec2::splat(if dash.is_ultimate { 2.2 } else { 1.65 }),
+                                    target_scale: Vec2::splat(if dash.is_ultimate {
+                                        2.2
+                                    } else {
+                                        1.65
+                                    }),
                                     rotate_speed: 0.0,
                                 },
                             ));
@@ -1329,7 +1375,10 @@ pub fn update_projectiles(
                     target_query.get_mut(proj.target_entity)
                 {
                     stats.hp = (stats.hp + proj.damage).min(stats.max_hp);
-                    info!("[COMBAT HEAL] Holy Grace healed target for +{:.1} HP -> New HP: {:.1}/{:.1}", proj.damage, stats.hp, stats.max_hp);
+                    info!(
+                        "[COMBAT HEAL] Holy Grace healed target for +{:.1} HP -> New HP: {:.1}/{:.1}",
+                        proj.damage, stats.hp, stats.max_hp
+                    );
                     if let Some(ref mut s) = maybe_target_squash {
                         s.target_scale = Vec3::new(0.9, 1.25, 1.0);
                     }
@@ -1357,7 +1406,11 @@ pub fn update_projectiles(
 
                     commands.spawn((
                         Sprite {
-                            custom_size: Some(Vec2::splat(if proj.is_ultimate { 48.0 } else { 32.0 })),
+                            custom_size: Some(Vec2::splat(if proj.is_ultimate {
+                                48.0
+                            } else {
+                                32.0
+                            })),
                             color: Color::srgba(1.0, 0.92, 0.35, 0.8),
                             ..default()
                         },
@@ -1390,7 +1443,7 @@ pub fn update_projectiles(
                 if let Ok((target_ent, mut stats, _, target_transform, mut maybe_target_squash)) =
                     target_query.get_mut(proj.target_entity)
                 {
-                    let raw_dmg = (proj.damage * (100.0 / (100.0 + stats.def))).max(5.0);
+                    let raw_dmg = mitigate_damage(proj.damage, stats.def, 5.0);
                     let mut actual_dmg = raw_dmg;
 
                     if stats.shield > 0.0 {
@@ -1411,7 +1464,12 @@ pub fn update_projectiles(
                     stats.mana = (stats.mana + 12.0).min(stats.max_mana);
                     info!(
                         "[COMBAT RANGED] {:?} projectile hit for {:.1} dmg (Crit: {}, Ult: {}) -> Target HP: {:.1}/{:.1}",
-                        proj.class, actual_dmg, proj.is_crit, proj.is_ultimate, stats.hp, stats.max_hp
+                        proj.class,
+                        actual_dmg,
+                        proj.is_crit,
+                        proj.is_ultimate,
+                        stats.hp,
+                        stats.max_hp
                     );
                     if let Some(ref mut s) = maybe_target_squash {
                         s.target_scale = Vec3::new(1.30, 0.72, 1.0);
@@ -1469,7 +1527,11 @@ pub fn update_projectiles(
 
                         commands.spawn((
                             Sprite {
-                                custom_size: Some(Vec2::splat(if proj.is_ultimate { 52.0 } else { 36.0 })),
+                                custom_size: Some(Vec2::splat(if proj.is_ultimate {
+                                    52.0
+                                } else {
+                                    36.0
+                                })),
                                 color: Color::srgba(0.85, 0.35, 1.0, 0.8),
                                 ..default()
                             },
@@ -1515,7 +1577,7 @@ pub fn update_projectiles(
                             && other_stats.hp > 0.0
                         {
                             let actual_splash_raw =
-                                (splash_dmg * (100.0 / (100.0 + other_stats.def))).max(3.5);
+                                mitigate_damage(splash_dmg, other_stats.def, 3.5);
                             let mut actual_splash = actual_splash_raw;
                             if other_stats.shield > 0.0 {
                                 let absorbed = actual_splash.min(other_stats.shield);
@@ -1572,7 +1634,10 @@ pub fn check_unit_deaths(
 ) {
     for (entity, unit, stats, mut vis, mut transform) in units.iter_mut() {
         if stats.hp <= 0.0 {
-            info!("[DEATH] {:?} {:?} has fallen in battle!", unit.faction, unit.class);
+            info!(
+                "[DEATH] {:?} {:?} has fallen in battle!",
+                unit.faction, unit.class
+            );
             transform.translation.y = -9999.0;
             *vis = Visibility::Hidden;
             commands.entity(entity).insert(DeadUnit);
@@ -1607,7 +1672,10 @@ pub fn check_battle_end(
 
     if alive_enemy == 0 && alive_player > 0 {
         info!("==================== [ROUND VICTORY] ====================");
-        info!("[VICTORY] All enemies defeated! Surviving player heroes: {}", alive_player);
+        info!(
+            "[VICTORY] All enemies defeated! Surviving player heroes: {}",
+            alive_player
+        );
         sound_events.send(PlaySoundEvent(SoundEffect::Victory));
         if pvp_mgr.active {
             crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
@@ -1619,10 +1687,17 @@ pub fn check_battle_end(
         next_state.set(GameState::Victory);
     } else if alive_player == 0 {
         info!("==================== [ROUND DEFEAT] ====================");
-        info!("[DEFEAT] All player heroes were eliminated! Surviving enemies: {}", alive_enemy);
+        info!(
+            "[DEFEAT] All player heroes were eliminated! Surviving enemies: {}",
+            alive_enemy
+        );
         sound_events.send(PlaySoundEvent(SoundEffect::Defeat));
         if pvp_mgr.active {
-            let opp_role = if pvp_mgr.role == "host" { "guest" } else { "host" };
+            let opp_role = if pvp_mgr.role == "host" {
+                "guest"
+            } else {
+                "host"
+            };
             crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
                 winner_role: opp_role.to_string(),
                 player_survivors: 0,
@@ -1632,7 +1707,6 @@ pub fn check_battle_end(
         next_state.set(GameState::Defeat);
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1650,33 +1724,62 @@ mod tests {
         app.init_resource::<BattleSpeed>();
 
         // Spawn a player Knight
-        let player_ent = app.world_mut().spawn((
-            Unit { class: UnitClass::Knight, faction: Faction::Player },
-            UnitClass::Knight.base_stats(),
-            GridPos { col: 2, row: 1, faction: Faction::Player },
-            ActionGauge { current: 100.0 }, // near full
-            Transform::from_xyz(-100.0, 0.0, 10.0),
-        )).id();
+        let player_ent = app
+            .world_mut()
+            .spawn((
+                Unit {
+                    class: UnitClass::Knight,
+                    faction: Faction::Player,
+                },
+                UnitClass::Knight.base_stats(),
+                GridPos {
+                    col: 2,
+                    row: 1,
+                    faction: Faction::Player,
+                },
+                ActionGauge { current: 100.0 }, // near full
+                Transform::from_xyz(-100.0, 0.0, 10.0),
+            ))
+            .id();
 
         // Spawn an enemy Knight
-        let _enemy_ent = app.world_mut().spawn((
-            Unit { class: UnitClass::Knight, faction: Faction::Enemy },
-            UnitClass::Knight.base_stats(),
-            GridPos { col: 0, row: 1, faction: Faction::Enemy },
-            ActionGauge { current: 10.0 },
-            Transform::from_xyz(100.0, 0.0, 10.0),
-        )).id();
+        let _enemy_ent = app
+            .world_mut()
+            .spawn((
+                Unit {
+                    class: UnitClass::Knight,
+                    faction: Faction::Enemy,
+                },
+                UnitClass::Knight.base_stats(),
+                GridPos {
+                    col: 0,
+                    row: 1,
+                    faction: Faction::Enemy,
+                },
+                ActionGauge { current: 10.0 },
+                Transform::from_xyz(100.0, 0.0, 10.0),
+            ))
+            .id();
 
         app.add_systems(Update, battle_tick_system);
 
         // Finish cooldown timer and set dt
-        app.world_mut().resource_mut::<BattleTurnManager>().cooldown_timer.tick(std::time::Duration::from_secs(1));
+        app.world_mut()
+            .resource_mut::<BattleTurnManager>()
+            .cooldown_timer
+            .tick(std::time::Duration::from_secs(1));
         // Also tick ActionGauge manually or let Time run
-        app.world_mut().resource_mut::<Time>().advance_by(std::time::Duration::from_millis(500));
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(std::time::Duration::from_millis(500));
         app.update();
 
         // Check if ActionGauge increased or attacker was activated
         let turn_mgr = app.world().resource::<BattleTurnManager>();
-        assert_eq!(turn_mgr.active_attacker, Some(player_ent), "Player knight should have triggered an attack!");
+        assert_eq!(
+            turn_mgr.active_attacker,
+            Some(player_ent),
+            "Player knight should have triggered an attack!"
+        );
     }
 }

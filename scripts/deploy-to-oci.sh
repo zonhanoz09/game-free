@@ -52,25 +52,27 @@ done
 
 # 3. Đồng bộ files lên máy chủ
 echo "📤 Đang đồng bộ files lên OCI Private Instance (10.0.1.60)..."
-rsync -avz -e "ssh -i $HOME/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_PORT}" \
-    --exclude ".git" \
-    --exclude "target" \
-    --exclude "apps/server/target" \
-    --exclude "node_modules" \
-    --exclude ".terraform" \
-    --exclude "*.tfstate*" \
-    dist/wasm apps/server deploy/docker/Dockerfile.server Cargo.toml Cargo.lock crates \
-    ubuntu@127.0.0.1:/opt/game-free/app/
+SSH_OPTS=(-i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p "${LOCAL_TUNNEL_PORT}")
+ssh "${SSH_OPTS[@]}" ubuntu@127.0.0.1 \
+    "mkdir -p /opt/game-free/app/dist/wasm /opt/game-free/app/apps/server /opt/game-free/app/deploy/docker"
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    --exclude ".git" --exclude "target" \
+    dist/wasm/ ubuntu@127.0.0.1:/opt/game-free/app/dist/wasm/
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    --exclude ".git" --exclude "target" \
+    apps/server/ ubuntu@127.0.0.1:/opt/game-free/app/apps/server/
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    deploy/docker/Dockerfile.server ubuntu@127.0.0.1:/opt/game-free/app/deploy/docker/
 
 # 4. Build và khởi động Rust WebSocket Server trên OCI
 echo "🦀 Đang biên dịch và khởi động Rust WebSocket Server trên OCI..."
-ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_PORT} \
+ssh "${SSH_OPTS[@]}" \
     ubuntu@127.0.0.1 "
         cd /opt/game-free/app && \
-        echo '📦 Đang build Rust Server Docker image...' && \
-        sudo docker build -t tactical-arena-rust:latest -f deploy/docker/Dockerfile.server . && \
         sudo docker stop tactical-arena-pvp 2>/dev/null || true && \
         sudo docker rm tactical-arena-pvp 2>/dev/null || true && \
+        echo '📦 Đang build Rust Server Docker image...' && \
+        sudo docker build -t tactical-arena-rust:latest -f deploy/docker/Dockerfile.server . && \
         sudo docker run -d \
             --name tactical-arena-pvp \
             --restart always \

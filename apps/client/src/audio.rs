@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 
@@ -84,9 +84,7 @@ impl Default for SoundManager {
 #[cfg(target_arch = "wasm32")]
 impl Default for SoundManager {
     fn default() -> Self {
-        Self {
-            muted: false,
-        }
+        Self { muted: false }
     }
 }
 

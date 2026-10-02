@@ -1,8 +1,8 @@
-use serde::{Serialize, Deserialize};
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-pub const GRID_COLS: usize = 3;
-pub const GRID_ROWS: usize = 3;
+pub const GRID_COLS: usize = game_core::BOARD_WIDTH;
+pub const GRID_ROWS: usize = game_core::BOARD_HEIGHT;
 pub const MAX_PLAYER_UNITS: usize = 5;
 pub const BENCH_SLOTS: usize = 6;
 

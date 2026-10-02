@@ -15,6 +15,7 @@ sau đó đấu PvE hoặc PvP realtime qua Rust WebSocket server.
 - [Triển khai OKE](docs/infrastructure-oke.md)
 - [Runtime assets](docs/assets.md)
 - [Tooling](docs/tooling.md)
+- [Tối ưu web payload](docs/performance/web-payload.md)
 
 ## Cấu trúc workspace
 

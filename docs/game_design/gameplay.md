@@ -5,7 +5,7 @@
 1. Người chơi vào sảnh web, đăng nhập hoặc chơi guest.
 2. Mở **Kho thẻ bài** để xem collection, lọc theo vai trò/phẩm cấp, tìm kiếm,
    nâng cấp cấp độ/sao, bán thẻ hoặc foil thẻ.
-3. Mở **Đội hình ra trận** và xếp tối đa ba thẻ vào đúng vị trí.
+3. Mở **Đội hình ra trận**, kéo tối đa ba thẻ vào bàn 3x3 và xếp vào đúng hàng.
 4. Chọn PvE để đấu AI hoặc PvP để ghép trận nhanh/tạo phòng/tham gia bằng mã phòng.
 5. Trận đấu diễn ra theo action gauge (ATB). Kết quả cập nhật phần thưởng, ELO và
    tiến trình người chơi.
@@ -28,7 +28,8 @@
 | Chủ lực | Sát Thủ, Xạ Thủ | +20% ATK hiệu dụng |
 | Hỗ trợ | Hỗ Trợ, Pháp Sư | +30 Speed/tiên cơ |
 
-UI chặn việc xếp sai vai trò. Khi đồng bộ sang Bevy, bonus được truyền vào
+UI bàn 3x3 cho phép kéo-thả hoặc chọn thẻ rồi chọn ô; mỗi hàng tương ứng một
+vai trò và chỉ có tối đa ba thẻ xuất trận. UI chặn việc xếp sai vai trò. Khi đồng bộ sang Bevy, bonus được truyền vào
 `DeckCardData` và cộng trực tiếp vào `UnitStats` lúc spawn. Thẻ không nằm trong
 ba vị trí vẫn được giữ làm dự bị.
 

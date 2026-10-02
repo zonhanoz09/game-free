@@ -1,5 +1,5 @@
-use crate::units::Unit;
 use crate::types::*;
+use crate::units::Unit;
 use bevy::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -79,7 +79,6 @@ pub struct SynergyCountText(pub SynergyType);
 
 #[derive(Component)]
 pub struct SynergyContainer;
-
 
 pub fn update_synergies_ui(
     units: Query<(&Unit, &GridPos), Without<DeadUnit>>,

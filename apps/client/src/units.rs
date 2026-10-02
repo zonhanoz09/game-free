@@ -1,4 +1,4 @@
-﻿use crate::battle::{ActionGauge, HitStopManager};
+use crate::battle::{ActionGauge, HitStopManager};
 use crate::board::{bench_world_pos, grid_to_world_pos};
 use crate::types::*;
 use bevy::prelude::*;
@@ -75,7 +75,9 @@ pub fn spawn_unit_ext(
     star_level: u8,
     is_boss: bool,
 ) -> Entity {
-    spawn_unit_ext_bonus(commands, textures, unit_class, faction, col, row, star_level, is_boss, 0.0, 0.0)
+    spawn_unit_ext_bonus(
+        commands, textures, unit_class, faction, col, row, star_level, is_boss, 0.0, 0.0,
+    )
 }
 
 pub fn spawn_unit_ext_bonus(
@@ -91,8 +93,8 @@ pub fn spawn_unit_ext_bonus(
     atk_bonus: f32,
 ) -> Entity {
     spawn_unit_ext_bonus_with_initiative(
-        commands, textures, unit_class, faction, col, row, star_level, is_boss,
-        hp_bonus, atk_bonus, 0.0,
+        commands, textures, unit_class, faction, col, row, star_level, is_boss, hp_bonus,
+        atk_bonus, 0.0,
     )
 }
 
@@ -138,7 +140,15 @@ pub fn spawn_unit_ext_bonus_with_initiative(
     stats.atk += atk_bonus;
     stats.speed += initiative_bonus;
 
-    let token_scale = if is_boss { 1.55 } else if star_level == 3 { 1.18 } else if star_level == 2 { 1.08 } else { 1.0 };
+    let token_scale = if is_boss {
+        1.55
+    } else if star_level == 3 {
+        1.18
+    } else if star_level == 2 {
+        1.08
+    } else {
+        1.0
+    };
 
     let mut entity_cmds = commands.spawn((
         Unit {
@@ -158,176 +168,191 @@ pub fn spawn_unit_ext_bonus_with_initiative(
         entity_cmds.insert(BossUnit);
     }
 
-    entity_cmds
-        .with_children(|parent| {
-            parent.spawn((
-                UnitSelectionRing,
-                Sprite {
-                    custom_size: Some(Vec2::splat(74.0)),
-                    color: Color::srgba(1.0, 0.85, 0.25, 0.0),
-                    ..default()
+    entity_cmds.with_children(|parent| {
+        parent.spawn((
+            UnitSelectionRing,
+            Sprite {
+                custom_size: Some(Vec2::splat(74.0)),
+                color: Color::srgba(1.0, 0.85, 0.25, 0.0),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, -0.2),
+        ));
+
+        parent.spawn((
+            Sprite {
+                custom_size: Some(Vec2::new(76.0, 22.0)),
+                color: Color::srgba(0.02, 0.03, 0.05, 0.55),
+                ..default()
+            },
+            Transform::from_xyz(0.0, -32.0, -0.5),
+        ));
+
+        parent
+            .spawn((
+                UnitVisualRoot,
+                IdleBobbing {
+                    base_y: 0.0,
+                    phase: (col * 3 + row) as f32 * 1.15,
                 },
-                Transform::from_xyz(0.0, 0.0, -0.2),
-            ));
-
-            parent.spawn((
-                Sprite {
-                    custom_size: Some(Vec2::new(76.0, 22.0)),
-                    color: Color::srgba(0.02, 0.03, 0.05, 0.55),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, -32.0, -0.5),
-            ));
-
-            parent
-                .spawn((
-                    UnitVisualRoot,
-                    IdleBobbing {
-                        base_y: 0.0,
-                        phase: (col * 3 + row) as f32 * 1.15,
-                    },
-                    ChibiSquashStretch::default(),
-                    Transform::from_xyz(0.0, 0.0, 0.0),
-                    Visibility::default(),
-                ))
-                .with_children(|vis_parent| {
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(68.0)),
-                            color: outer_border_col,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.0),
-                    ));
-
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(64.0)),
-                            color: inner_border_col,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(58.0)),
-                            color: Color::srgb(0.08, 0.10, 0.15),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.2),
-                    ));
-
-                    let portrait_tex = textures.get_unit_texture(unit_class);
-                    let flip_x = faction == Faction::Enemy;
-
-                    vis_parent.spawn((
-                        Sprite {
-                            image: portrait_tex,
-                            custom_size: Some(Vec2::splat(56.0)),
-                            flip_x,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.3),
-                    ));
-
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(16.0)),
-                            color: unit_class.color(),
-                            ..default()
-                        },
-                        Transform::from_xyz(-22.0, 22.0, 0.4),
-                    ));
-                });
-
-            parent
-                .spawn((
+                ChibiSquashStretch::default(),
+                Transform::from_xyz(0.0, 0.0, 0.0),
+                Visibility::default(),
+            ))
+            .with_children(|vis_parent| {
+                vis_parent.spawn((
                     Sprite {
-                        custom_size: Some(Vec2::new(60.0, 14.0)),
-                        color: Color::srgba(0.05, 0.07, 0.10, 0.85),
+                        custom_size: Some(Vec2::splat(68.0)),
+                        color: outer_border_col,
                         ..default()
                     },
-                    Transform::from_xyz(0.0, -31.0, 0.5),
-                ))
-                .with_child((
-                    Text2d::new(if is_boss { "TITAN".to_string() } else if star_level > 1 { format!("{} {}", unit_class.name().to_uppercase(), crate::economy::StarLevel(star_level).badge()) } else { unit_class.name().to_uppercase() }),
-                    TextFont {
-                        font_size: if is_boss { 9.5 } else { 9.0 },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+
+                vis_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::splat(64.0)),
+                        color: inner_border_col,
                         ..default()
                     },
-                    TextColor(if is_boss { Color::srgb(1.0, 0.25, 0.25) } else if star_level > 1 { crate::economy::StarLevel(star_level).color() } else { unit_class.color() }),
                     Transform::from_xyz(0.0, 0.0, 0.1),
                 ));
 
-            parent
-                .spawn((
-                    HealthBarRoot2d,
-                    Transform::from_xyz(0.0, 48.0, 1.0),
-                    Visibility::default(),
-                ))
-                .with_children(|bar_parent| {
-                    bar_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::new(64.0, 7.0)),
-                            color: Color::srgb(0.06, 0.08, 0.12),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.0),
-                    ));
+                vis_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::splat(58.0)),
+                        color: Color::srgb(0.08, 0.10, 0.15),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.2),
+                ));
 
-                    bar_parent.spawn((
-                        HealthBarFill2d,
-                        Sprite {
-                            custom_size: Some(Vec2::new(62.0, 5.0)),
-                            color: Color::srgb(0.2, 0.85, 0.3),
-                            anchor: Anchor::CenterLeft,
-                            ..default()
-                        },
-                        Transform::from_xyz(-31.0, 0.0, 0.1),
-                    ));
+                let portrait_tex = textures.get_unit_texture(unit_class);
+                let flip_x = faction == Faction::Enemy;
 
-                    bar_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::new(64.0, 4.5)),
-                            color: Color::srgb(0.04, 0.05, 0.09),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, -5.5, 0.0),
-                    ));
+                vis_parent.spawn((
+                    Sprite {
+                        image: portrait_tex,
+                        custom_size: Some(Vec2::splat(56.0)),
+                        flip_x,
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.3),
+                ));
 
-                    bar_parent.spawn((
-                        ManaBarFill2d,
-                        Sprite {
-                            custom_size: Some(Vec2::new(62.0, 3.5)),
-                            color: Color::srgb(0.22, 0.55, 1.0),
-                            anchor: Anchor::CenterLeft,
-                            ..default()
-                        },
-                        Transform::from_xyz(-31.0, -5.5, 0.1),
-                    ));
+                vis_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::splat(16.0)),
+                        color: unit_class.color(),
+                        ..default()
+                    },
+                    Transform::from_xyz(-22.0, 22.0, 0.4),
+                ));
+            });
 
-                    bar_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::new(64.0, 3.5)),
-                            color: Color::srgb(0.04, 0.05, 0.08),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, -10.0, 0.0),
-                    ));
+        parent
+            .spawn((
+                Sprite {
+                    custom_size: Some(Vec2::new(60.0, 14.0)),
+                    color: Color::srgba(0.05, 0.07, 0.10, 0.85),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, -31.0, 0.5),
+            ))
+            .with_child((
+                Text2d::new(if is_boss {
+                    "TITAN".to_string()
+                } else if star_level > 1 {
+                    format!(
+                        "{} {}",
+                        unit_class.name().to_uppercase(),
+                        crate::economy::StarLevel(star_level).badge()
+                    )
+                } else {
+                    unit_class.name().to_uppercase()
+                }),
+                TextFont {
+                    font_size: if is_boss { 9.5 } else { 9.0 },
+                    ..default()
+                },
+                TextColor(if is_boss {
+                    Color::srgb(1.0, 0.25, 0.25)
+                } else if star_level > 1 {
+                    crate::economy::StarLevel(star_level).color()
+                } else {
+                    unit_class.color()
+                }),
+                Transform::from_xyz(0.0, 0.0, 0.1),
+            ));
 
-                    bar_parent.spawn((
-                        StaminaBarFill2d,
-                        Sprite {
-                            custom_size: Some(Vec2::new(62.0, 2.5)),
-                            color: Color::srgb(0.2, 0.85, 1.0),
-                            anchor: Anchor::CenterLeft,
-                            ..default()
-                        },
-                        Transform::from_xyz(-31.0, -10.0, 0.1),
-                    ));
-                });
-        });
+        parent
+            .spawn((
+                HealthBarRoot2d,
+                Transform::from_xyz(0.0, 48.0, 1.0),
+                Visibility::default(),
+            ))
+            .with_children(|bar_parent| {
+                bar_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::new(64.0, 7.0)),
+                        color: Color::srgb(0.06, 0.08, 0.12),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+
+                bar_parent.spawn((
+                    HealthBarFill2d,
+                    Sprite {
+                        custom_size: Some(Vec2::new(62.0, 5.0)),
+                        color: Color::srgb(0.2, 0.85, 0.3),
+                        anchor: Anchor::CenterLeft,
+                        ..default()
+                    },
+                    Transform::from_xyz(-31.0, 0.0, 0.1),
+                ));
+
+                bar_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::new(64.0, 4.5)),
+                        color: Color::srgb(0.04, 0.05, 0.09),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, -5.5, 0.0),
+                ));
+
+                bar_parent.spawn((
+                    ManaBarFill2d,
+                    Sprite {
+                        custom_size: Some(Vec2::new(62.0, 3.5)),
+                        color: Color::srgb(0.22, 0.55, 1.0),
+                        anchor: Anchor::CenterLeft,
+                        ..default()
+                    },
+                    Transform::from_xyz(-31.0, -5.5, 0.1),
+                ));
+
+                bar_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::new(64.0, 3.5)),
+                        color: Color::srgb(0.04, 0.05, 0.08),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, -10.0, 0.0),
+                ));
+
+                bar_parent.spawn((
+                    StaminaBarFill2d,
+                    Sprite {
+                        custom_size: Some(Vec2::new(62.0, 2.5)),
+                        color: Color::srgb(0.2, 0.85, 1.0),
+                        anchor: Anchor::CenterLeft,
+                        ..default()
+                    },
+                    Transform::from_xyz(-31.0, -10.0, 0.1),
+                ));
+            });
+    });
 
     entity_cmds.id()
 }
@@ -371,7 +396,13 @@ pub fn spawn_bench_unit_bonus(
     stats.hp = stats.max_hp;
     stats.atk += atk_bonus;
 
-    let token_scale = if star_level == 3 { 1.18 } else if star_level == 2 { 1.08 } else { 1.0 };
+    let token_scale = if star_level == 3 {
+        1.18
+    } else if star_level == 2 {
+        1.08
+    } else {
+        1.0
+    };
 
     let mut entity_cmds = commands.spawn((
         Unit {
@@ -386,133 +417,144 @@ pub fn spawn_bench_unit_bonus(
         Visibility::default(),
     ));
 
-    entity_cmds
-        .with_children(|parent| {
-            parent.spawn((
-                UnitSelectionRing,
-                Sprite {
-                    custom_size: Some(Vec2::splat(74.0)),
-                    color: Color::srgba(1.0, 0.85, 0.25, 0.0),
-                    ..default()
+    entity_cmds.with_children(|parent| {
+        parent.spawn((
+            UnitSelectionRing,
+            Sprite {
+                custom_size: Some(Vec2::splat(74.0)),
+                color: Color::srgba(1.0, 0.85, 0.25, 0.0),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, -0.2),
+        ));
+
+        parent.spawn((
+            Sprite {
+                custom_size: Some(Vec2::new(76.0, 22.0)),
+                color: Color::srgba(0.02, 0.03, 0.05, 0.55),
+                ..default()
+            },
+            Transform::from_xyz(0.0, -32.0, -0.5),
+        ));
+
+        parent
+            .spawn((
+                UnitVisualRoot,
+                IdleBobbing {
+                    base_y: 0.0,
+                    phase: slot as f32 * 1.5,
                 },
-                Transform::from_xyz(0.0, 0.0, -0.2),
-            ));
-
-            parent.spawn((
-                Sprite {
-                    custom_size: Some(Vec2::new(76.0, 22.0)),
-                    color: Color::srgba(0.02, 0.03, 0.05, 0.55),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, -32.0, -0.5),
-            ));
-
-            parent
-                .spawn((
-                    UnitVisualRoot,
-                    IdleBobbing {
-                        base_y: 0.0,
-                        phase: slot as f32 * 1.5,
-                    },
-                    ChibiSquashStretch::default(),
-                    Transform::from_xyz(0.0, 0.0, 0.0),
-                    Visibility::default(),
-                ))
-                .with_children(|vis_parent| {
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(68.0)),
-                            color: outer_border_col,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.0),
-                    ));
-
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(64.0)),
-                            color: inner_border_col,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(58.0)),
-                            color: Color::srgb(0.08, 0.10, 0.15),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.2),
-                    ));
-
-                    let portrait_tex = textures.get_unit_texture(unit_class);
-                    vis_parent.spawn((
-                        Sprite {
-                            image: portrait_tex,
-                            custom_size: Some(Vec2::splat(56.0)),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.3),
-                    ));
-
-                    vis_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(16.0)),
-                            color: unit_class.color(),
-                            ..default()
-                        },
-                        Transform::from_xyz(-22.0, 22.0, 0.4),
-                    ));
-                });
-
-            parent
-                .spawn((
+                ChibiSquashStretch::default(),
+                Transform::from_xyz(0.0, 0.0, 0.0),
+                Visibility::default(),
+            ))
+            .with_children(|vis_parent| {
+                vis_parent.spawn((
                     Sprite {
-                        custom_size: Some(Vec2::new(60.0, 14.0)),
-                        color: Color::srgba(0.05, 0.07, 0.10, 0.85),
+                        custom_size: Some(Vec2::splat(68.0)),
+                        color: outer_border_col,
                         ..default()
                     },
-                    Transform::from_xyz(0.0, -31.0, 0.5),
-                ))
-                .with_child((
-                    Text2d::new(if star_level > 1 { format!("{} {}", unit_class.name().to_uppercase(), crate::economy::StarLevel(star_level).badge()) } else { unit_class.name().to_uppercase() }),
-                    TextFont {
-                        font_size: 9.0,
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+
+                vis_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::splat(64.0)),
+                        color: inner_border_col,
                         ..default()
                     },
-                    TextColor(if star_level > 1 { crate::economy::StarLevel(star_level).color() } else { unit_class.color() }),
                     Transform::from_xyz(0.0, 0.0, 0.1),
                 ));
 
-            parent
-                .spawn((
-                    HealthBarRoot2d,
-                    Transform::from_xyz(0.0, 48.0, 1.0),
-                    Visibility::default(),
-                ))
-                .with_children(|bar_parent| {
-                    bar_parent.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::new(64.0, 7.0)),
-                            color: Color::srgb(0.06, 0.08, 0.12),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.0),
-                    ));
+                vis_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::splat(58.0)),
+                        color: Color::srgb(0.08, 0.10, 0.15),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.2),
+                ));
 
-                    bar_parent.spawn((
-                        HealthBarFill2d,
-                        Sprite {
-                            custom_size: Some(Vec2::new(62.0, 5.0)),
-                            color: Color::srgb(0.2, 0.85, 0.3),
-                            anchor: Anchor::CenterLeft,
-                            ..default()
-                        },
-                        Transform::from_xyz(-31.0, 0.0, 0.1),
-                    ));
-                });
-        });
+                let portrait_tex = textures.get_unit_texture(unit_class);
+                vis_parent.spawn((
+                    Sprite {
+                        image: portrait_tex,
+                        custom_size: Some(Vec2::splat(56.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.3),
+                ));
+
+                vis_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::splat(16.0)),
+                        color: unit_class.color(),
+                        ..default()
+                    },
+                    Transform::from_xyz(-22.0, 22.0, 0.4),
+                ));
+            });
+
+        parent
+            .spawn((
+                Sprite {
+                    custom_size: Some(Vec2::new(60.0, 14.0)),
+                    color: Color::srgba(0.05, 0.07, 0.10, 0.85),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, -31.0, 0.5),
+            ))
+            .with_child((
+                Text2d::new(if star_level > 1 {
+                    format!(
+                        "{} {}",
+                        unit_class.name().to_uppercase(),
+                        crate::economy::StarLevel(star_level).badge()
+                    )
+                } else {
+                    unit_class.name().to_uppercase()
+                }),
+                TextFont {
+                    font_size: 9.0,
+                    ..default()
+                },
+                TextColor(if star_level > 1 {
+                    crate::economy::StarLevel(star_level).color()
+                } else {
+                    unit_class.color()
+                }),
+                Transform::from_xyz(0.0, 0.0, 0.1),
+            ));
+
+        parent
+            .spawn((
+                HealthBarRoot2d,
+                Transform::from_xyz(0.0, 48.0, 1.0),
+                Visibility::default(),
+            ))
+            .with_children(|bar_parent| {
+                bar_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::new(64.0, 7.0)),
+                        color: Color::srgb(0.06, 0.08, 0.12),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+
+                bar_parent.spawn((
+                    HealthBarFill2d,
+                    Sprite {
+                        custom_size: Some(Vec2::new(62.0, 5.0)),
+                        color: Color::srgb(0.2, 0.85, 0.3),
+                        anchor: Anchor::CenterLeft,
+                        ..default()
+                    },
+                    Transform::from_xyz(-31.0, 0.0, 0.1),
+                ));
+            });
+    });
 
     entity_cmds.id()
 }
@@ -543,10 +585,7 @@ pub fn animate_idle_bobbing(
     time: Res<Time>,
     speed: Res<BattleSpeed>,
     hit_stop: Res<HitStopManager>,
-    mut bob_query: Query<
-        (&mut Transform, &IdleBobbing),
-        (With<UnitVisualRoot>, Without<DeadUnit>),
-    >,
+    mut bob_query: Query<(&mut Transform, &IdleBobbing), (With<UnitVisualRoot>, Without<DeadUnit>)>,
     mut root_query: Query<
         (
             &mut Transform,

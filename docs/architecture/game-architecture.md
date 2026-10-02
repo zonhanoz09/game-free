@@ -4,7 +4,8 @@
 
 ```text
 apps/client/                 Bevy client native/WASM
-  src/main.rs                App, plugins và system schedule
+  src/main.rs                Entry point tối giản
+  src/app.rs                 Composition root, plugin/resource/system wiring
   src/types.rs               GameState, UnitClass, UnitStats, resources
   src/board.rs               Bàn đấu 3x3, hover và vị trí quân
   src/units.rs               Spawn unit, HP/action bars, stat bonus
@@ -12,6 +13,8 @@ apps/client/                 Bevy client native/WASM
   src/ui.rs                  HUD, shop, bench, placement và result
   src/net.rs                 WebSocket bridge và deck sync
 apps/server/                 Axum HTTP/WebSocket dedicated server
+  src/main.rs                Domain services, routes và WebSocket orchestration
+  src/config.rs              Defaults và clock abstraction cho persistence
 crates/core/                 Hằng số và tiện ích nền
 crates/protocol/             Schema mạng dùng chung
 crates/game_logic/           Rule deterministic dùng chung
@@ -21,7 +24,9 @@ dist/wasm/                   HTML/JS/WASM/assets production
 
 ## Client runtime
 
-Bevy khởi tạo camera, board, UI, stage và network bridge. `GameState` điều khiển
+`main.rs` chỉ xử lý platform bootstrap; `app.rs` là composition root duy nhất để
+đăng ký plugin, resource và system theo từng phase. Bevy khởi tạo camera, board,
+UI, stage và network bridge. `GameState` điều khiển
 các pha placement, battle, victory và defeat. Board dùng lưới 3x3 mỗi phe;
 người chơi có thể đặt tối đa năm unit trên bàn và dùng bench để dự bị.
 
@@ -34,7 +39,19 @@ người chơi có thể đặt tối đa năm unit trên bàn và dùng bench �
 
 Server Axum vừa phục vụ API tài khoản/collection/deck, vừa chạy WebSocket PvP,
 và fallback static tới `dist/wasm`. Dữ liệu người dùng hiện được serialize theo
-schema trong `apps/server/src/main.rs`; protocol dùng `serde` JSON.
+schema domain trong server; các giá trị mặc định và thời gian được gom vào
+`config.rs`; protocol dùng `serde` JSON.
+
+## Nguyên tắc tổ chức code
+
+- **Composition root:** chỉ `app.rs`/`main.rs` được wiring hệ thống; module gameplay
+  chỉ cung cấp system/resource và không tự khởi tạo application.
+- **Single responsibility:** board, units, combat, economy, UI và network giữ
+  boundary riêng; thay đổi một feature không cần sửa toàn bộ entrypoint.
+- **DRY/KISS:** dùng helper/domain type hiện có, tránh thêm abstraction khi chưa
+  có quy tắc hoặc hành vi cần dùng chung.
+- **SOLID:** phụ thuộc hướng vào types/domain; adapter HTTP, WebSocket và WASM
+  chỉ chuyển đổi dữ liệu, không chứa luật combat.
 
 Browser UI quản lý lobby, modal, collection, đội hình, shop, profile,
 leaderboard và kết quả trận. JavaScript gọi API HTTP, còn bridge WASM chuyển

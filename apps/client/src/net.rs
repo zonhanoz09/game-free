@@ -4,81 +4,22 @@ use crate::board::grid_to_world_pos;
 use crate::types::*;
 use crate::units::{Unit, spawn_unit, spawn_unit_ext};
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
+pub use game_protocol::{DeckCardData, PvpMessage, PvpUnitData};
 use std::sync::Mutex;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PvpUnitData {
-    pub col: usize,
-    pub row: usize,
-    pub class: UnitClass,
-    pub star_level: u8,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DeckCardData {
-    pub id: String,
-    pub hero_class: String,
-    pub star_level: u8,
-    pub level: u32,
-    pub hp_bonus: f32,
-    pub atk_bonus: f32,
-    #[serde(default)]
-    pub initiative_bonus: f32,
-    pub is_starter: bool,
-}
 
 #[derive(Resource, Debug, Default)]
 pub struct PlayerDeck {
     pub cards: Vec<DeckCardData>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum PvpMessage {
-    #[serde(alias = "CreateRoom", alias = "CREATE_ROOM")]
-    CreateRoom { room_code: String },
-    #[serde(alias = "JoinRoom", alias = "JOIN_ROOM")]
-    JoinRoom { room_code: String },
-    #[serde(alias = "RoomJoined", alias = "ROOM_JOINED")]
-    RoomJoined {
-        room_code: String,
-        role: String,
-        player_name: String,
-        opponent_name: String,
-    },
-    #[serde(alias = "PlayerReady", alias = "PLAYER_READY")]
-    PlayerReady { lineup: Vec<PvpUnitData> },
-    #[serde(alias = "StartRound", alias = "START_ROUND")]
-    StartRound {
-        round: usize,
-        opponent_lineup: Vec<PvpUnitData>,
-        player_hp: i32,
-        opponent_hp: i32,
-    },
-    #[serde(alias = "BattleFinished", alias = "BATTLE_FINISHED")]
-    BattleFinished {
-        winner_role: String,
-        player_survivors: usize,
-    },
-    #[serde(alias = "UpdateMatchHp", alias = "UPDATE_MATCH_HP")]
-    UpdateMatchHp {
-        player_hp: i32,
-        opponent_hp: i32,
-        damage_dealt: i32,
-    },
-    #[serde(alias = "MatchEnd", alias = "MATCH_END")]
-    MatchEnd { winner: String },
-    #[serde(alias = "SetDeck", alias = "SET_DECK")]
-    SetDeck { cards: Vec<DeckCardData> },
-    #[serde(alias = "Error", alias = "ERROR")]
-    Error { message: String },
-    #[serde(alias = "SetSpeed", alias = "SET_SPEED")]
-    SetSpeed { speed: f32 },
-    #[serde(alias = "ExitMatch", alias = "EXIT_MATCH")]
-    ExitMatch,
-    #[serde(alias = "StartBattle", alias = "START_BATTLE")]
-    StartBattle,
+fn parse_unit_class(class: &str) -> UnitClass {
+    match class {
+        "Archer" => UnitClass::Archer,
+        "Mage" => UnitClass::Mage,
+        "Assassin" => UnitClass::Assassin,
+        "Cleric" => UnitClass::Cleric,
+        _ => UnitClass::Knight,
+    }
 }
 
 #[derive(Resource, Debug)]
@@ -179,6 +120,7 @@ pub fn pvp_network_system(
         if !q.is_empty() {
             messages.append(&mut *q);
         }
+
     }
 
     for raw in messages {
@@ -186,7 +128,10 @@ pub fn pvp_network_system(
         if let Ok(msg) = serde_json::from_str::<PvpMessage>(&raw) {
             match msg {
                 PvpMessage::SetDeck { cards } => {
-                    info!("[DECK] Received player deck with {} cards from profile!", cards.len());
+                    info!(
+                        "[DECK] Received player deck with {} cards from profile!",
+                        cards.len()
+                    );
                     player_deck.cards = cards.clone();
 
                     if *state.get() == GameState::Placement && !cards.is_empty() {
@@ -195,6 +140,7 @@ pub fn pvp_network_system(
                                 commands.entity(ent).despawn_recursive();
                             }
                         }
+
                         for (ent, _) in bench_units.iter() {
                             commands.entity(ent).despawn_recursive();
                         }
@@ -237,6 +183,7 @@ pub fn pvp_network_system(
                                 );
                             }
                         }
+
                     }
                 }
                 PvpMessage::RoomJoined {
@@ -330,7 +277,7 @@ pub fn pvp_network_system(
                         spawn_unit_ext(
                             &mut commands,
                             &textures,
-                            u.class,
+                            parse_unit_class(&u.class),
                             Faction::Enemy,
                             mirrored_col,
                             u.row,

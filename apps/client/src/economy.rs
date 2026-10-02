@@ -328,24 +328,39 @@ mod tests {
 
         // Spawn 3 units of 1★ Knight (1 on board, 2 on bench)
         app.world_mut().spawn((
-            Unit { class: UnitClass::Knight, faction: Faction::Player },
-            GridPos { col: 1, row: 1, faction: Faction::Player },
+            Unit {
+                class: UnitClass::Knight,
+                faction: Faction::Player,
+            },
+            GridPos {
+                col: 1,
+                row: 1,
+                faction: Faction::Player,
+            },
             StarLevel(1),
         ));
         app.world_mut().spawn((
-            Unit { class: UnitClass::Knight, faction: Faction::Player },
+            Unit {
+                class: UnitClass::Knight,
+                faction: Faction::Player,
+            },
             BenchPos { slot: 0 },
             StarLevel(1),
         ));
         app.world_mut().spawn((
-            Unit { class: UnitClass::Knight, faction: Faction::Player },
+            Unit {
+                class: UnitClass::Knight,
+                faction: Faction::Player,
+            },
             BenchPos { slot: 1 },
             StarLevel(1),
         ));
 
         app.update();
 
-        let mut query = app.world_mut().query::<(&Unit, Option<&GridPos>, &StarLevel)>();
+        let mut query = app
+            .world_mut()
+            .query::<(&Unit, Option<&GridPos>, &StarLevel)>();
         let mut two_star_count = 0;
         for (unit, grid, star) in query.iter(app.world()) {
             if unit.class == UnitClass::Knight && star.0 == 2 {
