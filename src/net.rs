@@ -16,6 +16,22 @@ pub struct PvpUnitData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeckCardData {
+    pub id: String,
+    pub hero_class: String,
+    pub star_level: u8,
+    pub level: u32,
+    pub hp_bonus: f32,
+    pub atk_bonus: f32,
+    pub is_starter: bool,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct PlayerDeck {
+    pub cards: Vec<DeckCardData>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PvpMessage {
     #[serde(alias = "CreateRoom", alias = "CREATE_ROOM")]
@@ -51,6 +67,8 @@ pub enum PvpMessage {
     },
     #[serde(alias = "MatchEnd", alias = "MATCH_END")]
     MatchEnd { winner: String },
+    #[serde(alias = "SetDeck", alias = "SET_DECK")]
+    SetDeck { cards: Vec<DeckCardData> },
     #[serde(alias = "Error", alias = "ERROR")]
     Error { message: String },
 }
@@ -118,6 +136,7 @@ pub fn rust_to_js_pvp(_msg: &str) {
 
 pub fn send_pvp_message(msg: &PvpMessage) {
     if let Ok(json) = serde_json::to_string(msg) {
+        info!("[PVP OUTGOING] Sending to JS: {}", json);
         rust_to_js_pvp(&json);
     }
 }
@@ -125,10 +144,12 @@ pub fn send_pvp_message(msg: &PvpMessage) {
 pub fn pvp_network_system(
     mut pvp_mgr: ResMut<PvpManager>,
     mut next_state: ResMut<NextState<GameState>>,
-    _state: Res<State<GameState>>,
+    state: Res<State<GameState>>,
     mut commands: Commands,
     textures: Res<GameTextures>,
+    mut player_deck: ResMut<PlayerDeck>,
     all_board_units: Query<(Entity, &Unit), With<GridPos>>,
+    bench_units: Query<(Entity, &BenchPos), Without<DeadUnit>>,
     mut player_units: Query<
         (
             Entity,
@@ -155,6 +176,59 @@ pub fn pvp_network_system(
         info!("[PVP NET] Received message: {}", raw);
         if let Ok(msg) = serde_json::from_str::<PvpMessage>(&raw) {
             match msg {
+                PvpMessage::SetDeck { cards } => {
+                    info!("[DECK] Received player deck with {} cards from profile!", cards.len());
+                    player_deck.cards = cards.clone();
+
+                    if *state.get() == GameState::Placement && !cards.is_empty() {
+                        for (ent, unit) in all_board_units.iter() {
+                            if unit.faction == Faction::Player {
+                                commands.entity(ent).despawn_recursive();
+                            }
+                        }
+                        for (ent, _) in bench_units.iter() {
+                            commands.entity(ent).despawn_recursive();
+                        }
+
+                        let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
+                        for (idx, card) in cards.iter().enumerate() {
+                            let unit_class = match card.hero_class.as_str() {
+                                "Archer" => UnitClass::Archer,
+                                "Mage" => UnitClass::Mage,
+                                "Assassin" => UnitClass::Assassin,
+                                "Cleric" => UnitClass::Cleric,
+                                _ => UnitClass::Knight,
+                            };
+
+                            if idx < 3 {
+                                let (col, row) = board_positions[idx % board_positions.len()];
+                                crate::units::spawn_unit_ext_bonus(
+                                    &mut commands,
+                                    &textures,
+                                    unit_class,
+                                    Faction::Player,
+                                    col,
+                                    row,
+                                    card.star_level.max(1),
+                                    false,
+                                    card.hp_bonus,
+                                    card.atk_bonus,
+                                );
+                            } else {
+                                let slot = (idx - 3).min(5);
+                                crate::units::spawn_bench_unit_bonus(
+                                    &mut commands,
+                                    &textures,
+                                    unit_class,
+                                    slot,
+                                    card.star_level.max(1),
+                                    card.hp_bonus,
+                                    card.atk_bonus,
+                                );
+                            }
+                        }
+                    }
+                }
                 PvpMessage::RoomJoined {
                     room_code,
                     role,
@@ -241,7 +315,6 @@ pub fn pvp_network_system(
                     }
 
                     // 4. Spawn opponent lineup on enemy side!
-                    // Mirror columns so opponent frontline (col 2) faces player frontline (col 0 on enemy board)
                     for u in &opponent_lineup {
                         let mirrored_col = (2usize).saturating_sub(u.col).min(2);
                         spawn_unit_ext(

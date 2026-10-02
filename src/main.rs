@@ -55,6 +55,7 @@ fn main() {
         .init_resource::<SelectedBenchUnit>()
         .init_resource::<SelectedUnitState>()
         .init_resource::<PvpManager>()
+        .init_resource::<crate::net::PlayerDeck>()
         .init_resource::<SoundManager>()
         .add_event::<PlaySoundEvent>()
         .init_resource::<PlayerEconomy>()

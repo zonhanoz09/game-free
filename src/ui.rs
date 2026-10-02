@@ -1811,6 +1811,7 @@ pub fn setup_stage_enemies(
     mut title_query: Query<&mut Text, (With<StageTitleText>, Without<StageDescText>)>,
     mut desc_query: Query<&mut Text, (With<StageDescText>, Without<StageTitleText>)>,
     pvp_mgr: Res<crate::net::PvpManager>,
+    player_deck: Res<crate::net::PlayerDeck>,
 ) {
     if pvp_mgr.active {
         for (entity, unit) in units.iter() {
@@ -1826,9 +1827,27 @@ pub fn setup_stage_enemies(
         }
         let player_count = units.iter().filter(|(_, u)| u.faction == Faction::Player).count();
         if player_count == 0 {
-            spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
-            spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
-            spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 1, 2);
+            if !player_deck.cards.is_empty() {
+                let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
+                for (idx, card) in player_deck.cards.iter().enumerate() {
+                    let unit_class = match card.hero_class.as_str() {
+                        "Archer" => UnitClass::Archer,
+                        "Mage" => UnitClass::Mage,
+                        "Assassin" => UnitClass::Assassin,
+                        "Cleric" => UnitClass::Cleric,
+                        _ => UnitClass::Knight,
+                    };
+                    if idx < 3 {
+                        let (col, row) = board_positions[idx % board_positions.len()];
+                        crate::units::spawn_unit_ext_bonus(&mut commands, &textures, unit_class, Faction::Player, col, row, card.star_level.max(1), false, card.hp_bonus, card.atk_bonus);
+                    } else {
+                        let slot = (idx - 3).min(5);
+                        crate::units::spawn_bench_unit_bonus(&mut commands, &textures, unit_class, slot, card.star_level.max(1), card.hp_bonus, card.atk_bonus);
+                    }
+                }
+            } else {
+                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 1);
+            }
         }
         return;
     }
@@ -1860,15 +1879,32 @@ pub fn setup_stage_enemies(
         );
     }
 
-    // Pre-spawn starter squad for player if no units exist yet
+    // Pre-spawn starter squad for player from owned deck
     let player_count = units.iter().filter(|(_, u)| u.faction == Faction::Player).count();
     if player_count == 0 {
-        spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
-        spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
-        spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
+            if !player_deck.cards.is_empty() {
+                let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
+                for (idx, card) in player_deck.cards.iter().enumerate() {
+                    let unit_class = match card.hero_class.as_str() {
+                        "Archer" => UnitClass::Archer,
+                        "Mage" => UnitClass::Mage,
+                        "Assassin" => UnitClass::Assassin,
+                        "Cleric" => UnitClass::Cleric,
+                        _ => UnitClass::Knight,
+                    };
+                    if idx < 3 {
+                        let (col, row) = board_positions[idx % board_positions.len()];
+                        crate::units::spawn_unit_ext_bonus(&mut commands, &textures, unit_class, Faction::Player, col, row, card.star_level.max(1), false, card.hp_bonus, card.atk_bonus);
+                    } else {
+                        let slot = (idx - 3).min(5);
+                        crate::units::spawn_bench_unit_bonus(&mut commands, &textures, unit_class, slot, card.star_level.max(1), card.hp_bonus, card.atk_bonus);
+                    }
+                }
+            } else {
+                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 1);
+            }
     }
 }
-
 pub fn reset_player_units_for_placement(
     mut commands: Commands,
     textures: Res<GameTextures>,
@@ -1917,6 +1953,8 @@ pub fn reset_player_units_for_placement(
 }
 
 pub fn show_victory_ui(mut commands: Commands) {
+    #[cfg(target_arch = "wasm32")]
+    crate::net::rust_to_js_pvp(r#"{"type":"PVE_VICTORY","gold":40}"#);
     commands
         .spawn((
             Node {

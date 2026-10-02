@@ -24,22 +24,59 @@ use tower_http::{
     services::ServeDir,
 };
 
+// ==========================================\n// DATA MODELS & PERSISTENCE
 // ==========================================
-// DATA MODELS & PERSISTENCE
-// ==========================================
+fn default_gold() -> u32 {
+    100
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UserCard {
+    pub id: String,
+    pub hero_class: String, // "Knight", "Archer", "Mage", "Assassin", "Cleric"
+    pub name: String,
+    pub star_level: u32,
+    pub level: u32,
+    pub is_starter: bool,
+    pub hp_bonus: f32,
+    pub atk_bonus: f32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UserItem {
+    pub id: String,
+    pub item_type: String,
+    pub name: String,
+    pub count: u32,
+    pub description: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub username: String,
     pub display_name: String,
     pub avatar: String,
-    #[serde(skip_serializing)]
+    #[serde(default)]
     pub password_hash: String,
     pub elo: i32,
     pub wins: u32,
     pub losses: u32,
     pub matches: u32,
+    #[serde(default = "default_gold")]
+    pub gold: u32,
+    #[serde(default)]
+    pub cards: Vec<UserCard>,
+    #[serde(default)]
+    pub items: Vec<UserItem>,
     pub created_at: String,
     pub last_login: String,
+}
+
+impl User {
+    pub fn sanitized(mut self) -> Self {
+        self.password_hash.clear();
+        self
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -58,6 +95,26 @@ pub struct DatabaseData {
     pub matches: Vec<MatchRecord>,
 }
 
+pub fn create_starter_card(username: &str, avatar: &str) -> UserCard {
+    let (hero_class, name) = match avatar {
+        "archer" => ("Archer", "Cung Thủ Thần Nhãn"),
+        "mage" => ("Mage", "Pháp Sư Băng Hoả"),
+        "assassin" => ("Assassin", "Sát Thủ Bóng Đêm"),
+        "cleric" => ("Cleric", "Mục Sư Thánh Quang"),
+        _ => ("Knight", "Hiệp Sĩ Hoàng Gia"),
+    };
+    UserCard {
+        id: format!("card_{}_starter", username),
+        hero_class: hero_class.to_string(),
+        name: name.to_string(),
+        star_level: 1,
+        level: 1,
+        is_starter: true,
+        hp_bonus: 0.0,
+        atk_bonus: 0.0,
+    }
+}
+
 pub struct Database {
     file_path: PathBuf,
     data: DatabaseData,
@@ -70,7 +127,7 @@ impl Database {
             let _ = fs::create_dir_all(parent);
         }
 
-        let data = if file_path.exists() {
+        let mut data = if file_path.exists() {
             fs::read_to_string(&file_path)
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
@@ -79,13 +136,31 @@ impl Database {
             DatabaseData::default()
         };
 
+        // Ensure all loaded users have a starter card and starting gold
+        let mut modified = false;
+        for user in data.users.values_mut() {
+            if user.gold == 0 {
+                user.gold = 100;
+                modified = true;
+            }
+            if user.cards.is_empty() {
+                user.cards
+                    .push(create_starter_card(&user.username, &user.avatar));
+                modified = true;
+            }
+        }
+
         println!(
             "[RUST DATABASE] Loaded {} users and {} matches from disk.",
             data.users.len(),
             data.matches.len()
         );
 
-        Self { file_path, data }
+        let db = Self { file_path, data };
+        if modified {
+            db.save();
+        }
+        db
     }
 
     fn save(&self) {
@@ -124,6 +199,13 @@ impl Database {
         }
 
         let now = chrono_now();
+        let avatar_str = if avatar.is_empty() {
+            "knight".to_string()
+        } else {
+            avatar.to_string()
+        };
+        let starter_card = create_starter_card(&clean, &avatar_str);
+
         let user = User {
             username: clean.clone(),
             display_name: if display_name.trim().is_empty() {
@@ -131,16 +213,15 @@ impl Database {
             } else {
                 display_name.trim().chars().take(24).collect()
             },
-            avatar: if avatar.is_empty() {
-                "knight".to_string()
-            } else {
-                avatar.to_string()
-            },
+            avatar: avatar_str,
             password_hash: Self::hash_password(password),
             elo: 1000,
             wins: 0,
             losses: 0,
             matches: 0,
+            gold: 100,
+            cards: vec![starter_card],
+            items: vec![],
             created_at: now.clone(),
             last_login: now,
         };
@@ -164,6 +245,14 @@ impl Database {
         }
 
         user.last_login = chrono_now();
+        if user.gold == 0 {
+            user.gold = 100;
+        }
+        if user.cards.is_empty() {
+            user.cards
+                .push(create_starter_card(&user.username, &user.avatar));
+        }
+
         let res = user.clone();
         self.save();
         Ok(res)
@@ -171,6 +260,190 @@ impl Database {
 
     pub fn get_user(&self, username: &str) -> Option<User> {
         self.data.users.get(&username.to_lowercase()).cloned()
+    }
+
+    pub fn buy_card(
+        &mut self,
+        username: &str,
+        hero_class: &str,
+    ) -> Result<(User, UserCard), String> {
+        let clean = username.trim().to_lowercase();
+        let user = self
+            .data
+            .users
+            .get_mut(&clean)
+            .ok_or("Người chơi không tồn tại!")?;
+
+        let (cost, name) = match hero_class {
+            "Knight" => (50, "Hiệp Sĩ Hoàng Gia"),
+            "Archer" => (50, "Cung Thủ Thần Nhãn"),
+            "Mage" => (60, "Pháp Sư Băng Hoả"),
+            "Assassin" => (60, "Sát Thủ Bóng Đêm"),
+            "Cleric" => (55, "Mục Sư Thánh Quang"),
+            _ => return Err("Loại thẻ tướng không hợp lệ!".to_string()),
+        };
+
+        if user.gold < cost {
+            return Err(format!(
+                "Bạn không đủ vàng! Cần {} vàng, hiện có {} vàng.",
+                cost, user.gold
+            ));
+        }
+
+        if user.cards.len() >= 25 {
+            return Err("Kho thẻ bài đã đạt giới hạn tối đa (25 thẻ)!".to_string());
+        }
+
+        user.gold -= cost;
+        let card_id = format!(
+            "card_{}_{}_{}",
+            clean,
+            hero_class.to_lowercase(),
+            chrono_now()
+        );
+        let new_card = UserCard {
+            id: card_id,
+            hero_class: hero_class.to_string(),
+            name: name.to_string(),
+            star_level: 1,
+            level: 1,
+            is_starter: false,
+            hp_bonus: 0.0,
+            atk_bonus: 0.0,
+        };
+
+        user.cards.push(new_card.clone());
+        let res_user = user.clone();
+        self.save();
+        Ok((res_user, new_card))
+    }
+
+    pub fn upgrade_card(
+        &mut self,
+        username: &str,
+        card_id: &str,
+        upgrade_type: &str,
+    ) -> Result<(User, String), String> {
+        let clean = username.trim().to_lowercase();
+        let user = self
+            .data
+            .users
+            .get_mut(&clean)
+            .ok_or("Người chơi không tồn tại!")?;
+
+        let card = user
+            .cards
+            .iter_mut()
+            .find(|c| c.id == card_id)
+            .ok_or("Không tìm thấy thẻ bài này trong kho!")?;
+
+        let msg = match upgrade_type {
+            "level" => {
+                if card.level >= 10 {
+                    return Err("Thẻ bài đã đạt cấp tối đa (Cấp 10)!".to_string());
+                }
+                let cost = card.level * 20;
+                if user.gold < cost {
+                    return Err(format!(
+                        "Cần {} vàng để nâng cấp (hiện có {} vàng)!",
+                        cost, user.gold
+                    ));
+                }
+                user.gold -= cost;
+                card.level += 1;
+                card.hp_bonus += 25.0;
+                card.atk_bonus += 5.0;
+                format!(
+                    "Nâng cấp thành công lên Cấp {}! (+25 HP, +5 ATK)",
+                    card.level
+                )
+            }
+            "star" => {
+                if card.star_level >= 3 {
+                    return Err("Thẻ bài đã đạt số sao tối đa (3★)!".to_string());
+                }
+                let cost = 100;
+                if user.gold < cost {
+                    return Err(format!(
+                        "Cần {} vàng để nâng sao (hiện có {} vàng)!",
+                        cost, user.gold
+                    ));
+                }
+                user.gold -= cost;
+                card.star_level += 1;
+                card.hp_bonus += 60.0;
+                card.atk_bonus += 15.0;
+                format!(
+                    "Đột phá thành công lên {}★! (+60 HP, +15 ATK)",
+                    card.star_level
+                )
+            }
+            _ => return Err("Loại nâng cấp không hợp lệ!".to_string()),
+        };
+
+        let res_user = user.clone();
+        self.save();
+        Ok((res_user, msg))
+    }
+
+    pub fn sell_card(&mut self, username: &str, card_id: &str) -> Result<(User, u32), String> {
+        let clean = username.trim().to_lowercase();
+        let user = self
+            .data
+            .users
+            .get_mut(&clean)
+            .ok_or("Người chơi không tồn tại!")?;
+
+        let idx = user
+            .cards
+            .iter()
+            .position(|c| c.id == card_id)
+            .ok_or("Không tìm thấy thẻ bài này trong kho!")?;
+
+        if user.cards[idx].is_starter {
+            return Err("Thẻ bài khởi đầu là linh hồn của bạn, không thể bán đi!".to_string());
+        }
+
+        let card = &user.cards[idx];
+        let base_cost = match card.hero_class.as_str() {
+            "Knight" | "Archer" => 50,
+            "Mage" | "Assassin" => 60,
+            _ => 55,
+        };
+        let refund = (base_cost / 2)
+            + (card.level.saturating_sub(1) * 10)
+            + (card.star_level.saturating_sub(1) * 40);
+
+        user.cards.remove(idx);
+        user.gold += refund;
+        let res_user = user.clone();
+        self.save();
+        Ok((res_user, refund))
+    }
+
+    pub fn reward_match(
+        &mut self,
+        username: &str,
+        mode: &str,
+        win: bool,
+    ) -> Result<(User, u32), String> {
+        let clean = username.trim().to_lowercase();
+        let user = self
+            .data
+            .users
+            .get_mut(&clean)
+            .ok_or("Người chơi không tồn tại!")?;
+
+        let gold_earned = if win {
+            if mode == "pve" { 40 } else { 80 }
+        } else {
+            10
+        };
+
+        user.gold += gold_earned;
+        let res_user = user.clone();
+        self.save();
+        Ok((res_user, gold_earned))
     }
 
     pub fn record_match(
@@ -197,9 +470,11 @@ impl Database {
                 if is_host_win {
                     h.wins += 1;
                     h.elo += 25;
+                    h.gold += 80;
                 } else {
                     h.losses += 1;
                     h.elo = (h.elo - 20).max(500);
+                    h.gold += 15;
                 }
             }
             if let Some(g) = self.data.users.get_mut(&guest_user.to_lowercase()) {
@@ -207,9 +482,11 @@ impl Database {
                 if !is_host_win {
                     g.wins += 1;
                     g.elo += 25;
+                    g.gold += 80;
                 } else {
                     g.losses += 1;
                     g.elo = (g.elo - 20).max(500);
+                    g.gold += 15;
                 }
             }
         }
@@ -224,7 +501,7 @@ impl Database {
     pub fn get_leaderboard(&self, limit: usize) -> Vec<User> {
         let mut list: Vec<User> = self.data.users.values().cloned().collect();
         list.sort_by(|a, b| b.elo.cmp(&a.elo).then_with(|| b.wins.cmp(&a.wins)));
-        list.into_iter().take(limit).collect()
+        list.into_iter().take(limit).map(|u| u.sanitized()).collect()
     }
 }
 
@@ -236,8 +513,7 @@ fn chrono_now() -> String {
     format!("{}", dur.as_secs())
 }
 
-// ==========================================
-// MULTIPLAYER ROOM & MATCHMAKING
+// ==========================================\n// MULTIPLAYER ROOM & MATCHMAKING
 // ==========================================
 type Tx = mpsc::UnboundedSender<Message>;
 
@@ -261,19 +537,19 @@ pub struct PlayerSession {
     pub tx: Tx,
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct PublicRoomInfo {
-    pub code: String,
-    pub host_name: String,
-    pub host_avatar: String,
-    pub host_elo: i32,
-}
-
 pub struct Room {
     pub code: String,
     pub round: usize,
     pub host: PlayerSession,
     pub guest: Option<PlayerSession>,
+}
+
+#[derive(Serialize)]
+pub struct PublicRoomInfo {
+    pub code: String,
+    pub host_name: String,
+    pub host_avatar: String,
+    pub host_elo: i32,
 }
 
 pub struct QuickMatchEntry {
@@ -287,15 +563,12 @@ pub struct AppState {
 }
 
 fn generate_room_code() -> String {
-    let chars = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let mut rng = rand::thread_rng();
-    (0..4)
-        .map(|_| chars[rng.gen_range(0..chars.len())] as char)
-        .collect()
+    let num: u32 = rng.gen_range(1000..9999);
+    format!("{:04}", num)
 }
 
-// ==========================================
-// REST API HANDLERS
+// ==========================================\n// REST API REQUEST DTOs
 // ==========================================
 #[derive(Deserialize)]
 struct RegisterRequest {
@@ -314,6 +587,32 @@ struct LoginRequest {
 #[derive(Deserialize)]
 struct ProfileQuery {
     username: String,
+}
+
+#[derive(Deserialize)]
+struct BuyCardRequest {
+    username: String,
+    hero_class: String,
+}
+
+#[derive(Deserialize)]
+struct UpgradeCardRequest {
+    username: String,
+    card_id: String,
+    upgrade_type: String, // "level" or "star"
+}
+
+#[derive(Deserialize)]
+struct SellCardRequest {
+    username: String,
+    card_id: String,
+}
+
+#[derive(Deserialize)]
+struct MatchRewardRequest {
+    username: String,
+    mode: Option<String>,
+    win: bool,
 }
 
 #[derive(Deserialize)]
@@ -338,7 +637,7 @@ async fn handle_register(
     ) {
         Ok(user) => (
             StatusCode::OK,
-            Json(serde_json::json!({ "success": true, "user": user })),
+            Json(serde_json::json!({ "success": true, "user": user.sanitized() })),
         ),
         Err(msg) => (
             StatusCode::BAD_REQUEST,
@@ -355,7 +654,7 @@ async fn handle_login(
     match db.login(&payload.username, &payload.password) {
         Ok(user) => (
             StatusCode::OK,
-            Json(serde_json::json!({ "success": true, "user": user })),
+            Json(serde_json::json!({ "success": true, "user": user.sanitized() })),
         ),
         Err(msg) => (
             StatusCode::UNAUTHORIZED,
@@ -372,11 +671,80 @@ async fn handle_profile(
     match db.get_user(&query.username) {
         Some(user) => (
             StatusCode::OK,
-            Json(serde_json::json!({ "success": true, "user": user })),
+            Json(serde_json::json!({ "success": true, "user": user.sanitized() })),
         ),
         None => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({ "success": false, "message": "Không tìm thấy người chơi!" })),
+        ),
+    }
+}
+
+async fn handle_buy_card(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<BuyCardRequest>,
+) -> impl IntoResponse {
+    let mut db = state.db.write().await;
+    match db.buy_card(&payload.username, &payload.hero_class) {
+        Ok((user, card)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "card": card })),
+        ),
+        Err(msg) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "message": msg })),
+        ),
+    }
+}
+
+async fn handle_upgrade_card(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<UpgradeCardRequest>,
+) -> impl IntoResponse {
+    let mut db = state.db.write().await;
+    match db.upgrade_card(&payload.username, &payload.card_id, &payload.upgrade_type) {
+        Ok((user, message)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "message": message })),
+        ),
+        Err(msg) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "message": msg })),
+        ),
+    }
+}
+
+async fn handle_sell_card(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SellCardRequest>,
+) -> impl IntoResponse {
+    let mut db = state.db.write().await;
+    match db.sell_card(&payload.username, &payload.card_id) {
+        Ok((user, refund)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "refund": refund })),
+        ),
+        Err(msg) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "message": msg })),
+        ),
+    }
+}
+
+async fn handle_match_reward(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<MatchRewardRequest>,
+) -> impl IntoResponse {
+    let mut db = state.db.write().await;
+    let mode = payload.mode.as_deref().unwrap_or("pve");
+    match db.reward_match(&payload.username, mode, payload.win) {
+        Ok((user, gold_earned)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "success": true, "user": user.sanitized(), "gold_earned": gold_earned })),
+        ),
+        Err(msg) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "message": msg })),
         ),
     }
 }
@@ -405,18 +773,16 @@ async fn handle_record_match(
     Json(serde_json::json!({ "success": true }))
 }
 
-// ==========================================
-// WEBSOCKET HANDLER
+// ==========================================\n// WEBSOCKET HANDLER
 // ==========================================
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    ws.on_upgrade(|socket| handle_socket(socket, state))
+    ws.on_upgrade(move |socket| handle_ws_client(socket, state))
 }
 
-async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
+async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
     let (mut sender, mut receiver) = socket.split();
     let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
 
-    // Forward outgoing messages to client
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             if sender.send(msg).await.is_err() {
@@ -535,75 +901,54 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     let avatar = parsed
                         .get("avatar")
                         .and_then(|v| v.as_str())
-                        .unwrap_or("knight");
+                        .unwrap_or("archer");
                     let elo = parsed.get("elo").and_then(|v| v.as_i64()).unwrap_or(1000) as i32;
 
                     let mut rooms_guard = state.rooms.write().await;
                     if let Some(room) = rooms_guard.get_mut(&code) {
-                        if room.guest.is_some() {
-                            let _ = tx.send(Message::Text(
-                                serde_json::json!({ "type": "ERROR", "message": "Phòng đã đủ 2 người chơi!" })
-                                    .to_string()
-                                    .into(),
-                            ));
-                            continue;
-                        }
+                        if room.guest.is_none() {
+                            let guest_session = PlayerSession {
+                                id: player_id.to_string(),
+                                name: player_name.to_string(),
+                                avatar: avatar.to_string(),
+                                elo,
+                                hp: 100,
+                                ready: false,
+                                lineup: vec![],
+                                tx: tx.clone(),
+                            };
 
-                        let guest_session = PlayerSession {
-                            id: player_id.to_string(),
-                            name: player_name.to_string(),
-                            avatar: avatar.to_string(),
-                            elo,
-                            hp: 100,
-                            ready: false,
-                            lineup: vec![],
-                            tx: tx.clone(),
-                        };
+                            let host_name = room.host.name.clone();
+                            room.guest = Some(guest_session);
+                            current_room = Some(code.clone());
+                            current_role = Some("guest".to_string());
 
-                        let host_name = room.host.name.clone();
-                        room.guest = Some(guest_session);
+                            let to_host = serde_json::json!({
+                                "type": "ROOM_JOINED",
+                                "room_code": code,
+                                "role": "host",
+                                "player_name": host_name,
+                                "opponent_name": player_name
+                            });
+                            let _ = room.host.tx.send(Message::Text(to_host.to_string().into()));
 
-                        current_room = Some(code.clone());
-                        current_role = Some("guest".to_string());
-
-                        // Send confirmation to guest
-                        let _ = tx.send(Message::Text(
-                            serde_json::json!({
+                            let to_guest = serde_json::json!({
                                 "type": "ROOM_JOINED",
                                 "room_code": code,
                                 "role": "guest",
                                 "player_name": player_name,
-                                "opponent_name": host_name,
-                                "round": room.round
-                            })
-                            .to_string()
-                            .into(),
-                        ));
-
-                        // Notify host
-                        let _ = room.host.tx.send(Message::Text(
-                            serde_json::json!({
-                                "type": "OPPONENT_JOINED",
-                                "room_code": code,
-                                "role": "host",
-                                "player_name": host_name,
-                                "opponent_name": player_name,
-                                "round": room.round
-                            })
-                            .to_string()
-                            .into(),
-                        ));
-
-                        println!(
-                            "[RUST WS] {} joined room {} vs {}",
-                            player_name, code, host_name
-                        );
+                                "opponent_name": host_name
+                            });
+                            let _ = tx.send(Message::Text(to_guest.to_string().into()));
+                            println!("[RUST WS] {} joined room {}", player_name, code);
+                        } else {
+                            let err =
+                                serde_json::json!({ "type": "ERROR", "message": "Phòng đã đầy!" });
+                            let _ = tx.send(Message::Text(err.to_string().into()));
+                        }
                     } else {
-                        let _ = tx.send(Message::Text(
-                            serde_json::json!({ "type": "ERROR", "message": format!("Phòng {} không tồn tại!", code) })
-                                .to_string()
-                                .into(),
-                        ));
+                        let err = serde_json::json!({ "type": "ERROR", "message": "Mã phòng không tồn tại!" });
+                        let _ = tx.send(Message::Text(err.to_string().into()));
                     }
                 }
 
@@ -622,83 +967,103 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         .unwrap_or("knight");
                     let elo = parsed.get("elo").and_then(|v| v.as_i64()).unwrap_or(1000) as i32;
 
-                    let session = PlayerSession {
-                        id: player_id.to_string(),
-                        name: player_name.to_string(),
-                        avatar: avatar.to_string(),
-                        elo,
-                        hp: 100,
-                        ready: false,
-                        lineup: vec![],
-                        tx: tx.clone(),
-                    };
-
                     let mut qm_guard = state.quick_match.write().await;
-                    if let Some(waiting) = qm_guard.take() {
-                        let code = generate_room_code();
-                        let host_name = waiting.session.name.clone();
-                        let guest_name = session.name.clone();
-
+                    if let Some(queued) = qm_guard.take() {
                         let mut rooms_guard = state.rooms.write().await;
+                        let mut code = generate_room_code();
+                        while rooms_guard.contains_key(&code) {
+                            code = generate_room_code();
+                        }
+
+                        let guest_session = PlayerSession {
+                            id: player_id.to_string(),
+                            name: player_name.to_string(),
+                            avatar: avatar.to_string(),
+                            elo,
+                            hp: 100,
+                            ready: false,
+                            lineup: vec![],
+                            tx: tx.clone(),
+                        };
+
+                        let host_name = queued.session.name.clone();
                         let room = Room {
                             code: code.clone(),
                             round: 1,
-                            host: waiting.session.clone(),
-                            guest: Some(session),
+                            host: queued.session,
+                            guest: Some(guest_session),
                         };
-                        rooms_guard.insert(code.clone(), room);
+
+                        let to_host = serde_json::json!({
+                            "type": "ROOM_JOINED",
+                            "room_code": code,
+                            "role": "host",
+                            "player_name": host_name,
+                            "opponent_name": player_name
+                        });
+                        let _ = room.host.tx.send(Message::Text(to_host.to_string().into()));
+
+                        let to_guest = serde_json::json!({
+                            "type": "ROOM_JOINED",
+                            "room_code": code,
+                            "role": "guest",
+                            "player_name": player_name,
+                            "opponent_name": host_name
+                        });
+                        let _ = tx.send(Message::Text(to_guest.to_string().into()));
 
                         current_room = Some(code.clone());
                         current_role = Some("guest".to_string());
-
-                        // Notify both
-                        let _ = waiting.session.tx.send(Message::Text(
-                            serde_json::json!({
-                                "type": "ROOM_JOINED",
-                                "room_code": code,
-                                "role": "host",
-                                "player_name": host_name,
-                                "opponent_name": guest_name,
-                                "round": 1
-                            })
-                            .to_string()
-                            .into(),
-                        ));
-
-                        let _ = tx.send(Message::Text(
-                            serde_json::json!({
-                                "type": "ROOM_JOINED",
-                                "room_code": code,
-                                "role": "guest",
-                                "player_name": guest_name,
-                                "opponent_name": host_name,
-                                "round": 1
-                            })
-                            .to_string()
-                            .into(),
-                        ));
-
-                        println!(
-                            "[RUST WS] Quick match formed! Room {} between {} and {}",
-                            code, host_name, guest_name
-                        );
+                        rooms_guard.insert(code, room);
                     } else {
-                        *qm_guard = Some(QuickMatchEntry { session });
-                        let _ = tx.send(Message::Text(
-                            serde_json::json!({ "type": "WAITING_FOR_MATCH", "message": "Đang tìm đối thủ..." })
-                                .to_string()
-                                .into(),
-                        ));
+                        *qm_guard = Some(QuickMatchEntry {
+                            session: PlayerSession {
+                                id: player_id.to_string(),
+                                name: player_name.to_string(),
+                                avatar: avatar.to_string(),
+                                elo,
+                                hp: 100,
+                                ready: false,
+                                lineup: vec![],
+                                tx: tx.clone(),
+                            },
+                        });
+                        let res = serde_json::json!({ "type": "WAITING_FOR_MATCH" });
+                        let _ = tx.send(Message::Text(res.to_string().into()));
+                    }
+                }
+
+                "CANCEL_MATCH" => {
+                    let mut qm_guard = state.quick_match.write().await;
+                    if let Some(ref entry) = *qm_guard {
+                        if entry.session.tx.same_channel(&tx) {
+                            *qm_guard = None;
+                            let res = serde_json::json!({ "type": "MATCH_CANCELED" });
+                            let _ = tx.send(Message::Text(res.to_string().into()));
+                        }
                     }
                 }
 
                 "PLAYER_READY" => {
-                    let lineup_val = parsed
-                        .get("lineup")
-                        .cloned()
-                        .unwrap_or(serde_json::json!([]));
-                    let lineup: Vec<UnitData> =
-                        serde_json::from_value(lineup_val).unwrap_or_default();
+                    let lineup_raw = parsed.get("lineup").and_then(|v| v.as_array());
+                    let mut lineup: Vec<UnitData> = vec![];
+                    if let Some(arr) = lineup_raw {
+                        for item in arr {
+                            if let (Some(col), Some(row), Some(class), Some(star)) = (
+                                item.get("col").and_then(|v| v.as_u64()),
+                                item.get("row").and_then(|v| v.as_u64()),
+                                item.get("class").and_then(|v| v.as_str()),
+                                item.get("star_level").and_then(|v| v.as_u64()),
+                            ) {
+                                lineup.push(UnitData {
+                                    col: col as usize,
+                                    row: row as usize,
+                                    class: class.to_string(),
+                                    star_level: star as u8,
+                                });
+                            }
+                        }
+                    }
 
                     if let Some(code) = &current_room {
                         let mut rooms_guard = state.rooms.write().await;
@@ -706,73 +1071,56 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                             if current_role.as_deref() == Some("host") {
                                 room.host.ready = true;
                                 room.host.lineup = lineup;
-                                if let Some(ref g) = room.guest {
-                                    let _ = g.tx.send(Message::Text(
-                                        serde_json::json!({ "type": "OPPONENT_READY" })
-                                            .to_string()
-                                            .into(),
-                                    ));
-                                }
                             } else if current_role.as_deref() == Some("guest") {
                                 if let Some(ref mut g) = room.guest {
                                     g.ready = true;
                                     g.lineup = lineup;
-                                    let _ = room.host.tx.send(Message::Text(
-                                        serde_json::json!({ "type": "OPPONENT_READY" })
-                                            .to_string()
-                                            .into(),
-                                    ));
                                 }
                             }
 
-                            // If both players are ready, trigger round start!
-                            let host_ready = room.host.ready;
-                            let guest_ready = room.guest.as_ref().map(|g| g.ready).unwrap_or(false);
+                            // If both are ready, start round
+                            let both_ready = room.host.ready
+                                && room.guest.as_ref().map(|g| g.ready).unwrap_or(false);
 
-                            if host_ready && guest_ready {
+                            if both_ready {
                                 room.host.ready = false;
                                 if let Some(ref mut g) = room.guest {
                                     g.ready = false;
                                 }
 
                                 let host_lineup = room.host.lineup.clone();
-                                let guest_lineup = room.guest.as_ref().unwrap().lineup.clone();
+                                let guest_lineup = room
+                                    .guest
+                                    .as_ref()
+                                    .map(|g| g.lineup.clone())
+                                    .unwrap_or_default();
                                 let host_hp = room.host.hp;
-                                let guest_hp = room.guest.as_ref().unwrap().hp;
+                                let guest_hp = room.guest.as_ref().map(|g| g.hp).unwrap_or(0);
                                 let round = room.round;
 
-                                // Send start round to Host
-                                let _ = room.host.tx.send(Message::Text(
-                                    serde_json::json!({
+                                // Send START_ROUND to host (opponent is guest)
+                                let to_host = serde_json::json!({
+                                    "type": "START_ROUND",
+                                    "round": round,
+                                    "opponent_lineup": guest_lineup,
+                                    "player_hp": host_hp,
+                                    "opponent_hp": guest_hp
+                                });
+                                let _ =
+                                    room.host.tx.send(Message::Text(to_host.to_string().into()));
+
+                                // Send START_ROUND to guest (opponent is host)
+                                if let Some(ref g) = room.guest {
+                                    let to_guest = serde_json::json!({
                                         "type": "START_ROUND",
                                         "round": round,
-                                        "opponent_lineup": guest_lineup,
-                                        "player_hp": host_hp,
-                                        "opponent_hp": guest_hp
-                                    })
-                                    .to_string()
-                                    .into(),
-                                ));
-
-                                // Send start round to Guest
-                                if let Some(ref g) = room.guest {
-                                    let _ = g.tx.send(Message::Text(
-                                        serde_json::json!({
-                                            "type": "START_ROUND",
-                                            "round": round,
-                                            "opponent_lineup": host_lineup,
-                                            "player_hp": guest_hp,
-                                            "opponent_hp": host_hp
-                                        })
-                                        .to_string()
-                                        .into(),
-                                    ));
+                                        "opponent_lineup": host_lineup,
+                                        "player_hp": guest_hp,
+                                        "opponent_hp": host_hp
+                                    });
+                                    let _ = g.tx.send(Message::Text(to_guest.to_string().into()));
                                 }
-
-                                println!(
-                                    "[RUST WS] Battle started for round {} in room {}",
-                                    round, code
-                                );
+                                println!("[RUST WS] Started round {} in room {}", round, code);
                             }
                         }
                     }
@@ -782,7 +1130,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     let winner_role = parsed
                         .get("winner_role")
                         .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                        .unwrap_or("draw");
                     let survivors = parsed
                         .get("player_survivors")
                         .and_then(|v| v.as_u64())
@@ -849,7 +1197,9 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
                                 let end_msg = serde_json::json!({
                                     "type": "MATCH_END",
-                                    "winner": winner_name
+                                    "winner": winner_name,
+                                    "gold_reward": 80,
+                                    "consolation_gold": 15
                                 })
                                 .to_string();
 
@@ -858,7 +1208,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                     let _ = g.tx.send(Message::Text(end_msg.into()));
                                 }
 
-                                // Update DB
+                                // Update DB & Award Gold
                                 let mut db = state.db.write().await;
                                 db.record_match(
                                     &format!("m_{}", code),
@@ -870,7 +1220,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
                                 rooms_guard.remove(code);
                                 println!(
-                                    "[RUST WS] Match ended in room {}. Winner: {}",
+                                    "[RUST WS] Match ended in room {}. Winner: {} (+80G)",
                                     code, winner_name
                                 );
                             } else {
@@ -917,8 +1267,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     }
 }
 
-// ==========================================
-// MAIN ENTRY POINT
+// ==========================================\n// MAIN ENTRY POINT
 // ==========================================
 #[tokio::main]
 async fn main() {
@@ -950,6 +1299,10 @@ async fn main() {
         .route("/api/auth/register", post(handle_register))
         .route("/api/auth/login", post(handle_login))
         .route("/api/user/profile", get(handle_profile))
+        .route("/api/shop/buy_card", post(handle_buy_card))
+        .route("/api/cards/upgrade", post(handle_upgrade_card))
+        .route("/api/cards/sell", post(handle_sell_card))
+        .route("/api/match/reward", post(handle_match_reward))
         .route("/api/leaderboard", get(handle_leaderboard))
         .route("/api/match/record", post(handle_record_match))
         .fallback_service(ServeDir::new("wasm_dist"))
@@ -966,4 +1319,56 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_card_economy_and_rules() {
+        let temp_dir = std::env::temp_dir();
+        let test_db_path = temp_dir.join(format!("test_db_{}.json", chrono_now()));
+        let mut db = Database::new(&test_db_path);
+
+        // 1. Register gives starter card + 100G
+        let user = db.register("test_hero", "1234", "Hero Test", "knight").expect("register failed");
+        assert_eq!(user.gold, 100);
+        assert_eq!(user.cards.len(), 1);
+        let starter = &user.cards[0];
+        assert!(starter.is_starter);
+        assert_eq!(starter.hero_class, "Knight");
+
+        // 2. Starter card CANNOT be sold
+        let sell_starter = db.sell_card("test_hero", &starter.id);
+        assert!(sell_starter.is_err(), "Starter card must not be sellable");
+
+        // 3. Buy Archer card for 50G
+        let (user, new_card) = db.buy_card("test_hero", "Archer").expect("buy card failed");
+        assert_eq!(user.gold, 50); // 100 - 50 = 50
+        assert_eq!(user.cards.len(), 2);
+        assert_eq!(new_card.hero_class, "Archer");
+        assert!(!new_card.is_starter);
+
+        // 4. Upgrade Archer card level (costs 1 * 20 = 20G)
+        let (user, _msg) = db.upgrade_card("test_hero", &new_card.id, "level").expect("upgrade failed");
+        assert_eq!(user.gold, 30); // 50 - 20 = 30
+        let upgraded = user.cards.iter().find(|c| c.id == new_card.id).unwrap();
+        assert_eq!(upgraded.level, 2);
+        assert!(upgraded.hp_bonus > 0.0);
+
+        // 5. Reward match (PvE victory +40G)
+        let (user, earned) = db.reward_match("test_hero", "pve", true).expect("reward failed");
+        assert_eq!(earned, 40);
+        assert_eq!(user.gold, 70); // 30 + 40 = 70
+
+        // 6. Sell the Archer card (non-starter is sellable)
+        let (user, refund) = db.sell_card("test_hero", &new_card.id).expect("sell non-starter failed");
+        assert!(refund > 0);
+        assert_eq!(user.cards.len(), 1);
+        assert_eq!(user.cards[0].id, starter.id); // only starter remains
+
+        let _ = std::fs::remove_file(test_db_path);
+    }
 }
