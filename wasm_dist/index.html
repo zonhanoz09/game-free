@@ -28,8 +28,8 @@
 
         #top-bar {
             width: 100%;
-            max-width: 1280px;
-            background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.85) 100%);
+            max-width: 1360px;
+            background: linear-gradient(180deg, rgba(17, 24, 39, 0.96) 0%, rgba(15, 23, 42, 0.88) 100%);
             border-bottom: 2px solid #334155;
             padding: 8px 16px;
             display: flex;
@@ -37,6 +37,7 @@
             align-items: center;
             z-index: 100;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            gap: 12px;
         }
 
         .title-badge {
@@ -47,19 +48,38 @@
             font-size: 1.05rem;
             color: #38bdf8;
             letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .user-chip:hover {
+            background: #2563eb;
+            color: #fff;
         }
 
         .pvp-controls {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         button.btn {
             background: #1e293b;
             color: #f1f5f9;
             border: 1px solid #475569;
-            padding: 6px 14px;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
@@ -68,6 +88,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
         }
 
         button.btn:hover {
@@ -88,6 +109,17 @@
             color: #ffffff;
         }
 
+        button.btn-gold {
+            background: #d97706;
+            border-color: #f59e0b;
+        }
+
+        button.btn-gold:hover {
+            background: #b45309;
+            border-color: #fbbf24;
+            color: #fff;
+        }
+
         input.room-input {
             background: #0f172a;
             border: 1px solid #475569;
@@ -96,7 +128,7 @@
             border-radius: 6px;
             font-weight: 700;
             text-transform: uppercase;
-            width: 100px;
+            width: 85px;
             text-align: center;
             font-size: 0.9rem;
             letter-spacing: 1px;
@@ -111,9 +143,9 @@
         .match-hud {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
             background: #0f172a;
-            padding: 4px 14px;
+            padding: 4px 12px;
             border-radius: 8px;
             border: 1px solid #334155;
         }
@@ -126,7 +158,7 @@
         }
 
         .hp-bar-bg {
-            width: 90px;
+            width: 85px;
             height: 10px;
             background: #334155;
             border-radius: 5px;
@@ -149,13 +181,14 @@
         }
 
         .status-chip {
-            padding: 4px 10px;
+            padding: 4px 8px;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 600;
             background: #1e293b;
             color: #94a3b8;
             border: 1px solid #334155;
+            white-space: nowrap;
         }
 
         .status-chip.connected {
@@ -215,7 +248,8 @@
             font-family: inherit;
         }
 
-        #guide-modal {
+        /* Modal Base */
+        .modal-overlay {
             position: fixed;
             inset: 0;
             background: rgba(3, 7, 18, 0.85);
@@ -227,7 +261,7 @@
             padding: 16px;
         }
 
-        #guide-card {
+        .modal-card {
             background: linear-gradient(180deg, #111827 0%, #0b0f19 100%);
             border: 1.5px solid #334155;
             border-radius: 14px;
@@ -246,16 +280,16 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        .guide-header {
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 22px;
+            padding: 14px 20px;
             border-bottom: 1px solid #1e293b;
             background: rgba(15, 23, 42, 0.85);
         }
 
-        .guide-header h2 {
+        .modal-header h2 {
             font-size: 1.15rem;
             color: #38bdf8;
             display: flex;
@@ -265,7 +299,7 @@
             letter-spacing: 0.5px;
         }
 
-        .guide-close-btn {
+        .modal-close-btn {
             background: #1e293b;
             border: 1px solid #475569;
             color: #94a3b8;
@@ -281,18 +315,92 @@
             transition: all 0.15s;
         }
 
-        .guide-close-btn:hover {
+        .modal-close-btn:hover {
             background: #ef4444;
             color: #fff;
             border-color: #f87171;
         }
 
-        .guide-body {
-            padding: 20px 24px;
+        .modal-body {
+            padding: 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 16px;
+        }
+
+        /* Form Inputs */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .form-input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+        }
+
+        .avatar-picker {
+            display: flex;
+            gap: 12px;
+            margin-top: 6px;
+        }
+
+        .avatar-option {
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            background: #1e293b;
+            transition: all 0.15s;
+            font-size: 1.2rem;
+        }
+
+        .avatar-option.selected, .avatar-option:hover {
+            border-color: #38bdf8;
+            background: #0284c7;
+        }
+
+        /* Table */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        .styled-table th {
+            background: #1e293b;
+            color: #94a3b8;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 2px solid #334155;
+        }
+
+        .styled-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #1e293b;
+            color: #e2e8f0;
+        }
+
+        .styled-table tr:hover td {
+            background: rgba(30, 41, 59, 0.5);
         }
 
         .guide-section {
@@ -362,14 +470,6 @@
             display: block;
             margin-bottom: 3px;
         }
-
-        .guide-footer {
-            display: flex;
-            justify-content: flex-end;
-            padding: 12px 22px;
-            border-top: 1px solid #1e293b;
-            background: rgba(15, 23, 42, 0.85);
-        }
     </style>
     <script>
         // Filter out Winit intentional control-flow exception on Web
@@ -412,8 +512,15 @@
     <div id="top-bar">
         <div class="title-badge">
             <span>⚔️</span>
-            <span>3v3 Tactical Arena</span>
-            <span id="room-badge" style="display:none; color: #facc15; font-size: 0.9rem; margin-left: 8px;"></span>
+            <span>3v3 Arena</span>
+            <span id="room-badge" style="display:none; color: #facc15; font-size: 0.9rem; margin-left: 6px;"></span>
+        </div>
+
+        <!-- User Profile Chip -->
+        <div id="user-profile-badge" class="user-chip" title="Xem hồ sơ / Đăng nhập">
+            <span id="user-avatar-icon">🛡️</span>
+            <span id="user-name-display" style="font-weight: 700; font-size: 0.85rem;">Khách</span>
+            <span id="user-elo-badge" style="background:#0f172a; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color:#facc15;">1000 ELO</span>
         </div>
 
         <div class="match-hud" id="match-hud" style="display: none;">
@@ -430,23 +537,114 @@
 
         <div class="pvp-controls">
             <span id="conn-status" class="status-chip">Đang kết nối...</span>
+            <button id="btn-leaderboard" class="btn btn-gold">🏆 Xếp Hạng</button>
+            <button id="btn-lobby-rooms" class="btn">📋 Phòng Chờ</button>
             <button id="btn-create-room" class="btn btn-primary">➕ Tạo Phòng</button>
-            <input id="room-code-input" class="room-input" placeholder="Mã..." maxlength="4" />
+            <input id="room-code-input" class="room-input" placeholder="MÃ..." maxlength="4" />
             <button id="btn-join-room" class="btn">🚪 Vào</button>
-            <button id="btn-guide" class="btn" style="background:#2563eb; border-color:#3b82f6; font-weight:700;">📖 Hướng Dẫn [H]</button>
             <button id="btn-quick-match" class="btn">⚡ Ghép Nhanh</button>
+            <button id="btn-guide" class="btn" style="background:#2563eb; border-color:#3b82f6;">📖 [H]</button>
         </div>
     </div>
 
-    <!-- Modal Popup Hướng Dẫn -->
-    <div id="guide-modal">
-        <div id="guide-card">
-            <div class="guide-header">
+    <!-- Modal: Auth (Đăng Nhập / Đăng Ký) -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 440px;">
+            <div class="modal-header">
+                <h2 id="auth-title">👤 Tài Khoản Người Chơi</h2>
+                <button class="modal-close-btn" id="btn-close-auth">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                    <button id="tab-login" class="btn btn-primary" style="flex:1;">Đăng Nhập</button>
+                    <button id="tab-register" class="btn" style="flex:1;">Đăng Ký Mới</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tên tài khoản (Username):</label>
+                    <input type="text" id="auth-username" class="form-input" placeholder="vd: player_one" maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Mật khẩu:</label>
+                    <input type="password" id="auth-password" class="form-input" placeholder="Mật khẩu ít nhất 4 ký tự">
+                </div>
+
+                <div id="register-fields" style="display: none; flex-direction: column; gap: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Tên hiển thị trong game:</label>
+                        <input type="text" id="auth-display-name" class="form-input" placeholder="vd: Chiến Thần Sấm" maxlength="24">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Chọn Avatar đại diện:</label>
+                        <div class="avatar-picker" id="avatar-selector">
+                            <span class="avatar-option selected" data-avatar="knight">🛡️</span>
+                            <span class="avatar-option" data-avatar="archer">🏹</span>
+                            <span class="avatar-option" data-avatar="mage">🔮</span>
+                            <span class="avatar-option" data-avatar="assassin">🗡️</span>
+                            <span class="avatar-option" data-avatar="cleric">✨</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="auth-error-msg" style="color: #ef4444; font-size: 0.85rem; display: none;"></div>
+
+                <button id="btn-auth-submit" class="btn btn-primary" style="padding: 10px; justify-content: center; font-size: 1rem; margin-top: 8px;">Đăng Nhập Ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Bảng Xếp Hạng (Leaderboard) -->
+    <div id="leaderboard-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 680px;">
+            <div class="modal-header">
+                <h2>🏆 BẢNG VÀNG CAO THỦ (OCI DATABASE)</h2>
+                <button class="modal-close-btn" id="btn-close-leaderboard">✕</button>
+            </div>
+            <div class="modal-body">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>Hạng</th>
+                            <th>Tướng</th>
+                            <th>Người Chơi</th>
+                            <th>Điểm ELO</th>
+                            <th>Thắng / Thua</th>
+                            <th>Tỷ Lệ Thắng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-tbody">
+                        <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng xếp hạng từ OCI...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Danh Sách Phòng Chờ (Lobby Browser) -->
+    <div id="rooms-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 680px;">
+            <div class="modal-header">
+                <h2>📋 PHÒNG CHỜ REALTIME (FIREBASE)</h2>
+                <button class="modal-close-btn" id="btn-close-rooms">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #94a3b8; font-size: 0.85rem;">Danh sách các phòng đang chờ người tham gia trên Firebase Realtime Database:</p>
+                <div id="rooms-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                    <p style="color: #64748b; font-style: italic;">Chưa có phòng nào đang mở. Hãy bấm "Tạo Phòng" để mời bạn bè!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Hướng Dẫn Chi Tiết -->
+    <div id="guide-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
                 <h2>⚔️ HƯỚNG DẪN CHIẾN ĐẤU & LUẬT CHƠI (AUTO-BATTLER)</h2>
-                <button class="guide-close-btn" id="btn-close-guide" title="Đóng (Esc)">✕</button>
+                <button class="modal-close-btn" id="btn-close-guide" title="Đóng (Esc)">✕</button>
             </div>
             <div class="guide-body">
-                <!-- Section: Phím Tắt -->
                 <div class="guide-section">
                     <div class="guide-section-title">⌨️ DANH SÁCH PHÍM TẮT NHANH (SHORTCUTS)</div>
                     <div class="hotkey-grid">
@@ -455,57 +653,40 @@
                         <div class="hotkey-item"><span class="key-badge">Chuột Phải</span><span>Click chuột phải vào tướng để Bán nhanh</span></div>
                         <div class="hotkey-item"><span class="key-badge">D</span><span>Đổi mới Cửa Hàng (Reroll) tốn 2 Vàng</span></div>
                         <div class="hotkey-item"><span class="key-badge">E</span><span>Khóa / Mở khóa Cửa Hàng (Lock Shop)</span></div>
-                        <div class="hotkey-item"><span class="key-badge">Space</span><span>Bắt đầu trận chiến / Khóa bài PvP</span></div>
-                        <div class="hotkey-item"><span class="key-badge">H / F1</span><span>Bật / Tắt cửa sổ Hướng Dẫn này</span></div>
-                        <div class="hotkey-item"><span class="key-badge">Esc</span><span>Đóng popup Hướng Dẫn</span></div>
+                        <div class="hotkey-item"><span class="key-badge">Space</span><span>Bắt đầu hiệp đấu / Khóa bài PvP</span></div>
+                        <div class="hotkey-item"><span class="key-badge">H / F1</span><span>Bật / Tắt cửa sổ Hướng Dẫn</span></div>
+                        <div class="hotkey-item"><span class="key-badge">Esc</span><span>Đóng tất cả cửa sổ Popup</span></div>
                     </div>
                 </div>
 
-                <!-- Section: Luật Chơi Cơ Bản -->
                 <div class="guide-section">
                     <div class="guide-section-title">🎮 LỐI CHƠI & ĐIỀU KHIỂN ĐỘI HÌNH</div>
                     <ul style="margin-left: 20px; font-size: 0.88rem; line-height: 1.6; color: #cbd5e1;">
                         <li><strong>Bố trí quân:</strong> Click chuột trái vào tướng trên Bàn đấu hoặc Hàng dự bị, sau đó click vào ô muốn đặt để Di chuyển hoặc Tráo đổi vị trí.</li>
                         <li><strong>Giới hạn:</strong> Bàn cờ tối đa <strong>5 tướng xuất trận</strong>, Hàng dự bị tối đa <strong>6 tướng</strong>.</li>
-                        <li><strong>Chiến đấu tự động:</strong> Nhấn <strong>[Space]</strong> để bắt đầu hiệp đấu. Tướng sẽ tự động tìm kẻ địch gần nhất, đánh thường để tích nộ, và tự động tung <strong>Kỹ Năng Tối Thượng (Ultimate)</strong> khi đầy 100 Mana.</li>
-                        <li><strong>Chi tiết tướng:</strong> Rê chuột vào bất kỳ tướng nào trên sàn đấu hoặc hàng dự bị để xem thẻ thông tin chỉ số (Máu, Năng lượng, Sát thương, Giáp, Kỹ năng).</li>
+                        <li><strong>Chiến đấu tự động:</strong> Nhấn <strong>[Space]</strong> để khóa bài. Khi cả 2 người cùng sẵn sàng, tướng sẽ tự động giao chiến thời gian thực!</li>
                     </ul>
                 </div>
 
-                <!-- Section: Ghép Sao -->
                 <div class="guide-section">
                     <div class="guide-section-title">⭐ CƠ CHẾ NÂNG CẤP SAO (STAR FUSION)</div>
                     <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
-                        Tự động hợp nhất khi bạn thu thập đủ các tướng cùng loại trên sàn hoặc hàng dự bị:<br>
                         • <strong>3 Tướng 1★</strong> ➔ Tự động ghép thành <strong>1 Tướng 2★</strong> (+80% Máu, +60% Sát thương, +Giáp).<br>
-                        • <strong>3 Tướng 2★</strong> ➔ Tự động ghép thành <strong>1 Tướng 3★</strong> (Sức mạnh hủy diệt tối đa, hiệu ứng hào quang lấp lánh).
+                        • <strong>3 Tướng 2★</strong> ➔ Tự động ghép thành <strong>1 Tướng 3★</strong> (Max Sức Mạnh, hào quang hoàng gia).
                     </p>
                 </div>
 
-                <!-- Section: Hệ Tộc & Synergy -->
                 <div class="guide-section">
-                    <div class="guide-section-title">🛡️ HỆ TỘC & HIỆU ỨNG KÍCH HOẠT (SYNERGIES)</div>
-                    <div class="synergy-list">
-                        <div class="synergy-card"><strong>🛡️ Hiệp Sĩ (Knight)</strong>Đỡ đòn hàng đầu. Tăng lượng Giáp và giảm mạnh sát thương gánh chịu cho toàn đội.</div>
-                        <div class="synergy-card"><strong>🏹 Cung Thủ (Archer)</strong>Sát thương vật lý từ xa. Tăng vọt Tốc độ đánh và khả năng bắn xuyên giáp.</div>
-                        <div class="synergy-card"><strong>🔮 Pháp Sư (Mage)</strong>Sát thương phép diện rộng. Đòn đánh hồi mana nhanh, chiêu cuối sấm sét đánh lan toàn hàng.</div>
-                        <div class="synergy-card"><strong>🗡️ Sát Thủ (Assassin)</strong>Đột kích tuyến sau. Lướt ra sau lưng xạ thủ/pháp sư địch với tỷ lệ đòn chí mạng cực cao.</div>
-                        <div class="synergy-card"><strong>✨ Mục Sư (Cleric)</strong>Hỗ trợ thần thánh. Hồi máu liên tục cho đồng đội thấp máu và ban khiên ánh sáng.</div>
-                    </div>
-                </div>
-
-                <!-- Section: PvP Online -->
-                <div class="guide-section">
-                    <div class="guide-section-title">🌐 ĐẤU ONLINE PVP REAL-TIME 1v1</div>
+                    <div class="guide-section-title">🌐 LƯU TRỮ OCI DATABASE & REALTIME FIREBASE</div>
                     <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
-                        • Bấm <strong>Tạo Phòng</strong> để nhận mã phòng 4 chữ cái (VD: <code>RA7F</code>) gửi cho bạn bè cùng chơi.<br>
-                        • Hoặc nhập mã phòng và bấm <strong>Vào</strong> (hoặc bấm <strong>Ghép Nhanh</strong> để tự bắt cặp).<br>
-                        • Hai bên đều bắt đầu với <strong>100 Máu (HP)</strong>. Khi kết thúc mỗi vòng đấu, người thua sẽ bị trừ máu dựa trên số quân còn sống của người thắng (<code>10 + 3 * số quân sống</code>). Người về 0 HP trước sẽ thất bại!
+                        • <strong>Tài khoản & Bảng xếp hạng:</strong> Lưu trữ bền vững trên máy chủ <strong>OCI Free Tier</strong>.<br>
+                        • <strong>Tạo phòng & Ghép trận:</strong> Xử lý tức thời thời gian thực qua <strong>Firebase Realtime Database</strong>.<br>
+                        • Mỗi trận thắng được cộng <strong>+25 ELO</strong>, thua bị trừ <strong>-20 ELO</strong>.
                     </p>
                 </div>
             </div>
-            <div class="guide-footer">
-                <button class="btn btn-primary" id="btn-got-it" style="padding: 8px 24px; font-size: 0.95rem;">Đã Hiểu - Bắt Đầu Chiến!</button>
+            <div style="display:flex; justify-content:flex-end; padding:12px 20px; border-top:1px solid #1e293b;">
+                <button class="btn btn-primary" id="btn-got-it" style="padding: 8px 24px;">Đã Hiểu - Bắt Đầu Chiến!</button>
             </div>
         </div>
     </div>
@@ -533,52 +714,230 @@
             onDisconnect 
         } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-        // Guide Modal Logic
-        const guideModal = document.getElementById('guide-modal');
-        const btnGuide = document.getElementById('btn-guide');
-        const btnCloseGuide = document.getElementById('btn-close-guide');
-        const btnGotIt = document.getElementById('btn-got-it');
+        // ==========================================
+        // USER PROFILE & OCI DATABASE MANAGER
+        // ==========================================
+        const AVATAR_ICONS = {
+            knight: '🛡️',
+            archer: '🏹',
+            mage: '🔮',
+            assassin: '🗡️',
+            cleric: '✨'
+        };
 
-        function openGuideModal() {
-            if (guideModal) guideModal.style.display = 'flex';
+        let currentUser = null;
+        try {
+            const savedUser = localStorage.getItem('tac_arena_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+            }
+        } catch(e) {}
+
+        if (!currentUser) {
+            const guestId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            currentUser = {
+                username: 'guest_' + guestId.toLowerCase(),
+                displayName: 'Hiệp Sĩ #' + guestId,
+                avatar: 'knight',
+                elo: 1000,
+                wins: 0,
+                losses: 0,
+                matches: 0,
+                isGuest: true
+            };
         }
 
-        function closeGuideModal() {
-            if (guideModal) guideModal.style.display = 'none';
+        function renderUserProfile() {
+            const avatarSpan = document.getElementById('user-avatar-icon');
+            const nameSpan = document.getElementById('user-name-display');
+            const eloSpan = document.getElementById('user-elo-badge');
+            if (avatarSpan) avatarSpan.textContent = AVATAR_ICONS[currentUser.avatar] || '🛡️';
+            if (nameSpan) nameSpan.textContent = currentUser.displayName || currentUser.username;
+            if (eloSpan) eloSpan.textContent = `${currentUser.elo || 1000} ELO`;
         }
+        renderUserProfile();
 
-        function toggleGuideModal() {
-            if (!guideModal) return;
-            if (guideModal.style.display === 'flex') {
-                closeGuideModal();
-            } else {
-                openGuideModal();
+        async function syncUserProfileFromOci() {
+            if (currentUser && !currentUser.isGuest) {
+                try {
+                    const res = await fetch(`/api/user/profile?username=${encodeURIComponent(currentUser.username)}`);
+                    const data = await res.json();
+                    if (data.success && data.user) {
+                        currentUser = data.user;
+                        localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
+                        renderUserProfile();
+                    }
+                } catch(e) {
+                    console.warn('[OCI USER SYNC NOTICE]', e.message);
+                }
             }
         }
+        syncUserProfileFromOci();
 
-        if (btnGuide) btnGuide.addEventListener('click', toggleGuideModal);
-        if (btnCloseGuide) btnCloseGuide.addEventListener('click', closeGuideModal);
-        if (btnGotIt) btnGotIt.addEventListener('click', closeGuideModal);
-        if (guideModal) {
-            guideModal.addEventListener('click', (e) => {
-                if (e.target === guideModal) closeGuideModal();
-            });
+        // ==========================================
+        // MODALS MANAGEMENT
+        // ==========================================
+        const guideModal = document.getElementById('guide-modal');
+        const authModal = document.getElementById('auth-modal');
+        const leaderboardModal = document.getElementById('leaderboard-modal');
+        const roomsModal = document.getElementById('rooms-modal');
+
+        function closeAllModals() {
+            if (guideModal) guideModal.style.display = 'none';
+            if (authModal) authModal.style.display = 'none';
+            if (leaderboardModal) leaderboardModal.style.display = 'none';
+            if (roomsModal) roomsModal.style.display = 'none';
         }
+
+        document.getElementById('btn-guide').onclick = () => { guideModal.style.display = 'flex'; };
+        document.getElementById('btn-close-guide').onclick = () => { guideModal.style.display = 'none'; };
+        document.getElementById('btn-got-it').onclick = () => { guideModal.style.display = 'none'; };
+
+        document.getElementById('user-profile-badge').onclick = () => {
+            document.getElementById('auth-error-msg').style.display = 'none';
+            authModal.style.display = 'flex';
+        };
+        document.getElementById('btn-close-auth').onclick = () => { authModal.style.display = 'none'; };
+
+        // Tab Switch (Login / Register)
+        let isRegisterTab = false;
+        let selectedAvatar = 'knight';
+
+        document.getElementById('tab-login').onclick = () => {
+            isRegisterTab = false;
+            document.getElementById('tab-login').className = 'btn btn-primary';
+            document.getElementById('tab-register').className = 'btn';
+            document.getElementById('register-fields').style.display = 'none';
+            document.getElementById('btn-auth-submit').textContent = 'Đăng Nhập Ngay';
+            document.getElementById('auth-title').textContent = '👤 Đăng Nhập Tài Khoản';
+        };
+
+        document.getElementById('tab-register').onclick = () => {
+            isRegisterTab = true;
+            document.getElementById('tab-register').className = 'btn btn-primary';
+            document.getElementById('tab-login').className = 'btn';
+            document.getElementById('register-fields').style.display = 'flex';
+            document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản Mới';
+            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản OCI';
+        };
+
+        // Avatar selector
+        document.querySelectorAll('.avatar-option').forEach(el => {
+            el.onclick = () => {
+                document.querySelectorAll('.avatar-option').forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                selectedAvatar = el.dataset.avatar;
+            };
+        });
+
+        // Submit Auth Form
+        document.getElementById('btn-auth-submit').onclick = async () => {
+            const username = document.getElementById('auth-username').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const displayName = document.getElementById('auth-display-name').value.trim();
+            const errorDiv = document.getElementById('auth-error-msg');
+
+            errorDiv.style.display = 'none';
+
+            if (!username || !password) {
+                errorDiv.textContent = 'Vui lòng nhập đầy đủ tài khoản và mật khẩu!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const endpoint = isRegisterTab ? '/api/auth/register' : '/api/auth/login';
+                const body = isRegisterTab 
+                    ? { username, password, displayName: displayName || username, avatar: selectedAvatar }
+                    : { username, password };
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await res.json();
+                if (!data.success) {
+                    errorDiv.textContent = data.message || 'Lỗi xử lý xác thực!';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                currentUser = data.user;
+                localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
+                renderUserProfile();
+                authModal.style.display = 'none';
+                alert(isRegisterTab ? `🎉 Tạo tài khoản "${currentUser.username}" thành công!` : `✅ Đăng nhập thành công! Chào mừng ${currentUser.displayName}!`);
+            } catch (err) {
+                errorDiv.textContent = 'Lỗi kết nối tới máy chủ OCI: ' + err.message;
+                errorDiv.style.display = 'block';
+            }
+        };
+
+        // Leaderboard Modal
+        document.getElementById('btn-leaderboard').onclick = async () => {
+            leaderboardModal.style.display = 'flex';
+            const tbody = document.getElementById('leaderboard-tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải danh sách từ OCI Database...</td></tr>';
+            try {
+                const res = await fetch('/api/leaderboard');
+                const data = await res.json();
+                if (data.success && data.leaderboard && data.leaderboard.length > 0) {
+                    tbody.innerHTML = data.leaderboard.map((u, i) => {
+                        let rankIcon = `#${i + 1}`;
+                        if (i === 0) rankIcon = '🥇 1';
+                        else if (i === 1) rankIcon = '🥈 2';
+                        else if (i === 2) rankIcon = '🥉 3';
+
+                        const total = (u.wins || 0) + (u.losses || 0);
+                        const winrate = total > 0 ? Math.round((u.wins / total) * 100) + '%' : '0%';
+                        const icon = AVATAR_ICONS[u.avatar] || '🛡️';
+
+                        return `
+                            <tr>
+                                <td style="font-weight: 800; color: #facc15;">${rankIcon}</td>
+                                <td style="font-size: 1.2rem;">${icon}</td>
+                                <td><strong>${u.displayName || u.username}</strong></td>
+                                <td style="color: #38bdf8; font-weight: 700;">${u.elo || 1000}</td>
+                                <td>${u.wins || 0}W - ${u.losses || 0}L</td>
+                                <td style="color: #4ade80; font-weight: 600;">${winrate}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Chưa có dữ liệu bảng xếp hạng. Hãy là người đầu tiên!</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
+            }
+        };
+        document.getElementById('btn-close-leaderboard').onclick = () => { leaderboardModal.style.display = 'none'; };
+
+        // Lobby Browser Modal
+        document.getElementById('btn-lobby-rooms').onclick = () => {
+            roomsModal.style.display = 'flex';
+            if (window._firebase_pvp) {
+                window._firebase_pvp.refreshLobby();
+            }
+        };
+        document.getElementById('btn-close-rooms').onclick = () => { roomsModal.style.display = 'none'; };
 
         window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAllModals();
             if (e.key === 'h' || e.key === 'H' || e.key === 'F1') {
-                toggleGuideModal();
-            } else if (e.key === 'Escape') {
-                closeGuideModal();
+                if (guideModal.style.display === 'flex') guideModal.style.display = 'none';
+                else guideModal.style.display = 'flex';
             }
         });
-        window.toggle_guide_modal = toggleGuideModal;
 
-        // Firebase Configuration (from User)
+        // ==========================================
+        // FIREBASE REALTIME MULTIPLAYER MANAGER
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDo2E0tvgOkFrfNy8b0ECluoaYZ9vwYP7c",
             authDomain: "game-free-b7d52.firebaseapp.com",
-            databaseURL: localStorage.getItem('FIREBASE_RTDB_URL') || "https://game-free-b7d52-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://game-free-b7d52-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "game-free-b7d52",
             storageBucket: "game-free-b7d52.firebasestorage.app",
             messagingSenderId: "748723843196",
@@ -588,13 +947,14 @@
 
         let pvpState = {
             active: false,
-            provider: 'none', // 'firebase' | 'websocket'
+            provider: 'none',
             roomCode: null,
             role: null,
             playerHp: 100,
             opponentHp: 100,
             round: 1,
             lastBattleRound: 0,
+            matchId: null
         };
 
         function showRoomBadge(text) {
@@ -638,45 +998,79 @@
             const chip = document.getElementById('conn-status');
             if (chip) {
                 chip.textContent = text;
-                if (isConnected) {
-                    chip.classList.add('connected');
-                } else {
-                    chip.classList.remove('connected');
-                }
+                if (isConnected) chip.classList.add('connected');
+                else chip.classList.remove('connected');
             }
         }
 
-        // ==========================================
-        // FIREBASE REALTIME MULTIPLAYER MANAGER
-        // ==========================================
         class FirebasePvPManager {
             constructor() {
                 this.available = false;
-                this.playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+                this.playerId = currentUser.username || ('p_' + Math.random().toString(36).substring(2, 8));
                 try {
                     this.app = initializeApp(firebaseConfig);
                     this.db = getDatabase(this.app);
                     this.roomRef = null;
                     this.myQueueRef = null;
-                    this.listenQueueRef = null;
                     this.available = true;
 
-                    // Monitor connection
                     const connectedRef = ref(this.db, '.info/connected');
                     onValue(connectedRef, (snap) => {
-                        const val = snap.val();
-                        if (val === true) {
+                        if (snap.val() === true) {
                             pvpState.provider = 'firebase';
                             updateStatusChip('🔥 Firebase Realtime', true);
-                            console.log('[FIREBASE] Connected to Realtime Database successfully!');
+                            console.log('[FIREBASE] Realtime Database Online!');
                         }
-                    }, (err) => {
-                        console.warn('[FIREBASE RTDB] Connection notice:', err.message);
                     });
+
+                    this.initLobbyWatcher();
                 } catch (e) {
-                    console.warn('[FIREBASE INIT NOTICE] Falling back to WebSocket:', e.message);
+                    console.warn('[FIREBASE NOTICE] Falling back to WebSocket:', e.message);
                     this.available = false;
                 }
+            }
+
+            initLobbyWatcher() {
+                if (!this.available) return;
+                const roomsRef = ref(this.db, 'rooms');
+                onValue(roomsRef, (snapshot) => {
+                    this.renderLobbyList(snapshot.val());
+                });
+            }
+
+            refreshLobby() {
+                if (!this.available) return;
+                get(ref(this.db, 'rooms')).then(snap => this.renderLobbyList(snap.val()));
+            }
+
+            renderLobbyList(roomsData) {
+                const container = document.getElementById('rooms-list-container');
+                if (!container) return;
+                if (!roomsData) {
+                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">Chưa có phòng nào đang mở. Hãy bấm "Tạo Phòng" để mời bạn bè!</p>';
+                    return;
+                }
+
+                const waitingRooms = Object.values(roomsData).filter(r => r && r.state === 'waiting' && r.host);
+                if (waitingRooms.length === 0) {
+                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">Hiện không có phòng chờ nào rảnh. Hãy bấm "Tạo Phòng" hoặc "Ghép Nhanh"!</p>';
+                    return;
+                }
+
+                container.innerHTML = waitingRooms.map(r => {
+                    const hostAvatar = AVATAR_ICONS[r.host.avatar] || '🛡️';
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid #334155;">
+                            <div>
+                                <span style="font-size:1.1rem; margin-right:6px;">${hostAvatar}</span>
+                                <strong style="color:#f8fafc;">${r.host.displayName || r.host.name}</strong>
+                                <span style="color:#facc15; font-size:0.8rem; margin-left:6px;">(${r.host.elo || 1000} ELO)</span>
+                                <span style="background:#0f172a; color:#38bdf8; padding:2px 8px; border-radius:4px; margin-left:10px; font-family:monospace; font-weight:700;">Phòng: ${r.code}</span>
+                            </div>
+                            <button class="btn btn-primary" onclick="window._firebase_pvp.joinRoom('${r.code}')">Vào Trận Ngay</button>
+                        </div>
+                    `;
+                }).join('');
             }
 
             async createRoom() {
@@ -693,15 +1087,20 @@
                 pvpState.opponentHp = 100;
                 pvpState.round = 1;
                 pvpState.lastBattleRound = 0;
+                pvpState.matchId = 'm_' + code + '_' + Date.now();
 
                 this.roomRef = ref(this.db, `rooms/${code}`);
                 await set(this.roomRef, {
                     code: code,
                     round: 1,
                     state: 'waiting',
+                    matchId: pvpState.matchId,
                     host: {
-                        id: this.playerId,
-                        name: 'Player 1 (Blue)',
+                        id: currentUser.username,
+                        name: currentUser.displayName || currentUser.username,
+                        displayName: currentUser.displayName || currentUser.username,
+                        avatar: currentUser.avatar || 'knight',
+                        elo: currentUser.elo || 1000,
                         hp: 100,
                         ready: false,
                         lineup: []
@@ -709,24 +1108,23 @@
                     guest: null
                 });
 
-                // Auto clean up if host disconnects
                 onDisconnect(this.roomRef).remove();
 
-                showRoomBadge(`Phòng: ${code} (Chờ đối thủ...)`);
+                showRoomBadge(`Phòng: ${code} (Đang chờ đối thủ...)`);
                 showMatchHud();
-                updateHudLabels('Player 1 (Blue)', 'Chờ đối thủ...');
+                updateHudLabels(currentUser.displayName || currentUser.username, 'Đang chờ đối thủ...');
 
-                // Notify Rust
                 if (typeof js_to_rust_pvp === 'function') {
                     js_to_rust_pvp(JSON.stringify({
                         type: 'ROOM_JOINED',
                         room_code: code,
                         role: 'host',
-                        player_name: 'Player 1 (Blue)',
+                        player_name: currentUser.displayName || currentUser.username,
                         opponent_name: 'Đang đợi đối thủ...'
                     }));
                 }
 
+                closeAllModals();
                 this.listenRoom();
                 return true;
             }
@@ -743,7 +1141,7 @@
                 }
 
                 const room = snap.val();
-                if (room.guest && room.guest.id !== this.playerId) {
+                if (room.guest && room.guest.id !== currentUser.username) {
                     alert(`Phòng "${code}" đã có 2 người chơi!`);
                     return false;
                 }
@@ -756,86 +1154,95 @@
                 pvpState.opponentHp = 100;
                 pvpState.round = room.round || 1;
                 pvpState.lastBattleRound = 0;
+                pvpState.matchId = room.matchId || ('m_' + code + '_' + Date.now());
 
                 this.roomRef = rRef;
                 const guestRef = ref(this.db, `rooms/${code}/guest`);
                 await set(guestRef, {
-                    id: this.playerId,
-                    name: 'Player 2 (Red)',
+                    id: currentUser.username,
+                    name: currentUser.displayName || currentUser.username,
+                    displayName: currentUser.displayName || currentUser.username,
+                    avatar: currentUser.avatar || 'knight',
+                    elo: currentUser.elo || 1000,
                     hp: 100,
                     ready: false,
                     lineup: []
                 });
+                await update(rRef, { state: 'placement' });
                 onDisconnect(guestRef).remove();
 
                 showRoomBadge(`Phòng: ${code}`);
                 showMatchHud();
-                updateHudLabels('Player 2 (Red)', room.host.name);
+                updateHudLabels(currentUser.displayName || currentUser.username, room.host.name);
 
-                // Notify Rust
                 if (typeof js_to_rust_pvp === 'function') {
                     js_to_rust_pvp(JSON.stringify({
                         type: 'ROOM_JOINED',
                         room_code: code,
                         role: 'guest',
-                        player_name: 'Player 2 (Red)',
+                        player_name: currentUser.displayName || currentUser.username,
                         opponent_name: room.host.name
                     }));
                 }
 
+                closeAllModals();
                 this.listenRoom();
                 return true;
             }
 
             async quickMatch() {
                 if (!this.available) return false;
-                showRoomBadge('⚡ Đang tìm kiếm đối thủ...');
+                showRoomBadge('⚡ Đang ghép trận ngẫu nhiên...');
 
                 const qAllRef = ref(this.db, 'matchmaking_queue');
-                this.myQueueRef = ref(this.db, `matchmaking_queue/${this.playerId}`);
+                this.myQueueRef = ref(this.db, `matchmaking_queue/${currentUser.username}`);
 
-                // Register my ticket
                 await set(this.myQueueRef, {
-                    id: this.playerId,
-                    name: 'Player ' + this.playerId.slice(-3),
+                    id: currentUser.username,
+                    name: currentUser.displayName || currentUser.username,
+                    avatar: currentUser.avatar || 'knight',
+                    elo: currentUser.elo || 1000,
                     time: Date.now()
                 });
                 onDisconnect(this.myQueueRef).remove();
 
-                // Scan queue
                 const snap = await get(qAllRef);
                 let matched = false;
                 if (snap.exists()) {
                     const all = snap.val();
                     for (const [k, p] of Object.entries(all)) {
-                        if (k !== this.playerId && p.id !== this.playerId && !p.matchedRoom) {
-                            // Found match!
+                        if (k !== currentUser.username && p.id !== currentUser.username && !p.matchedRoom) {
                             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
                             let roomCode = '';
                             for (let i = 0; i < 4; i++) roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
 
                             const newRoomRef = ref(this.db, `rooms/${roomCode}`);
+                            const matchId = 'm_' + roomCode + '_' + Date.now();
                             await set(newRoomRef, {
                                 code: roomCode,
                                 round: 1,
-                                state: 'waiting',
+                                state: 'placement',
+                                matchId,
                                 host: {
                                     id: p.id,
-                                    name: 'Player 1 (Blue)',
+                                    name: p.name,
+                                    avatar: p.avatar,
+                                    elo: p.elo,
                                     hp: 100,
                                     ready: false,
                                     lineup: []
                                 },
                                 guest: {
-                                    id: this.playerId,
-                                    name: 'Player 2 (Red)',
+                                    id: currentUser.username,
+                                    name: currentUser.displayName || currentUser.username,
+                                    avatar: currentUser.avatar,
+                                    elo: currentUser.elo,
                                     hp: 100,
                                     ready: false,
                                     lineup: []
                                 }
                             });
 
-                            // Tell other player about room
                             await update(ref(this.db, `matchmaking_queue/${p.id}`), { matchedRoom: roomCode });
                             await remove(this.myQueueRef);
 
@@ -843,19 +1250,20 @@
                             pvpState.provider = 'firebase';
                             pvpState.roomCode = roomCode;
                             pvpState.role = 'guest';
+                            pvpState.matchId = matchId;
                             this.roomRef = newRoomRef;
 
                             showRoomBadge(`Phòng: ${roomCode} (Ghép thành công!)`);
                             showMatchHud();
-                            updateHudLabels('Player 2 (Red)', 'Player 1 (Blue)');
+                            updateHudLabels(currentUser.displayName || currentUser.username, p.name);
 
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify({
                                     type: 'ROOM_JOINED',
                                     room_code: roomCode,
                                     role: 'guest',
-                                    player_name: 'Player 2 (Red)',
-                                    opponent_name: 'Player 1 (Blue)'
+                                    player_name: currentUser.displayName || currentUser.username,
+                                    opponent_name: p.name
                                 }));
                             }
 
@@ -867,7 +1275,6 @@
                 }
 
                 if (!matched) {
-                    // Wait for someone to match me
                     onValue(this.myQueueRef, async (s) => {
                         if (s.exists()) {
                             const val = s.val();
@@ -883,15 +1290,18 @@
 
                                 showRoomBadge(`Phòng: ${code} (Ghép thành công!)`);
                                 showMatchHud();
-                                updateHudLabels('Player 1 (Blue)', 'Player 2 (Red)');
+
+                                const rSnap = await get(this.roomRef);
+                                const rData = rSnap.val();
+                                updateHudLabels(currentUser.displayName || currentUser.username, (rData && rData.guest && rData.guest.name) || 'Player 2');
 
                                 if (typeof js_to_rust_pvp === 'function') {
                                     js_to_rust_pvp(JSON.stringify({
                                         type: 'ROOM_JOINED',
                                         room_code: code,
                                         role: 'host',
-                                        player_name: 'Player 1 (Blue)',
-                                        opponent_name: 'Player 2 (Red)'
+                                        player_name: currentUser.displayName || currentUser.username,
+                                        opponent_name: (rData && rData.guest && rData.guest.name) || 'Player 2'
                                     }));
                                 }
 
@@ -906,12 +1316,9 @@
             listenRoom() {
                 if (!this.roomRef) return;
                 onValue(this.roomRef, (snapshot) => {
-                    if (!snapshot.exists()) {
-                        return;
-                    }
+                    if (!snapshot.exists()) return;
                     const room = snapshot.val();
 
-                    // Update HUD labels and HP
                     if (room.host && room.guest) {
                         if (pvpState.role === 'host') {
                             showRoomBadge(`Phòng: ${room.code} vs ${room.guest.name}`);
@@ -923,7 +1330,7 @@
                         updateHp(room.host.hp, room.guest.hp);
                     }
 
-                    // Ready check: when both players ready, transition to 'battle'
+                    // Ready check
                     if (room.host && room.guest && room.host.ready && room.guest.ready && room.state !== 'battle') {
                         if (pvpState.role === 'host') {
                             update(this.roomRef, { state: 'battle' });
@@ -966,7 +1373,7 @@
 
             async onBattleFinished(winnerRole, survivors) {
                 if (!this.roomRef || !pvpState.role) return;
-                if (pvpState.role !== 'host') return; // Host acts as referee for health damage
+                if (pvpState.role !== 'host') return; // Host acts as authoritative referee
 
                 const snap = await get(this.roomRef);
                 if (!snap.exists()) return;
@@ -983,15 +1390,39 @@
                 }
 
                 if (hostHp <= 0 || guestHp <= 0) {
-                    const winner = hostHp > 0 ? room.host.name : room.guest.name;
+                    const winnerUser = hostHp > 0 ? room.host.id : room.guest.id;
+                    const loserUser = hostHp > 0 ? room.guest.id : room.host.id;
+                    const winnerName = hostHp > 0 ? room.host.name : room.guest.name;
+
                     await update(this.roomRef, {
                         state: 'ended',
                         'host/hp': hostHp,
                         'guest/hp': guestHp,
-                        winner: winner
+                        winner: winnerName
                     });
+
+                    // Record match in OCI SQLite/JSON Database
+                    try {
+                        await fetch('/api/match/record', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                matchId: room.matchId || pvpState.matchId,
+                                host: room.host.id,
+                                guest: room.guest.id,
+                                winner: winnerUser,
+                                loser: loserUser,
+                                rounds: room.round
+                            })
+                        });
+                        console.log('[OCI DATABASE] Match successfully recorded on OCI Free Tier database!');
+                        syncUserProfileFromOci();
+                    } catch(e) {
+                        console.error('[OCI MATCH RECORD ERROR]', e);
+                    }
+
                     if (typeof js_to_rust_pvp === 'function') {
-                        js_to_rust_pvp(JSON.stringify({ type: 'MATCH_END', winner }));
+                        js_to_rust_pvp(JSON.stringify({ type: 'MATCH_END', winner: winnerName }));
                     }
                 } else {
                     await update(this.roomRef, {
@@ -1039,96 +1470,10 @@
             }
         };
 
-        // ==========================================
-        // WEBSOCKET FALLBACK (DUAL PROVIDER)
-        // ==========================================
-        let ws = null;
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
-            ws = new WebSocket(wsUrl);
-            window._pvp_ws = ws;
-
-            ws.onopen = () => {
-                if (pvpState.provider !== 'firebase') {
-                    pvpState.provider = 'websocket';
-                    updateStatusChip('🟢 Server Online', true);
-                }
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log('[WS INCOMING]', data);
-                    handleServerMessage(data);
-
-                    if (typeof js_to_rust_pvp === 'function') {
-                        js_to_rust_pvp(event.data);
-                    }
-                } catch(e) {
-                    console.error('[WS PARSE ERROR]', e);
-                }
-            };
-
-            ws.onclose = () => {
-                if (pvpState.provider === 'websocket') {
-                    updateStatusChip('🔴 Mất kết nối', false);
-                    setTimeout(connectWebSocket, 3000);
-                }
-            };
-        }
-
-        function handleServerMessage(msg) {
-            switch (msg.type) {
-                case 'ROOM_CREATED':
-                    pvpState.active = true;
-                    pvpState.provider = 'websocket';
-                    pvpState.roomCode = msg.room_code;
-                    pvpState.role = 'host';
-                    showRoomBadge(`Phòng: ${msg.room_code} (Chờ đối thủ...)`);
-                    showMatchHud();
-                    break;
-
-                case 'ROOM_JOINED':
-                    pvpState.active = true;
-                    pvpState.provider = 'websocket';
-                    pvpState.roomCode = msg.room_code;
-                    pvpState.role = msg.role;
-                    showRoomBadge(`Phòng: ${msg.room_code}`);
-                    showMatchHud();
-                    updateHudLabels(msg.player_name, msg.opponent_name);
-                    break;
-
-                case 'OPPONENT_JOINED':
-                    showRoomBadge(`Phòng: ${msg.room_code}`);
-                    updateHudLabels(msg.player_name, msg.opponent_name);
-                    break;
-
-                case 'UPDATE_MATCH_HP':
-                    updateHp(msg.host_hp, msg.guest_hp);
-                    break;
-
-                case 'MATCH_END':
-                    alert(`🏆 Trận đấu kết thúc! Người chiến thắng: ${msg.winner}!`);
-                    break;
-
-                case 'ERROR':
-                    alert(`⚠️ ${msg.message}`);
-                    break;
-            }
-        }
-
-        // ==========================================
-        // UI BUTTON EVENT HANDLERS
-        // ==========================================
+        // UI Controls
         document.getElementById('btn-create-room').onclick = async () => {
-            let handled = false;
             if (fbPvP && fbPvP.available) {
-                handled = await fbPvP.createRoom();
-            }
-            if (!handled && ws && ws.readyState === WebSocket.OPEN) {
-                pvpState.provider = 'websocket';
-                ws.send(JSON.stringify({ type: 'CREATE_ROOM', name: 'Player 1 (Blue)' }));
+                await fbPvP.createRoom();
             }
         };
 
@@ -1138,27 +1483,18 @@
                 alert('Vui lòng nhập mã phòng (4 ký tự)!');
                 return;
             }
-            let handled = false;
             if (fbPvP && fbPvP.available) {
-                handled = await fbPvP.joinRoom(code);
-            }
-            if (!handled && ws && ws.readyState === WebSocket.OPEN) {
-                pvpState.provider = 'websocket';
-                ws.send(JSON.stringify({ type: 'JOIN_ROOM', room_code: code, name: 'Player 2 (Red)' }));
+                await fbPvP.joinRoom(code);
             }
         };
 
         document.getElementById('btn-quick-match').onclick = async () => {
-            let handled = false;
             if (fbPvP && fbPvP.available) {
-                handled = await fbPvP.quickMatch();
-            }
-            if (!handled && ws && ws.readyState === WebSocket.OPEN) {
-                pvpState.provider = 'websocket';
-                ws.send(JSON.stringify({ type: 'QUICK_MATCH' }));
+                await fbPvP.quickMatch();
             }
         };
 
+        // Engine Start
         async function run() {
             try {
                 console.log('[INIT] Khởi chạy Bevy WASM Engine...');
@@ -1169,7 +1505,6 @@
                     loader.style.opacity = '0';
                     setTimeout(() => loader.remove(), 400);
                 }
-                connectWebSocket();
             } catch (err) {
                 const errMsg = (err && (err.message || err.toString())) || "";
                 if (errMsg.includes("Using exceptions for control flow")) {
@@ -1179,7 +1514,6 @@
                         loader.style.opacity = '0';
                         setTimeout(() => loader.remove(), 400);
                     }
-                    connectWebSocket();
                     return;
                 }
 

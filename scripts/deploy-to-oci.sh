@@ -2,9 +2,10 @@
 set -e
 
 # ==============================================================================
-# Script tự động đồng bộ mã nguồn & khởi chạy Game Server lên OCI qua Bastion
+# SCRIPT DEPLOY 3V3 TACTICAL ARENA LÊN OCI ALWAYS FREE TIER (QUA BASTION TUNNEL)
 # ==============================================================================
 
+export PATH="$HOME/.cargo/bin:$PATH"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
@@ -12,7 +13,7 @@ echo "======================================================="
 echo " 🚀 BẮT ĐẦU TRIỂN KHAI 3V3 TACTICAL ARENA LÊN OCI"
 echo "======================================================="
 
-# 1. Biên dịch WASM mới nhất (nếu có thay đổi)
+# 1. Build WASM
 echo "📦 Đang biên dịch bản WebAssembly mới nhất (Release)..."
 cargo build --target wasm32-unknown-unknown --release
 wasm-bindgen --out-dir wasm_dist --target web target/wasm32-unknown-unknown/release/game-free.wasm
@@ -23,14 +24,15 @@ cp -r assets/* wasm_dist/assets/ 2>/dev/null || true
 echo "🛡️ Khởi tạo OCI Bastion Port-Forwarding Session..."
 python3 scripts/bastion_session.py
 
+TUNNEL_CMD=$(cat /tmp/bastion_tunnel_cmd.txt)
 LOCAL_TUNNEL_PORT=2222
-fuser -k ${LOCAL_TUNNEL_PORT}/tcp 2>/dev/null || true
 
-BASTION_CMD=$(cat /tmp/bastion_tunnel_cmd.txt)
 echo "🔗 Đang mở SSH Tunnel qua OCI Bastion..."
-eval "$BASTION_CMD &"
+# Chạy tunnel ngầm
+eval "$TUNNEL_CMD" &
 TUNNEL_PID=$!
 
+# Bắt trap để dọn dẹp tunnel khi script kết thúc
 cleanup() {
     echo "🧹 Dọn dẹp kết nối Bastion Tunnel..."
     kill $TUNNEL_PID 2>/dev/null || true
@@ -56,7 +58,7 @@ rsync -avz -e "ssh -i $HOME/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p ${LOC
     --exclude "node_modules" \
     --exclude ".terraform" \
     --exclude "*.tfstate*" \
-    wasm_dist server.js package.json \
+    wasm_dist server.js db.js package.json \
     ubuntu@127.0.0.1:/opt/game-free/app/
 
 # 4. Khởi động lại Docker container

@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
+const db = require('./db');
 
 const PORT = process.env.PORT || 8080;
 const PUBLIC_DIR = path.join(__dirname, 'wasm_dist');
@@ -20,16 +21,105 @@ const MIME_TYPES = {
     '.d.ts': 'text/plain',
 };
 
-// HTTP Static Server
-const server = http.createServer((req, res) => {
-    let reqPath = req.url.split('?')[0];
+function parseJsonBody(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk;
+            if (body.length > 1e6) {
+                req.destroy();
+                reject(new Error('Payload too large'));
+            }
+        });
+        req.on('end', () => {
+            try {
+                resolve(body ? JSON.parse(body) : {});
+            } catch (e) {
+                reject(e);
+            }
+        });
+        req.on('error', reject);
+    });
+}
+
+function sendJson(res, statusCode, data) {
+    res.writeHead(statusCode, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    });
+    res.end(JSON.stringify(data));
+}
+
+// HTTP Server (Static + REST API)
+const server = http.createServer(async (req, res) => {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        });
+        res.end();
+        return;
+    }
+
+    const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const pathname = urlObj.pathname;
+
+    // ==========================================
+    // REST API FOR OCI DATABASE
+    // ==========================================
+    if (pathname.startsWith('/api/')) {
+        try {
+            if (req.method === 'POST' && pathname === '/api/auth/register') {
+                const body = await parseJsonBody(req);
+                const user = await db.register(body.username, body.password, body.displayName, body.avatar);
+                return sendJson(res, 200, { success: true, user });
+            }
+
+            if (req.method === 'POST' && pathname === '/api/auth/login') {
+                const body = await parseJsonBody(req);
+                const user = await db.login(body.username, body.password);
+                return sendJson(res, 200, { success: true, user });
+            }
+
+            if (req.method === 'GET' && pathname === '/api/user/profile') {
+                const username = urlObj.searchParams.get('username');
+                const user = db.getUser(username);
+                if (!user) {
+                    return sendJson(res, 404, { success: false, message: 'Không tìm thấy người chơi!' });
+                }
+                return sendJson(res, 200, { success: true, user });
+            }
+
+            if (req.method === 'GET' && pathname === '/api/leaderboard') {
+                const list = db.getLeaderboard(20);
+                return sendJson(res, 200, { success: true, leaderboard: list });
+            }
+
+            if (req.method === 'POST' && pathname === '/api/match/record') {
+                const body = await parseJsonBody(req);
+                const result = await db.recordMatch(body.matchId, body.host, body.guest, body.winner, body.rounds);
+                return sendJson(res, 200, { success: true, result });
+            }
+
+            return sendJson(res, 404, { success: false, message: 'API route not found' });
+        } catch (err) {
+            return sendJson(res, 400, { success: false, message: err.message || 'Lỗi xử lý yêu cầu' });
+        }
+    }
+
+    // ==========================================
+    // STATIC FILE SERVING
+    // ==========================================
+    let reqPath = pathname;
     if (reqPath === '/' || reqPath === '') {
         reqPath = '/index.html';
     }
 
     let filePath = path.join(PUBLIC_DIR, reqPath);
-
-    // If requested path does not exist in wasm_dist, check in assets
     if (!fs.existsSync(filePath)) {
         const assetPath = path.join(__dirname, reqPath);
         if (fs.existsSync(assetPath) && fs.statSync(assetPath).isFile()) {
@@ -39,7 +129,7 @@ const server = http.createServer((req, res) => {
 
     fs.stat(filePath, (err, stats) => {
         if (err || !stats.isFile()) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
             res.end(`404 Not Found: ${reqPath}`);
             return;
         }
@@ -58,9 +148,11 @@ const server = http.createServer((req, res) => {
     });
 });
 
-// WebSocket PvP Room Management
+// ==========================================
+// WEBSOCKET FALLBACK SERVER
+// ==========================================
 const wss = new WebSocketServer({ server });
-const rooms = new Map(); // room_code -> RoomState
+const rooms = new Map();
 let quickMatchQueue = null;
 
 function generateRoomCode() {
@@ -148,7 +240,6 @@ wss.on('connection', (ws) => {
                         ready: false,
                     };
 
-                    // Notify Guest
                     ws.send(JSON.stringify({
                         type: 'ROOM_JOINED',
                         room_code: code,
@@ -158,7 +249,6 @@ wss.on('connection', (ws) => {
                         round: room.round,
                     }));
 
-                    // Notify Host
                     room.host.ws.send(JSON.stringify({
                         type: 'OPPONENT_JOINED',
                         room_code: code,
@@ -233,13 +323,11 @@ wss.on('connection', (ws) => {
 
                     console.log(`[PVP SERVER] Room ${room.code} ${currentRole} is READY with ${lineup.length} units.`);
 
-                    // If both players are ready, start the battle phase!
                     if (room.host.ready && room.guest && room.guest.ready) {
                         room.host.ready = false;
                         room.guest.ready = false;
                         room.results.clear();
 
-                        // Send opponent's lineup to each player
                         room.host.ws.send(JSON.stringify({
                             type: 'START_ROUND',
                             round: room.round,
@@ -270,7 +358,6 @@ wss.on('connection', (ws) => {
 
                     room.results.set(currentRole, { winnerRole, survivors });
 
-                    // When both report (or if host reports), calculate damage
                     if (room.results.size >= 1) {
                         const damage = 10 + survivors * 3;
                         if (winnerRole === 'host') {
@@ -279,7 +366,6 @@ wss.on('connection', (ws) => {
                             room.host.hp = Math.max(0, room.host.hp - damage);
                         }
 
-                        // Broadcast HP update
                         broadcastToRoom(room, {
                             type: 'UPDATE_MATCH_HP',
                             host_hp: room.host.hp,
@@ -287,7 +373,6 @@ wss.on('connection', (ws) => {
                             damage_dealt: damage,
                         });
 
-                        // Check match end
                         if (room.host.hp <= 0 || room.guest.hp <= 0) {
                             const winner = room.host.hp > 0 ? room.host.name : room.guest.name;
                             broadcastToRoom(room, {
