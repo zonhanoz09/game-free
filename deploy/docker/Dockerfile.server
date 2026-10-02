@@ -1,11 +1,15 @@
 # Multi-stage production build for Rust Game Server
-FROM rust:1.85-alpine AS builder
+FROM rust:1.88-alpine AS builder
 RUN apk add --no-cache musl-dev
 WORKDIR /build
 
-COPY apps/server/Cargo.toml apps/server/Cargo.lock ./
-COPY apps/server/src ./src
-RUN cargo build --release
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+COPY apps/client/Cargo.toml ./apps/client/Cargo.toml
+RUN mkdir -p apps/client/src && printf 'fn main() {}\n' > apps/client/src/main.rs
+COPY apps/server/Cargo.toml apps/server/Cargo.lock ./apps/server/
+COPY apps/server/src ./apps/server/src
+RUN cargo build --release -p tactical-arena-server
 
 FROM alpine:3.21
 WORKDIR /app

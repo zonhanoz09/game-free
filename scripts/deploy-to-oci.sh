@@ -19,6 +19,8 @@ cargo build -p game-free --target wasm32-unknown-unknown --release
 wasm-bindgen --out-dir dist/wasm --target web target/wasm32-unknown-unknown/release/game-free.wasm
 mkdir -p dist/wasm/assets
 cp -r assets/* dist/wasm/assets/ 2>/dev/null || true
+WASM_VERSION="$(date -u +%Y%m%d%H%M%S)-$(sha256sum dist/wasm/game-free_bg.wasm | cut -c1-8)"
+sed -i -E "s#\./game-free\.js(\?v=[^']*)?'#./game-free.js?v=${WASM_VERSION}'#" dist/wasm/index.html
 
 # 2. Tạo OCI Bastion Session & Thiết lập SSH Tunnel
 echo "🛡️ Khởi tạo OCI Bastion Port-Forwarding Session..."
@@ -54,13 +56,20 @@ done
 echo "📤 Đang đồng bộ files lên OCI Private Instance (10.0.1.60)..."
 SSH_OPTS=(-i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p "${LOCAL_TUNNEL_PORT}")
 ssh "${SSH_OPTS[@]}" ubuntu@127.0.0.1 \
-    "mkdir -p /opt/game-free/app/dist/wasm /opt/game-free/app/apps/server /opt/game-free/app/deploy/docker"
+    "mkdir -p /opt/game-free/app/dist/wasm /opt/game-free/app/apps/client /opt/game-free/app/apps/server /opt/game-free/app/deploy/docker"
 rsync -avz -e "ssh ${SSH_OPTS[*]}" \
     --exclude ".git" --exclude "target" \
     dist/wasm/ ubuntu@127.0.0.1:/opt/game-free/app/dist/wasm/
 rsync -avz -e "ssh ${SSH_OPTS[*]}" \
     --exclude ".git" --exclude "target" \
     apps/server/ ubuntu@127.0.0.1:/opt/game-free/app/apps/server/
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    apps/client/Cargo.toml ubuntu@127.0.0.1:/opt/game-free/app/apps/client/Cargo.toml
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    Cargo.toml Cargo.lock ubuntu@127.0.0.1:/opt/game-free/app/
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    --exclude ".git" --exclude "target" \
+    crates/ ubuntu@127.0.0.1:/opt/game-free/app/crates/
 rsync -avz -e "ssh ${SSH_OPTS[*]}" \
     deploy/docker/Dockerfile.server ubuntu@127.0.0.1:/opt/game-free/app/deploy/docker/
 
@@ -72,7 +81,7 @@ ssh "${SSH_OPTS[@]}" \
         sudo docker stop tactical-arena-pvp 2>/dev/null || true && \
         sudo docker rm tactical-arena-pvp 2>/dev/null || true && \
         echo '📦 Đang build Rust Server Docker image...' && \
-        sudo docker build -t tactical-arena-rust:latest -f deploy/docker/Dockerfile.server . && \
+        sudo docker build --no-cache -t tactical-arena-rust:latest -f deploy/docker/Dockerfile.server . && \
         sudo docker run -d \
             --name tactical-arena-pvp \
             --restart always \

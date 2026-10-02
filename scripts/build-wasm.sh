@@ -9,6 +9,12 @@ rm -rf dist/wasm/assets
 mkdir -p dist/wasm/assets/audio dist/wasm/assets/fonts dist/wasm/assets/textures
 wasm-bindgen --out-dir dist/wasm --target web target/wasm32-unknown-unknown/release/game-free.wasm
 
+# Keep the HTML import and the generated wasm-bindgen glue in the same cache
+# version. Without this, a browser can combine an old JS glue file with a new
+# WASM binary after a deployment.
+WASM_VERSION="$(date -u +%Y%m%d%H%M%S)-$(sha256sum dist/wasm/game-free_bg.wasm | cut -c1-8)"
+sed -i -E "s#\./game-free\.js(\?v=[^']*)?'#./game-free.js?v=${WASM_VERSION}'#" dist/wasm/index.html
+
 # Only copy assets referenced by the WASM client. Source models and alternate
 # JPG previews remain in assets/ but are not part of the initial web payload.
 cp assets/audio/*.wav dist/wasm/assets/audio/

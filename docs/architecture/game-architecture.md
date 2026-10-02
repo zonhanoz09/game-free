@@ -9,11 +9,16 @@ apps/client/                 Bevy client native/WASM
   src/types.rs               GameState, UnitClass, UnitStats, resources
   src/board.rs               Bàn đấu 3x3, hover và vị trí quân
   src/units.rs               Spawn unit, HP/action bars, stat bonus
-  src/battle.rs              ATB, target selection, combat/VFX
-  src/ui.rs                  HUD, shop, bench, placement và result
+  src/battle/                Battle state, turn selection, animations, VFX và outcomes
+  src/ui/                    UI components, setup, placement, input và result
   src/net.rs                 WebSocket bridge và deck sync
 apps/server/                 Axum HTTP/WebSocket dedicated server
-  src/main.rs                Domain services, routes và WebSocket orchestration
+  src/main.rs                Application composition root và route wiring
+  src/models.rs              User/card/deck models, persistence và domain services
+  src/multiplayer.rs         Room, player session và matchmaking state
+  src/api.rs                 REST request DTOs và HTTP handlers
+  src/websocket.rs           WebSocket lifecycle và PvP message handling
+  src/tests.rs               Server domain tests
   src/config.rs              Defaults và clock abstraction cho persistence
 crates/core/                 Hằng số và tiện ích nền
 crates/protocol/             Schema mạng dùng chung
@@ -38,9 +43,10 @@ người chơi có thể đặt tối đa năm unit trên bàn và dùng bench �
 ## Web client và server
 
 Server Axum vừa phục vụ API tài khoản/collection/deck, vừa chạy WebSocket PvP,
-và fallback static tới `dist/wasm`. Dữ liệu người dùng hiện được serialize theo
-schema domain trong server; các giá trị mặc định và thời gian được gom vào
-`config.rs`; protocol dùng `serde` JSON.
+và fallback static tới `dist/wasm`. Composition root chỉ lắp route và state;
+models, REST API, multiplayer và WebSocket nằm ở các module riêng. Dữ liệu
+người dùng hiện được serialize theo schema domain trong server; các giá trị mặc
+định và thời gian được gom vào `config.rs`; protocol dùng `serde` JSON.
 
 ## Nguyên tắc tổ chức code
 

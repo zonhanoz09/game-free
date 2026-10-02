@@ -120,7 +120,6 @@ pub fn pvp_network_system(
         if !q.is_empty() {
             messages.append(&mut *q);
         }
-
     }
 
     for raw in messages {
@@ -183,7 +182,6 @@ pub fn pvp_network_system(
                                 );
                             }
                         }
-
                     }
                 }
                 PvpMessage::RoomJoined {
