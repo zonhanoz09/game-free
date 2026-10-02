@@ -1,0 +1,22 @@
+# Multi-stage production build for Rust Game Server
+FROM rust:1.85-alpine AS builder
+RUN apk add --no-cache musl-dev
+WORKDIR /build
+
+COPY Cargo.toml Cargo.lock ./
+COPY apps/server/Cargo.toml apps/server/Cargo.toml
+COPY crates crates
+COPY apps/server/src ./apps/server/src
+RUN cargo build -p tactical-arena-server --release
+
+FROM alpine:3.21
+WORKDIR /app
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /build/target/release/tactical-arena-server /usr/local/bin/tactical-arena-server
+
+EXPOSE 8080
+ENV PORT=8080
+ENV RUST_LOG=info
+
+CMD ["tactical-arena-server"]

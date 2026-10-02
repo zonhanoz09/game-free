@@ -1,8 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "client",
-    "server",
+    "apps/client",
+    "apps/server",
+    "crates/core",
+    "crates/protocol",
+    "crates/game_logic",
+    "crates/data_schema",
 ]
 
 [profile.dev.package."*"]

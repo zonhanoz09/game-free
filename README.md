@@ -1,5 +1,30 @@
 # Chiến Thuật 3x3 - Đấu Trường 2D (2D Tactical Auto-Battler)
 
+## Cấu trúc workspace
+
+```text
+apps/client       Bevy client native/WASM
+apps/server       Dedicated HTTP/WebSocket server
+crates/           Các thư viện dùng chung và schema
+assets/           Runtime assets
+data/             Dữ liệu cân bằng raw/generated
+deploy/           Docker, Kubernetes, Terraform và local compose
+dist/wasm         Artifact web được tạo bởi wasm-bindgen
+scripts/          Build/deploy automation
+```
+
+Build WASM và đồng bộ asset:
+
+```bash
+./scripts/build-wasm.sh
+```
+
+Chạy kiểm tra workspace:
+
+```bash
+cargo test --workspace
+```
+
 Game chiến thuật dàn trận tự động xây dựng trên nền tảng **Bevy Engine 0.15 (Rust)** với **sàn đấu 2D (2D Tactical Arena)**, đồ họa nhân vật sprite sắc nét và hệ thống combat thời gian thực (ATB).
 
 ---

@@ -16,9 +16,9 @@ echo "======================================================="
 # 1. Build WASM
 echo "📦 Đang biên dịch bản WebAssembly mới nhất (Release)..."
 cargo build -p game-free --target wasm32-unknown-unknown --release
-wasm-bindgen --out-dir wasm_dist --target web target/wasm32-unknown-unknown/release/game-free.wasm
-mkdir -p wasm_dist/assets
-cp -r assets/* wasm_dist/assets/ 2>/dev/null || true
+wasm-bindgen --out-dir dist/wasm --target web target/wasm32-unknown-unknown/release/game-free.wasm
+mkdir -p dist/wasm/assets
+cp -r assets/* dist/wasm/assets/ 2>/dev/null || true
 
 # 2. Tạo OCI Bastion Session & Thiết lập SSH Tunnel
 echo "🛡️ Khởi tạo OCI Bastion Port-Forwarding Session..."
@@ -55,11 +55,11 @@ echo "📤 Đang đồng bộ files lên OCI Private Instance (10.0.1.60)..."
 rsync -avz -e "ssh -i $HOME/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_PORT}" \
     --exclude ".git" \
     --exclude "target" \
-    --exclude "server/target" \
+    --exclude "apps/server/target" \
     --exclude "node_modules" \
     --exclude ".terraform" \
     --exclude "*.tfstate*" \
-    wasm_dist server Dockerfile \
+    dist/wasm apps/server deploy/docker/Dockerfile.server Cargo.toml Cargo.lock crates \
     ubuntu@127.0.0.1:/opt/game-free/app/
 
 # 4. Build và khởi động Rust WebSocket Server trên OCI
@@ -68,7 +68,7 @@ ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_POR
     ubuntu@127.0.0.1 "
         cd /opt/game-free/app && \
         echo '📦 Đang build Rust Server Docker image...' && \
-        sudo docker build -t tactical-arena-rust:latest -f Dockerfile . && \
+        sudo docker build -t tactical-arena-rust:latest -f deploy/docker/Dockerfile.server . && \
         sudo docker stop tactical-arena-pvp 2>/dev/null || true && \
         sudo docker rm tactical-arena-pvp 2>/dev/null || true && \
         sudo docker run -d \
@@ -77,7 +77,7 @@ ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_POR
             --network game-free_default \
             --network-alias game-server \
             -p 8080:8080 \
-            -v /opt/game-free/app/wasm_dist:/app/wasm_dist \
+            -v /opt/game-free/app/dist/wasm:/app/dist/wasm \
             -v /opt/game-free/app/data:/app/data \
             -w /app \
             tactical-arena-rust:latest && \

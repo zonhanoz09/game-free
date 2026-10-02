@@ -1,0 +1,15 @@
+services:
+  tactical-arena-server:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.server
+    container_name: tactical-arena-pvp
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - RUST_LOG=info
+    volumes:
+      - ../../dist/wasm:/app/dist/wasm
+      - ../../data:/app/data

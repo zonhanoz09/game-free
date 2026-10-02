@@ -27,16 +27,16 @@ fi
 echo "🔍 Kiểm tra kết nối tới OKE Cluster..."
 if ! kubectl cluster-info &> /dev/null; then
     echo "⚠️ Chưa cấu hình Kubeconfig cho OKE cluster!"
-    echo "Vui lòng chạy lệnh sau (lấy từ terraform output trong thư mục terraform/oke):"
+    echo "Vui lòng chạy lệnh sau (lấy từ terraform output trong thư mục deploy/terraform/oke):"
     echo "  oci ce cluster create-kubeconfig --cluster-id <CLUSTER_OCID> --file \$HOME/.kube/config --region <REGION> --token-version 2.0.0 --kube-endpoint PUBLIC_ENDPOINT"
     exit 1
 fi
 echo "✅ Đã kết nối thành công tới OKE Cluster!"
 
 # 3. Đồng bộ Cloudflare Tunnel Token từ Terraform vào K8s Secret (nếu có)
-if [ -d "terraform/oke" ] && [ -f "terraform/oke/terraform.tfstate" ]; then
+if [ -d "deploy/terraform/oke" ] && [ -f "deploy/terraform/oke/terraform.tfstate" ]; then
     echo "🔑 Đang kiểm tra Cloudflare Tunnel Token từ Terraform..."
-    TUNNEL_TOKEN=$(cd terraform/oke && terraform output -raw cloudflare_tunnel_token 2>/dev/null || echo "")
+    TUNNEL_TOKEN=$(cd deploy/terraform/oke && terraform output -raw cloudflare_tunnel_token 2>/dev/null || echo "")
     if [ -n "$TUNNEL_TOKEN" ]; then
         echo "🔒 Đang tạo/cập nhật Kubernetes Secret 'cloudflare-tunnel-secret'..."
         kubectl create secret generic cloudflare-tunnel-secret \
@@ -48,13 +48,13 @@ fi
 # 4. Biên dịch WebAssembly
 echo "📦 Biên dịch WebAssembly mới nhất (Release)..."
 cargo build --target wasm32-unknown-unknown --release
-wasm-bindgen --out-dir wasm_dist --target web target/wasm32-unknown-unknown/release/game-free.wasm
-mkdir -p wasm_dist/assets
-cp -r assets/* wasm_dist/assets/ 2>/dev/null || true
+wasm-bindgen --out-dir dist/wasm --target web target/wasm32-unknown-unknown/release/game-free.wasm
+mkdir -p dist/wasm/assets
+cp -r assets/* dist/wasm/assets/ 2>/dev/null || true
 
 # 5. Áp dụng Kubernetes Manifests
 echo "🚀 Đang triển khai Pods game, Service ClusterIP nội bộ và Cloudflare Tunnel Daemon..."
-kubectl apply -f k8s/
+kubectl apply -f deploy/k8s/
 
 echo ""
 echo "⏳ Đang kiểm tra trạng thái Pods trong cụm OKE..."
@@ -62,8 +62,8 @@ kubectl rollout status deployment/tactical-arena-pvp --timeout=120s || true
 kubectl rollout status deployment/cloudflared --timeout=120s || true
 
 GAME_URL=""
-if [ -d "terraform/oke" ] && [ -f "terraform/oke/terraform.tfstate" ]; then
-    GAME_URL=$(cd terraform/oke && terraform output -raw game_url 2>/dev/null || echo "")
+if [ -d "deploy/terraform/oke" ] && [ -f "deploy/terraform/oke/terraform.tfstate" ]; then
+    GAME_URL=$(cd deploy/terraform/oke && terraform output -raw game_url 2>/dev/null || echo "")
 fi
 
 echo ""

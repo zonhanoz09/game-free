@@ -2108,6 +2108,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "game-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "game-data-schema"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "game-free"
 version = "0.1.0"
 dependencies = [
@@ -2117,6 +2131,20 @@ dependencies = [
  "serde",
  "serde_json",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "game-logic"
+version = "0.1.0"
+dependencies = [
+ "game-core",
+]
+
+[[package]]
+name = "game-protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

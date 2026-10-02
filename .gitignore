@@ -8,14 +8,14 @@
 # ==============================================================================
 # 2. WEBASSEMBLY (WASM) COMPILED BINARIES
 # ==============================================================================
-# Bỏ qua các file nhị phân lớn do wasm-bindgen sinh ra trong wasm_dist
-wasm_dist/*.wasm
-wasm_dist/*.wasm.d.ts
-wasm_dist/assets/
+# Bỏ qua các file nhị phân lớn do wasm-bindgen sinh ra trong dist/wasm
+dist/wasm/*.wasm
+dist/wasm/*.wasm.d.ts
+dist/wasm/assets/
 # Giữ lại mã HTML/JS giao diện web
-!wasm_dist/index.html
-!wasm_dist/game-free.js
-!wasm_dist/game-free.d.ts
+!dist/wasm/index.html
+!dist/wasm/game-free.js
+!dist/wasm/game-free.d.ts
 
 # ==============================================================================
 # 3. NODE.JS & RUNTIME
@@ -71,5 +71,5 @@ Thumbs.db
 *.swp
 *.swo
 *~
-server/target/
+apps/server/target/
 rust_server.log
