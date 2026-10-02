@@ -215,7 +215,9 @@ pub fn auto_star_fusion_system(
             }
 
             for (e, _, _) in star1_units.iter().take(3) {
-                commands.entity(*e).despawn_recursive();
+                if let Some(e_cmd) = commands.get_entity(*e) {
+                    e_cmd.despawn_recursive();
+                }
             }
 
             if let Some(g) = keep_grid {
@@ -266,7 +268,9 @@ pub fn auto_star_fusion_system(
             }
 
             for (e, _, _) in star2_units.iter().take(3) {
-                commands.entity(*e).despawn_recursive();
+                if let Some(e_cmd) = commands.get_entity(*e) {
+                    e_cmd.despawn_recursive();
+                }
             }
 
             if let Some(g) = keep_grid {

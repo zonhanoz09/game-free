@@ -9,6 +9,7 @@ Tài liệu này ghi lại các giai đoạn phát triển chiến lược để
 
 | Giai Đoạn | Tên Mục Tiêu | Trạng Thái | Mô Tả Trọng Tâm |
 | :---: | :--- | :---: | :--- |
+| **Online PvP** | **Đấu Online 1v1 (PvP) & Web Browser Deployment** | 🟢 **Hoàn thành** | Chơi trực tiếp trên trình duyệt Web (WASM), phòng đấu đối kháng 1v1 (Room Code), đồng bộ đội hình thời gian thực qua WebSocket, Docker container sẵn sàng deploy VPS. |
 | **Giai đoạn 1** | **Cửa Hàng Ngẫu Nhiên & Hàng Ghế Dự Bị** | 🟢 **Hoàn thành** | 4 thẻ bài Rolling Shop (2G/3G), Hàng ghế dự bị (Bench 6 ô), mua/bán/chuyển quân, ghép sao tự động trên cả sàn và ghế. |
 | **Giai đoạn 2** | **Hệ Thống Trang Bị & Cổ Vật (Items & Relics)** | ⚪ Chưa bắt đầu | Rơi hòm đồ sau boss/round, trang bị cơ bản (+ATK, Giáp phản đòn, Hút máu, Nạp mana), kho đồ và gắn trang bị cho tướng. |
 | **Giai đoạn 3** | **Combat Chiều Sâu (Buff/Debuff) & Bảng DPS Meter** | ⚪ Chưa bắt đầu | Trạng thái Stun (choáng), Burn/Poison (rút máu), Taunt (khiêu khích). Bảng thống kê sát thương/hồi phục sau round đấu. |
@@ -18,6 +19,25 @@ Tài liệu này ghi lại các giai đoạn phát triển chiến lược để
 ---
 
 ## 📋 Chi Tiết Từng Giai Đoạn
+
+### 🟢 Online PvP & Web Browser Deployment (Chơi Trực Tuyến & Máy Chủ) - [ĐÃ HOÀN THÀNH]
+- [x] **Biên dịch WebAssembly (WASM)**:
+  - Tối ưu Bevy 0.15 chạy hoàn hảo trên nền tảng Web (`wasm32-unknown-unknown`) với `WebGL2` / `WebGPU`.
+  - Cấu hình tự động flag `getrandom_backend="wasm_js"` và `wasm-bindgen-cli`.
+- [x] **Đấu Đối Kháng Trực Tuyến 1v1 (Player vs Player)**:
+  - Hệ thống phòng riêng biệt (Room Code 4 ký tự ngẫu nhiên: ví dụ `A9X2`, `RA7F`).
+  - Hỗ trợ Ghép trận nhanh (Quick Match) tự động bắt cặp người chơi.
+  - Giao diện thanh máu đối kháng (100 HP vs 100 HP), hiển thị Blue Host vs Red Challenger.
+  - Đồng bộ hoá thời gian thực: Cả 2 người chơi chuẩn bị đội hình, bấm Khoá / Sẵn sàng, máy chủ WebSocket trao đổi đội hình (vị trí, cấp sao, class) và bắt đầu trận đấu cùng lúc!
+  - Tính toán sát thương sau mỗi hiệp đấu (5 sát thương gốc + 2 sát thương cho mỗi tướng sống sót), trừ máu đối phương và chuyển vòng tiếp theo cho đến khi có người thắng cuộc.
+- [x] **WebSocket Server & Web Client (`server.js`)**:
+  - Máy chủ WebSocket chuyên dụng tích hợp HTTP server phục vụ trực tiếp file tĩnh WASM và assets.
+  - Cơ chế tự động kết nối lại khi mất mạng, xử lý ngắt kết nối an toàn.
+- [x] **Triển Khai Máy Chủ (Docker & VPS)**:
+  - `Dockerfile` siêu nhẹ (Node.js Alpine) chứa sẵn gói bundle WASM và WebSocket server.
+  - `docker-compose.yml` hỗ trợ khởi chạy 1 lệnh duy nhất: `docker compose up -d` trên bất kỳ VPS nào (port 8080).
+
+---
 
 ### 🟢 Giai Đoạn 1: Cửa Hàng Ngẫu Nhiên & Hàng Ghế Dự Bị (Auto-Battler Core) - [ĐÃ HOÀN THÀNH]
 - [x] **Hàng ghế dự bị 2D (Reserve Bench 6 ô)**:

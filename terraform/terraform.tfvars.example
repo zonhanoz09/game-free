@@ -1,0 +1,28 @@
+# ==============================================================================
+# 1. ORACLE CLOUD INFRASTRUCTURE (OCI) CREDENTIALS
+# ==============================================================================
+# OCID của Tenancy, User và Compartment trên OCI Console
+tenancy_ocid        = "ocid1.tenancy.oc1..your_tenancy_ocid_here"
+user_ocid           = "ocid1.user.oc1..your_user_ocid_here"
+compartment_ocid    = "ocid1.tenancy.oc1..your_compartment_ocid_here"
+
+# Authentication OCI (API Key)
+fingerprint         = "your_api_key_fingerprint_here"
+private_key_path    = "~/.ssh/your_oci_api_key.pem"
+region              = "ap-singapore-1"
+
+# Cấu hình máy ảo OCI Always Free Tier (ARM Ampere A1):
+instance_shape         = "VM.Standard.A1.Flex"
+instance_ocpus         = 2
+instance_memory_in_gbs = 12
+
+# Đường dẫn SSH Public Key cá nhân:
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# ==============================================================================
+# 2. CLOUDFLARE CONFIGURATION
+# ==============================================================================
+cloudflare_api_token    = "your_cloudflare_api_token_here"
+cloudflare_zone_id      = "your_cloudflare_zone_id_here"
+subdomain               = "game.annhan.me"
+enable_cloudflare_proxy = true

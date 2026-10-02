@@ -1,0 +1,74 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - git
+  - iptables-persistent
+
+write_files:
+  - path: /opt/game-free/docker-compose.yml
+    permissions: '0644'
+    content: |
+      services:
+        game-server:
+          image: node:20-alpine
+          container_name: tactical-arena-pvp
+          restart: always
+          working_dir: /app
+          expose:
+            - "8080"
+          environment:
+            - PORT=8080
+            - NODE_ENV=production
+          volumes:
+            - /opt/game-free/app:/app
+          command: ["node", "server.js"]
+
+        cloudflared:
+          image: cloudflare/cloudflared:latest
+          container_name: cloudflared-tunnel
+          restart: always
+          command: tunnel --no-autoupdate run --token eyJhIjoiYThjMzczZmE3MTAwM2Y3MTE4MTRlMDFjN2IyODg2OTQiLCJ0IjoiMjk0M2RiMzAtMWMxYy00NDE2LTg1MjMtZjBlNDMyNzA2MjRmIiwicyI6IlkyTXpNelJqTnpJdFpHSTFOeTAwWkRReUxXRmxNamd0T1dZNFltRTVaVEExWkRReiJ9
+          depends_on:
+            - game-server
+
+  - path: /etc/systemd/system/game-arena.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=3v3 Tactical Arena Auto-Battler Game Server
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/game-free
+      ExecStart=/usr/bin/docker compose up -d
+      ExecStop=/usr/bin/docker compose down
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+
+  # 2. Cài đặt Docker Official
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - apt-get update -y
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  # 3. Chuẩn bị thư mục ứng dụng
+  - mkdir -p /opt/game-free/app
+  - chown -R ubuntu:ubuntu /opt/game-free
+
+  # 4. Enable service
+  - systemctl enable game-arena.service

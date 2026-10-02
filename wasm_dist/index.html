@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3v3 Tactical Arena - Online PvP Auto-Battler</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            font-family: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #top-bar {
+            width: 100%;
+            max-width: 1280px;
+            background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.85) 100%);
+            border-bottom: 2px solid #334155;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .title-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #38bdf8;
+            letter-spacing: 0.5px;
+        }
+
+        .pvp-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button.btn {
+            background: #1e293b;
+            color: #f1f5f9;
+            border: 1px solid #475569;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.15s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button.btn:hover {
+            background: #334155;
+            border-color: #38bdf8;
+            color: #38bdf8;
+            transform: translateY(-1px);
+        }
+
+        button.btn-primary {
+            background: #2563eb;
+            border-color: #3b82f6;
+        }
+
+        button.btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #60a5fa;
+            color: #ffffff;
+        }
+
+        input.room-input {
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #38bdf8;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            width: 100px;
+            text-align: center;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        input.room-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+        }
+
+        .match-hud {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #0f172a;
+            padding: 4px 14px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .player-hp-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .hp-bar-bg {
+            width: 90px;
+            height: 10px;
+            background: #334155;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+
+        .hp-bar-fill-blue {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb, #38bdf8);
+            transition: width 0.3s ease;
+        }
+
+        .hp-bar-fill-red {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444, #f87171);
+            transition: width 0.3s ease;
+        }
+
+        .status-chip {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+        }
+
+        .status-chip.connected {
+            color: #4ade80;
+            border-color: #22c55e;
+        }
+
+        #canvas-wrapper {
+            position: relative;
+            width: 100vw;
+            height: calc(100vh - 54px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #050811;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 1280px;
+            aspect-ratio: 16 / 9;
+            object-fit: contain;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+            border-radius: 4px;
+        }
+
+        #loading-screen {
+            position: absolute;
+            inset: 0;
+            background: #0b0f19;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            transition: opacity 0.5s ease;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #1e293b;
+            border-top: 4px solid #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    
+        button, input, select, textarea {
+            font-family: inherit;
+        }
+
+        #guide-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        #guide-card {
+            background: linear-gradient(180deg, #111827 0%, #0b0f19 100%);
+            border: 1.5px solid #334155;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 840px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.2);
+            overflow: hidden;
+            animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.92); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .guide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 22px;
+            border-bottom: 1px solid #1e293b;
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .guide-header h2 {
+            font-size: 1.15rem;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .guide-close-btn {
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: #94a3b8;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.15s;
+        }
+
+        .guide-close-btn:hover {
+            background: #ef4444;
+            color: #fff;
+            border-color: #f87171;
+        }
+
+        .guide-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .guide-section {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 14px 18px;
+        }
+
+        .guide-section-title {
+            color: #facc15;
+            font-weight: 700;
+            font-size: 0.98rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hotkey-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 10px;
+        }
+
+        .hotkey-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1e293b;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.86rem;
+            border: 1px solid #334155;
+        }
+
+        .key-badge {
+            background: #0f172a;
+            border: 1.5px solid #64748b;
+            color: #38bdf8;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 0 #334155;
+            flex-shrink: 0;
+        }
+
+        .synergy-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 10px;
+        }
+
+        .synergy-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .synergy-card strong {
+            color: #38bdf8;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .guide-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding: 12px 22px;
+            border-top: 1px solid #1e293b;
+            background: rgba(15, 23, 42, 0.85);
+        }
+    </style>
+    <script>
+        // Filter out Winit intentional control-flow exception on Web
+        window.addEventListener('error', function(event) {
+            if (event.message && event.message.includes("Using exceptions for control flow")) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return true;
+            }
+        });
+        window.addEventListener('unhandledrejection', function(event) {
+            const reason = event.reason;
+            const msg = (reason && (reason.message || reason.toString())) || "";
+            if (msg.includes("Using exceptions for control flow")) {
+                event.preventDefault();
+            }
+        });
+
+        // Global callbacks required by WebAssembly
+        window.rust_to_js_pvp = function(msg) {
+            console.log('[RUST -> JS]', msg);
+            if (window._pvp_ws && window._pvp_ws.readyState === WebSocket.OPEN) {
+                window._pvp_ws.send(msg);
+            }
+        };
+
+        window.js_play_sound = function(path) {
+            try {
+                const audio = new Audio('/' + path);
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+            } catch(e) {}
+        };
+    </script>
+</head>
+<body>
+    <div id="top-bar">
+        <div class="title-badge">
+            <span>⚔️</span>
+            <span>3v3 Tactical Arena</span>
+            <span id="room-badge" style="display:none; color: #facc15; font-size: 0.9rem; margin-left: 8px;"></span>
+        </div>
+
+        <div class="match-hud" id="match-hud" style="display: none;">
+            <div class="player-hp-box">
+                <span id="player-label" style="color: #60a5fa; font-weight: bold;">Bạn (100 HP)</span>
+                <div class="hp-bar-bg"><div id="player-hp-bar" class="hp-bar-fill-blue"></div></div>
+            </div>
+            <span style="font-weight: bold; color: #64748b;">VS</span>
+            <div class="player-hp-box">
+                <span id="opponent-label" style="color: #f87171; font-weight: bold;">Đối thủ (100 HP)</span>
+                <div class="hp-bar-bg"><div id="opponent-hp-bar" class="hp-bar-fill-red"></div></div>
+            </div>
+        </div>
+
+        <div class="pvp-controls">
+            <span id="conn-status" class="status-chip">Đang kết nối...</span>
+            <button id="btn-create-room" class="btn btn-primary">➕ Tạo Phòng</button>
+            <input id="room-code-input" class="room-input" placeholder="Mã..." maxlength="4" />
+            <button id="btn-join-room" class="btn">🚪 Vào</button>
+                        <button id="btn-guide" class="btn" style="background:#2563eb; border-color:#3b82f6; font-weight:700;">📖 Hướng Dẫn [H]</button>
+            <button id="btn-quick-match" class="btn">⚡ Ghép Nhanh</button>
+        </div>
+    </div>
+
+    
+    <!-- Modal Popup Hướng Dẫn -->
+    <div id="guide-modal">
+        <div id="guide-card">
+            <div class="guide-header">
+                <h2>⚔️ HƯỚNG DẪN CHIẾN ĐẤU & LUẬT CHƠI (AUTO-BATTLER)</h2>
+                <button class="guide-close-btn" id="btn-close-guide" title="Đóng (Esc)">✕</button>
+            </div>
+            <div class="guide-body">
+                <!-- Section: Phím Tắt -->
+                <div class="guide-section">
+                    <div class="guide-section-title">⌨️ DANH SÁCH PHÍM TẮT NHANH (SHORTCUTS)</div>
+                    <div class="hotkey-grid">
+                        <div class="hotkey-item"><span class="key-badge">1 - 4</span><span>Mua nhanh thẻ tướng Shop 1 đến 4</span></div>
+                        <div class="hotkey-item"><span class="key-badge">S</span><span>Bán tướng đang chọn / đang trỏ (+100% Vàng)</span></div>
+                        <div class="hotkey-item"><span class="key-badge">Chuột Phải</span><span>Click chuột phải vào tướng để Bán nhanh</span></div>
+                        <div class="hotkey-item"><span class="key-badge">D</span><span>Đổi mới Cửa Hàng (Reroll) tốn 2 Vàng</span></div>
+                        <div class="hotkey-item"><span class="key-badge">E</span><span>Khóa / Mở khóa Cửa Hàng (Lock Shop)</span></div>
+                        <div class="hotkey-item"><span class="key-badge">Space</span><span>Bắt đầu trận chiến / Khóa bài PvP</span></div>
+                        <div class="hotkey-item"><span class="key-badge">H / F1</span><span>Bật / Tắt cửa sổ Hướng Dẫn này</span></div>
+                        <div class="hotkey-item"><span class="key-badge">Esc</span><span>Đóng popup Hướng Dẫn</span></div>
+                    </div>
+                </div>
+
+                <!-- Section: Luật Chơi Cơ Bản -->
+                <div class="guide-section">
+                    <div class="guide-section-title">🎮 LỐI CHƠI & ĐIỀU KHIỂN ĐỘI HÌNH</div>
+                    <ul style="margin-left: 20px; font-size: 0.88rem; line-height: 1.6; color: #cbd5e1;">
+                        <li><strong>Bố trí quân:</strong> Click chuột trái vào tướng trên Bàn đấu hoặc Hàng dự bị, sau đó click vào ô muốn đặt để Di chuyển hoặc Tráo đổi vị trí.</li>
+                        <li><strong>Giới hạn:</strong> Bàn cờ tối đa <strong>5 tướng xuất trận</strong>, Hàng dự bị tối đa <strong>6 tướng</strong>.</li>
+                        <li><strong>Chiến đấu tự động:</strong> Nhấn <strong>[Space]</strong> để bắt đầu hiệp đấu. Tướng sẽ tự động tìm kẻ địch gần nhất, đánh thường để tích nộ, và tự động tung <strong>Kỹ Năng Tối Thượng (Ultimate)</strong> khi đầy 100 Mana.</li>
+                        <li><strong>Chi tiết tướng:</strong> Rê chuột vào bất kỳ tướng nào trên sàn đấu hoặc hàng dự bị để xem thẻ thông tin chỉ số (Máu, Năng lượng, Sát thương, Giáp, Kỹ năng).</li>
+                    </ul>
+                </div>
+
+                <!-- Section: Ghép Sao -->
+                <div class="guide-section">
+                    <div class="guide-section-title">⭐ CƠ CHẾ NÂNG CẤP SAO (STAR FUSION)</div>
+                    <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
+                        Tự động hợp nhất khi bạn thu thập đủ các tướng cùng loại trên sàn hoặc hàng dự bị:<br>
+                        • <strong>3 Tướng 1★</strong> ➔ Tự động ghép thành <strong>1 Tướng 2★</strong> (+80% Máu, +60% Sát thương, +Giáp).<br>
+                        • <strong>3 Tướng 2★</strong> ➔ Tự động ghép thành <strong>1 Tướng 3★</strong> (Sức mạnh hủy diệt tối đa, hiệu ứng hào quang lấp lánh).
+                    </p>
+                </div>
+
+                <!-- Section: Hệ Tộc & Synergy -->
+                <div class="guide-section">
+                    <div class="guide-section-title">🛡️ HỆ TỘC & HIỆU ỨNG KÍCH HOẠT (SYNERGIES)</div>
+                    <div class="synergy-list">
+                        <div class="synergy-card"><strong>🛡️ Hiệp Sĩ (Knight)</strong>Đỡ đòn hàng đầu. Tăng lượng Giáp và giảm mạnh sát thương gánh chịu cho toàn đội.</div>
+                        <div class="synergy-card"><strong>🏹 Cung Thủ (Archer)</strong>Sát thương vật lý từ xa. Tăng vọt Tốc độ đánh và khả năng bắn xuyên giáp.</div>
+                        <div class="synergy-card"><strong>🔮 Pháp Sư (Mage)</strong>Sát thương phép diện rộng. Đòn đánh hồi mana nhanh, chiêu cuối sấm sét đánh lan toàn hàng.</div>
+                        <div class="synergy-card"><strong>🗡️ Sát Thủ (Assassin)</strong>Đột kích tuyến sau. Lướt ra sau lưng xạ thủ/pháp sư địch với tỷ lệ đòn chí mạng cực cao.</div>
+                        <div class="synergy-card"><strong>✨ Mục Sư (Cleric)</strong>Hỗ trợ thần thánh. Hồi máu liên tục cho đồng đội thấp máu và ban khiên ánh sáng.</div>
+                    </div>
+                </div>
+
+                <!-- Section: PvP Online -->
+                <div class="guide-section">
+                    <div class="guide-section-title">🌐 ĐẤU ONLINE PVP REAL-TIME 1v1</div>
+                    <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
+                        • Bấm <strong>Tạo Phòng</strong> để nhận mã phòng 4 chữ cái (VD: <code>RA7F</code>) gửi cho bạn bè cùng chơi.<br>
+                        • Hoặc nhập mã phòng và bấm <strong>Vào</strong> (hoặc bấm <strong>Ghép Nhanh</strong> để tự bắt cặp).<br>
+                        • Hai bên đều bắt đầu với <strong>100 Máu (HP)</strong>. Khi kết thúc mỗi vòng đấu, người thua sẽ bị trừ máu dựa trên số quân còn sống của người thắng (<code>5 + 2 * số quân sống</code>). Người về 0 HP trước sẽ thất bại!
+                    </p>
+                </div>
+            </div>
+            <div class="guide-footer">
+                <button class="btn btn-primary" id="btn-got-it" style="padding: 8px 24px; font-size: 0.95rem;">Đã Hiểu - Bắt Đầu Chiến!</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <div id="loading-screen">
+            <div class="spinner"></div>
+            <h2 style="color: #f1f5f9; margin-bottom: 8px;">Đang tải 3v3 Tactical Arena...</h2>
+            <p style="color: #94a3b8; font-size: 0.9rem;">Khởi tạo WebAssembly & Tài nguyên đồ họa...</p>
+        </div>
+        <canvas id="bevy-canvas" width="1280" height="720"></canvas>
+    </div>
+
+    <script type="module">
+        import init, { js_to_rust_pvp } from './game-free.js';
+
+        
+        // Guide Modal Logic
+        const guideModal = document.getElementById(guide-modal);
+        const btnGuide = document.getElementById(btn-guide);
+        const btnCloseGuide = document.getElementById(btn-close-guide);
+        const btnGotIt = document.getElementById(btn-got-it);
+
+        function openGuideModal() {
+            guideModal.style.display = flex;
+        }
+
+        function closeGuideModal() {
+            guideModal.style.display = none;
+        }
+
+        function toggleGuideModal() {
+            if (guideModal.style.display === flex) {
+                closeGuideModal();
+            } else {
+                openGuideModal();
+            }
+        }
+
+        btnGuide.addEventListener(click, toggleGuideModal);
+        btnCloseGuide.addEventListener(click, closeGuideModal);
+        btnGotIt.addEventListener(click, closeGuideModal);
+        guideModal.addEventListener(click, (e) => {
+            if (e.target === guideModal) closeGuideModal();
+        });
+
+        window.addEventListener(keydown, (e) => {
+            if (e.key === h || e.key === H || e.key === F1) {
+                toggleGuideModal();
+            } else if (e.key === Escape) {
+                closeGuideModal();
+            }
+        });
+        window.toggle_guide_modal = toggleGuideModal;
+
+        let ws = null;
+        let pvpState = {
+            active: false,
+            roomCode: null,
+            role: null,
+            playerHp: 100,
+            opponentHp: 100,
+            round: 1,
+        };
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            ws = new WebSocket(wsUrl);
+            window._pvp_ws = ws;
+
+            ws.onopen = () => {
+                document.getElementById('conn-status').textContent = '🟢 Server Online';
+                document.getElementById('conn-status').classList.add('connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('[WS INCOMING]', data);
+                    handleServerMessage(data);
+
+                    if (typeof js_to_rust_pvp === 'function') {
+                        js_to_rust_pvp(event.data);
+                    }
+                } catch(e) {
+                    console.error('[WS PARSE ERROR]', e);
+                }
+            };
+
+            ws.onclose = () => {
+                document.getElementById('conn-status').textContent = '🔴 Mất kết nối';
+                document.getElementById('conn-status').classList.remove('connected');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        function handleServerMessage(msg) {
+            switch (msg.type) {
+                case 'ROOM_CREATED':
+                    pvpState.active = true;
+                    pvpState.roomCode = msg.room_code;
+                    pvpState.role = 'host';
+                    showRoomBadge(`Phòng: ${msg.room_code} (Chờ đối thủ...)`);
+                    showMatchHud();
+                    break;
+
+                case 'ROOM_JOINED':
+                    pvpState.active = true;
+                    pvpState.roomCode = msg.room_code;
+                    pvpState.role = msg.role;
+                    showRoomBadge(`Phòng: ${msg.room_code}`);
+                    showMatchHud();
+                    updateHudLabels(msg.player_name, msg.opponent_name);
+                    break;
+
+                case 'OPPONENT_JOINED':
+                    showRoomBadge(`Phòng: ${msg.room_code}`);
+                    updateHudLabels(msg.player_name, msg.opponent_name);
+                    break;
+
+                case 'UPDATE_MATCH_HP':
+                    updateHp(msg.host_hp, msg.guest_hp);
+                    break;
+
+                case 'MATCH_END':
+                    alert(`🏆 Trận đấu kết thúc! Người chiến thắng: ${msg.winner}!`);
+                    break;
+
+                case 'ERROR':
+                    alert(`⚠️ ${msg.message}`);
+                    break;
+            }
+        }
+
+        function showRoomBadge(text) {
+            const badge = document.getElementById('room-badge');
+            badge.style.display = 'inline';
+            badge.textContent = text;
+        }
+
+        function showMatchHud() {
+            document.getElementById('match-hud').style.display = 'flex';
+        }
+
+        function updateHudLabels(p1Name, p2Name) {
+            document.getElementById('player-label').textContent = `${p1Name} (${pvpState.playerHp} HP)`;
+            document.getElementById('opponent-label').textContent = `${p2Name} (${pvpState.opponentHp} HP)`;
+        }
+
+        function updateHp(hostHp, guestHp) {
+            const myHp = pvpState.role === 'host' ? hostHp : guestHp;
+            const oppHp = pvpState.role === 'host' ? guestHp : hostHp;
+            pvpState.playerHp = myHp;
+            pvpState.opponentHp = oppHp;
+
+            document.getElementById('player-hp-bar').style.width = `${Math.max(0, myHp)}%`;
+            document.getElementById('opponent-hp-bar').style.width = `${Math.max(0, oppHp)}%`;
+            document.getElementById('player-label').textContent = `Bạn (${myHp} HP)`;
+            document.getElementById('opponent-label').textContent = `Đối thủ (${oppHp} HP)`;
+        }
+
+        document.getElementById('btn-create-room').onclick = () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'CREATE_ROOM', name: 'Player 1 (Blue)' }));
+            }
+        };
+
+        document.getElementById('btn-join-room').onclick = () => {
+            const code = document.getElementById('room-code-input').value.trim();
+            if (code && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'JOIN_ROOM', room_code: code, name: 'Player 2 (Red)' }));
+            }
+        };
+
+        document.getElementById('btn-quick-match').onclick = () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'QUICK_MATCH' }));
+            }
+        };
+
+        async function run() {
+            try {
+                console.log('[INIT] Khởi chạy Bevy WASM Engine...');
+                await init();
+                console.log('[INIT] Bevy WASM đã nạp thành công!');
+                const loader = document.getElementById('loading-screen');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.remove(), 400);
+                }
+                connectWebSocket();
+            } catch (err) {
+                const errMsg = (err && (err.message || err.toString())) || "";
+                // winit web backend throws this deliberate exception to unwind stack and start requestAnimationFrame loop
+                if (errMsg.includes("Using exceptions for control flow")) {
+                    console.log("[BEVY WINIT] Control-flow exception caught: Game event loop is successfully running!");
+                    const loader = document.getElementById('loading-screen');
+                    if (loader) {
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.remove(), 400);
+                    }
+                    connectWebSocket();
+                    return;
+                }
+
+                console.error('Lỗi khởi tạo WebAssembly thực sự:', err);
+                const loader = document.getElementById('loading-screen');
+                if (loader) {
+                    let stack = err.stack ? `<pre style="font-size:0.75rem; text-align:left; max-width:800px; overflow:auto; margin-top:10px; background:#1e293b; padding:10px; border-radius:6px; color:#f87171;">${err.stack}</pre>` : '';
+                    loader.innerHTML = `
+                        <h3 style="color:#ef4444; margin-bottom:8px;">⚠️ Không thể tải Game trên WebGL/WebGPU</h3>
+                        <p style="color:#cbd5e1; max-width:600px; text-align:center;">${errMsg}</p>
+                        ${stack}
+                        <p style="color:#94a3b8; font-size:0.85rem; margin-top:14px;">Mẹo: Hãy chắc chắn trình duyệt hỗ trợ WebGL2 (vào chrome://gpu để kiểm tra).</p>
+                    `;
+                }
+            }
+        }
+
+        run();
+    </script>
+</body>
+</html>

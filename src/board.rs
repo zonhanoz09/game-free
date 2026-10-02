@@ -434,24 +434,11 @@ pub fn update_tile_visuals(
     hovered: Res<HoveredTile>,
     mut tiles: Query<(&TileEntity, &mut Transform, &Children)>,
     mut bench_tiles: Query<(&BenchSlotEntity, &mut Transform, &Children), Without<TileEntity>>,
-    mut borders: Query<&mut Sprite, (With<TileBorderVisual>, Without<TileCoreVisual>)>,
-    mut cores: Query<&mut Sprite, (With<TileCoreVisual>, Without<TileBorderVisual>)>,
-    mut bench_borders: Query<
-        &mut Sprite,
-        (
-            With<BenchSlotBorderVisual>,
-            Without<BenchSlotCoreVisual>,
-            Without<TileBorderVisual>,
-        ),
-    >,
-    mut bench_cores: Query<
-        &mut Sprite,
-        (
-            With<BenchSlotCoreVisual>,
-            Without<BenchSlotBorderVisual>,
-            Without<TileCoreVisual>,
-        ),
-    >,
+    tile_borders: Query<(), With<TileBorderVisual>>,
+    tile_cores: Query<(), With<TileCoreVisual>>,
+    bench_borders: Query<(), With<BenchSlotBorderVisual>>,
+    bench_cores: Query<(), With<BenchSlotCoreVisual>>,
+    mut sprites: Query<&mut Sprite>,
 ) {
     // 1. Grid Tiles
     for (tile, mut transform, children) in tiles.iter_mut() {
@@ -463,33 +450,39 @@ pub fn update_tile_visuals(
         if is_hovered {
             transform.scale = Vec3::splat(1.05);
             for &child in children.iter() {
-                if let Ok(mut border) = borders.get_mut(child) {
-                    border.color = match tile.faction {
-                        Faction::Player => Color::srgb(0.35, 0.85, 1.0),
-                        Faction::Enemy => Color::srgb(1.0, 0.45, 0.35),
-                    };
-                }
-                if let Ok(mut core) = cores.get_mut(child) {
-                    core.color = match tile.faction {
-                        Faction::Player => Color::srgb(0.12, 0.22, 0.42),
-                        Faction::Enemy => Color::srgb(0.35, 0.12, 0.15),
-                    };
+                if tile_borders.contains(child) {
+                    if let Ok(mut border) = sprites.get_mut(child) {
+                        border.color = match tile.faction {
+                            Faction::Player => Color::srgb(0.35, 0.85, 1.0),
+                            Faction::Enemy => Color::srgb(1.0, 0.45, 0.35),
+                        };
+                    }
+                } else if tile_cores.contains(child) {
+                    if let Ok(mut core) = sprites.get_mut(child) {
+                        core.color = match tile.faction {
+                            Faction::Player => Color::srgb(0.12, 0.22, 0.42),
+                            Faction::Enemy => Color::srgb(0.35, 0.12, 0.15),
+                        };
+                    }
                 }
             }
         } else {
             transform.scale = Vec3::splat(1.0);
             for &child in children.iter() {
-                if let Ok(mut border) = borders.get_mut(child) {
-                    border.color = match tile.faction {
-                        Faction::Player => Color::srgb(0.12, 0.35, 0.65),
-                        Faction::Enemy => Color::srgb(0.65, 0.18, 0.22),
-                    };
-                }
-                if let Ok(mut core) = cores.get_mut(child) {
-                    core.color = match tile.faction {
-                        Faction::Player => Color::srgb(0.07, 0.13, 0.24),
-                        Faction::Enemy => Color::srgb(0.20, 0.08, 0.10),
-                    };
+                if tile_borders.contains(child) {
+                    if let Ok(mut border) = sprites.get_mut(child) {
+                        border.color = match tile.faction {
+                            Faction::Player => Color::srgb(0.12, 0.35, 0.65),
+                            Faction::Enemy => Color::srgb(0.65, 0.18, 0.22),
+                        };
+                    }
+                } else if tile_cores.contains(child) {
+                    if let Ok(mut core) = sprites.get_mut(child) {
+                        core.color = match tile.faction {
+                            Faction::Player => Color::srgb(0.07, 0.13, 0.24),
+                            Faction::Enemy => Color::srgb(0.20, 0.08, 0.10),
+                        };
+                    }
                 }
             }
         }
@@ -501,21 +494,27 @@ pub fn update_tile_visuals(
         if is_hovered {
             transform.scale = Vec3::splat(1.08);
             for &child in children.iter() {
-                if let Ok(mut border) = bench_borders.get_mut(child) {
-                    border.color = Color::srgb(1.0, 0.85, 0.25); // Gold glow
-                }
-                if let Ok(mut core) = bench_cores.get_mut(child) {
-                    core.color = Color::srgb(0.15, 0.25, 0.40);
+                if bench_borders.contains(child) {
+                    if let Ok(mut border) = sprites.get_mut(child) {
+                        border.color = Color::srgb(1.0, 0.85, 0.25); // Gold glow
+                    }
+                } else if bench_cores.contains(child) {
+                    if let Ok(mut core) = sprites.get_mut(child) {
+                        core.color = Color::srgb(0.15, 0.25, 0.40);
+                    }
                 }
             }
         } else {
             transform.scale = Vec3::splat(1.0);
             for &child in children.iter() {
-                if let Ok(mut border) = bench_borders.get_mut(child) {
-                    border.color = Color::srgba(0.25, 0.42, 0.65, 0.80);
-                }
-                if let Ok(mut core) = bench_cores.get_mut(child) {
-                    core.color = Color::srgba(0.09, 0.14, 0.22, 0.90);
+                if bench_borders.contains(child) {
+                    if let Ok(mut border) = sprites.get_mut(child) {
+                        border.color = Color::srgba(0.25, 0.42, 0.65, 0.80);
+                    }
+                } else if bench_cores.contains(child) {
+                    if let Ok(mut core) = sprites.get_mut(child) {
+                        core.color = Color::srgba(0.09, 0.14, 0.22, 0.90);
+                    }
                 }
             }
         }

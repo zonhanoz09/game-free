@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tactical-arena-service
+  labels:
+    app: tactical-arena-pvp
+spec:
+  # Chuyển sang ClusterIP nội bộ, không tạo OCI Load Balancer (bỏ giới hạn 10 Mbps)
+  type: ClusterIP
+  selector:
+    app: tactical-arena-pvp
+  # Giữ session kết nối ổn định cho WebSocket
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+    - name: http-ws
+      port: 8080
+      targetPort: 8080

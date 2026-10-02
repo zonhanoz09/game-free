@@ -1,0 +1,23 @@
+{
+  "name": "game-free",
+  "version": "1.0.0",
+  "description": "Game chiến thuật dàn trận tự động xây dựng trên nền tảng **Bevy Engine 0.15 (Rust)** với **sàn đấu 2D (2D Tactical Arena)**, đồ họa nhân vật sprite sắc nét và hệ thống combat thời gian thực (ATB).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zonhanoz09/game-free.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zonhanoz09/game-free/issues"
+  },
+  "homepage": "https://github.com/zonhanoz09/game-free#readme",
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}

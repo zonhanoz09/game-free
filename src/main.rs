@@ -13,6 +13,7 @@ mod synergies;
 mod types;
 mod ui;
 mod units;
+mod net;
 
 use audio::*;
 use battle::*;
@@ -23,6 +24,7 @@ use synergies::*;
 use types::*;
 use ui::*;
 use units::*;
+use net::*;
 
 fn setup_cameras(mut commands: Commands) {
     info!("[GAME INIT] Game starting up...");
@@ -31,12 +33,18 @@ fn setup_cameras(mut commands: Commands) {
 }
 
 fn main() {
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "3v3 Tactical Arena - 2D Auto-Battler".to_string(),
                 resolution: (1280.0_f32, 720.0_f32).into(),
                 resizable: true,
+                canvas: Some("#bevy-canvas".to_string()),
+                fit_canvas_to_parent: true,
+                prevent_default_event_handling: false,
                 ..default()
             }),
             ..default()
@@ -46,6 +54,7 @@ fn main() {
         .init_resource::<CurrentStage>()
         .init_resource::<SelectedBenchUnit>()
         .init_resource::<SelectedUnitState>()
+        .init_resource::<PvpManager>()
         .init_resource::<SoundManager>()
         .add_event::<PlaySoundEvent>()
         .init_resource::<PlayerEconomy>()
@@ -55,6 +64,7 @@ fn main() {
         .init_resource::<HitStopManager>()
         .init_resource::<CameraShake2d>()
         .init_resource::<GameTextures>()
+        .init_resource::<GameFonts>()
         .insert_resource(ClearColor(Color::srgb(0.04, 0.06, 0.09)))
         // Setup systems
         .add_systems(
@@ -70,6 +80,7 @@ fn main() {
                 update_cursor_hover,
                 update_tile_visuals,
                 update_selection_halo,
+                pvp_network_system,
             ),
         )
         // Group 2: Combat Game Feel (Hit Stop, 2D Camera Shake, VFX, Particles, Recoil, Spotlight, Audio)
@@ -121,6 +132,7 @@ fn main() {
                 update_tooltip_system,
                 update_unit_count_ui,
                 handle_reroll_and_lock_buttons,
+                handle_keyboard_gameplay_shortcuts,
                 auto_star_fusion_system,
             )
                 .run_if(in_state(GameState::Placement)),

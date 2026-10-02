@@ -103,7 +103,10 @@ pub enum InspectSkillField {
 #[derive(Component)]
 pub struct InspectSkill(pub InspectSkillField);
 
-pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
+#[derive(Component)]
+pub struct InspectorRoot;
+
+pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<GameFonts>) {
     // 1. Top Bar UI
     commands
         .spawn((Node {
@@ -295,11 +298,13 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
     // 2. Modern Hero Inspection Card (Right Panel)
     commands
         .spawn((
+            InspectorRoot,
             Node {
                 position_type: PositionType::Absolute,
                 top: Val::Px(82.0),
                 right: Val::Px(16.0),
                 width: Val::Px(285.0),
+                display: Display::None, // Hidden by default, shows only on hover/select!
                 flex_direction: FlexDirection::Column,
                 padding: UiRect::all(Val::Px(14.0)),
                 row_gap: Val::Px(10.0),
@@ -707,22 +712,36 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
     commands
         .spawn((Node {
             position_type: PositionType::Absolute,
-            bottom: Val::Px(140.0),
+            bottom: Val::Px(138.0),
             left: Val::Px(0.0),
             right: Val::Px(0.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(3.0),
             ..default()
         },))
-        .with_child((
-            Text::new(""),
-            TextFont {
-                font_size: 13.5,
-                ..default()
-            },
-            TextColor(Color::srgb(1.0, 0.95, 0.7)),
-            TooltipText,
-        ));
+        .with_children(|b| {
+            b.spawn((
+                Text::new(""),
+                TextFont {
+                    font: fonts.bold.clone(),
+                    font_size: 13.5,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.95, 0.7)),
+                TooltipText,
+            ));
+            b.spawn((
+                Text::new("[1-4] Mua | [S] Bán | [D] Đổi (2G) | [E] Khóa | [Space] Chiến | [H] Hướng Dẫn"),
+                TextFont {
+                    font: fonts.regular.clone(),
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.7, 0.8, 0.9, 0.8)),
+            ));
+        });
 
     // 4. Bottom Bench & Placement Controls
     commands
@@ -771,6 +790,23 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                             ShopCard(i),
                         ))
                         .with_children(|btn| {
+                            // Hotkey badge [1], [2], [3], [4]
+                            btn.spawn((
+                                Text::new(format!("[{}]", i + 1)),
+                                TextFont {
+                                    font: fonts.bold.clone(),
+                                    font_size: 9.5,
+                                    ..default()
+                                },
+                                TextColor(Color::srgba(0.5, 0.8, 1.0, 0.85)),
+                                Node {
+                                    position_type: PositionType::Absolute,
+                                    top: Val::Px(3.0),
+                                    right: Val::Px(5.0),
+                                    ..default()
+                                },
+                            ));
+
                             // Avatar thumbnail
                             btn.spawn((
                                 ImageNode {
@@ -969,13 +1005,14 @@ pub fn update_hero_inspection_system(
     textures: Res<GameTextures>,
     board_units: Query<(&Unit, &GridPos, &UnitStats), Without<DeadUnit>>,
     bench_units: Query<(&Unit, &BenchPos, &UnitStats), Without<DeadUnit>>,
+    mut inspector_root: Query<&mut Node, (With<InspectorRoot>, Without<InspectStatBar>)>,
     mut avatar_query: Query<&mut ImageNode, With<InspectHeroAvatar>>,
     mut header_query: Query<(&InspectHeader, &mut Text, Option<&mut TextColor>)>,
-    mut bar_query: Query<(&InspectStatBar, &mut Node)>,
-    mut text_query: Query<(&InspectStatText, &mut Text), Without<InspectHeader>>,
+    mut bar_query: Query<(&InspectStatBar, &mut Node), Without<InspectorRoot>>,
+    mut text_query: Query<(&InspectStatText, &mut Text), (Without<InspectHeader>, Without<InspectorRoot>)>,
     mut skill_query: Query<
         (&InspectSkill, &mut Text),
-        (Without<InspectHeader>, Without<InspectStatText>),
+        (Without<InspectHeader>, Without<InspectStatText>, Without<InspectorRoot>),
     >,
 ) {
     let mut inspected: Option<(UnitClass, Faction, UnitStats)> = None;
@@ -1010,13 +1047,16 @@ pub fn update_hero_inspection_system(
         }
     }
 
-    let (class, faction, stats) = inspected.unwrap_or_else(|| {
-        (
-            UnitClass::Knight,
-            Faction::Player,
-            UnitClass::Knight.base_stats(),
-        )
-    });
+    let Ok(mut root_node) = inspector_root.get_single_mut() else {
+        return;
+    };
+
+    let Some((class, faction, stats)) = inspected else {
+        root_node.display = Display::None;
+        return;
+    };
+
+    root_node.display = Display::Flex;
 
     if let Ok(mut img) = avatar_query.get_single_mut() {
         img.image = textures.get_unit_texture(class);
@@ -1111,7 +1151,7 @@ pub fn update_shop_cards_ui(
     mut names: Query<(&ShopCardName, &mut Text, &mut TextColor)>,
     mut costs: Query<(&ShopCardCost, &mut Text), Without<ShopCardName>>,
     mut lock_button: Query<(&mut BackgroundColor, &mut BorderColor), (With<ShopLockToggle>, Without<ShopCard>)>,
-    mut lock_text: Query<&mut Text, With<ShopLockText>>,
+    mut lock_text: Query<&mut Text, (With<ShopLockText>, Without<ShopCardName>, Without<ShopCardCost>)>,
 ) {
     for (card, mut bg, mut border) in card_buttons.iter_mut() {
         let idx = card.0;
@@ -1257,11 +1297,12 @@ pub fn handle_start_battle_button(
     mut commands: Commands,
     textures: Res<GameTextures>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    units: Query<(&Unit, &UnitStats), (With<GridPos>, Without<DeadUnit>)>,
+    units: Query<(&Unit, &UnitStats, &GridPos, &StarLevel), Without<DeadUnit>>,
     mut buttons: Query<(&Interaction, &mut BackgroundColor), With<StartBattleButton>>,
     mut next_state: ResMut<NextState<GameState>>,
     current_state: Res<State<GameState>>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut pvp_mgr: ResMut<crate::net::PvpManager>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
@@ -1287,9 +1328,35 @@ pub fn handle_start_battle_button(
 
     if clicked || space_pressed {
         sound_events.send(PlaySoundEvent(SoundEffect::Click));
+        if pvp_mgr.active {
+            let mut lineup = Vec::new();
+            for (u, _, g, s) in units.iter() {
+                if u.faction == Faction::Player {
+                    lineup.push(crate::net::PvpUnitData {
+                        col: g.col,
+                        row: g.row,
+                        class: u.class,
+                        star_level: s.0,
+                    });
+                }
+            }
+            if lineup.is_empty() {
+                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
+                spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
+                spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 1, 2);
+                lineup.push(crate::net::PvpUnitData { col: 2, row: 0, class: UnitClass::Knight, star_level: 1 });
+                lineup.push(crate::net::PvpUnitData { col: 0, row: 1, class: UnitClass::Archer, star_level: 1 });
+                lineup.push(crate::net::PvpUnitData { col: 1, row: 2, class: UnitClass::Assassin, star_level: 1 });
+            }
+            pvp_mgr.is_ready = true;
+            crate::net::send_pvp_message(&crate::net::PvpMessage::PlayerReady { lineup });
+            info!("[PVP] Ready & Locked In! Sent lineup of {} heroes.", pvp_mgr.opponent_lineup.len());
+            return;
+        }
+
         let player_count = units
             .iter()
-            .filter(|(u, _)| u.faction == Faction::Player)
+            .filter(|(u, _, _, _)| u.faction == Faction::Player)
             .count();
         if player_count > 0 {
             info!("[UI] ⚔️ Battle Start triggered! (Active player heroes on board: {})", player_count);
@@ -1394,6 +1461,13 @@ pub fn handle_unit_and_tile_interaction(
     bench_units: Query<(Entity, &Unit, &BenchPos, &StarLevel), Without<DeadUnit>>,
     mut transforms: Query<&mut Transform, With<Unit>>,
 ) {
+    // 0. Auto-prune stale selected entity if despawned
+    if let Some(sel_ent) = selected.entity {
+        if transforms.get(sel_ent).is_err() {
+            selected.clear();
+        }
+    }
+
     // 1. Right Click -> Sell Unit
     if mouse.just_pressed(MouseButton::Right) {
         if let Some(tile) = &hovered.tile {
@@ -1401,7 +1475,7 @@ pub fn handle_unit_and_tile_interaction(
                 if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player) {
                     let refund = refund_amount(unit.class, star.0);
                     economy.gold += refund;
-                    commands.entity(ent).despawn_recursive();
+                    if let Some(e_cmd) = commands.get_entity(ent) { e_cmd.despawn_recursive(); }
                     if selected.entity == Some(ent) {
                         selected.clear();
                     }
@@ -1419,7 +1493,7 @@ pub fn handle_unit_and_tile_interaction(
             if let Some((ent, unit, _, star)) = bench_units.iter().find(|(_, _, b, _)| b.slot == slot) {
                 let refund = refund_amount(unit.class, star.0);
                 economy.gold += refund;
-                commands.entity(ent).despawn_recursive();
+                if let Some(e_cmd) = commands.get_entity(ent) { e_cmd.despawn_recursive(); }
                 if selected.entity == Some(ent) {
                     selected.clear();
                 }
@@ -1464,69 +1538,93 @@ pub fn handle_unit_and_tile_interaction(
                     let sel_loc = selected.location.unwrap();
                     match (sel_loc, target_loc) {
                         (UnitLocation::Board(sel_g), UnitLocation::Board(target_g)) => {
-                            commands.entity(sel_ent).insert(target_g);
-                            commands.entity(target_ent).insert(sel_g);
-
-                            let p1 = grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
-                            let p2 = grid_to_world_pos(sel_g.col, sel_g.row, Faction::Player);
-                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
-                                t.translation.x = p1.x;
-                                t.translation.y = p1.y;
-                                t.translation.z = 10.0 + (target_g.row as f32 * -0.5);
+                            if let Some(mut c1) = commands.get_entity(sel_ent) {
+                                c1.insert(target_g);
                             }
-                            if let Ok(mut t) = transforms.get_mut(target_ent) {
-                                t.translation.x = p2.x;
-                                t.translation.y = p2.y;
-                                t.translation.z = 10.0 + (sel_g.row as f32 * -0.5);
+                            if let Some(mut c2) = commands.get_entity(target_ent) {
+                                c2.insert(sel_g);
+                            }
+                            if true {
+
+                                let p1 = grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
+                                let p2 = grid_to_world_pos(sel_g.col, sel_g.row, Faction::Player);
+                                if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                    t.translation.x = p1.x;
+                                    t.translation.y = p1.y;
+                                    t.translation.z = 10.0 + (target_g.row as f32 * -0.5);
+                                }
+                                if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                    t.translation.x = p2.x;
+                                    t.translation.y = p2.y;
+                                    t.translation.z = 10.0 + (sel_g.row as f32 * -0.5);
+                                }
                             }
                         }
                         (UnitLocation::Bench(sel_s), UnitLocation::Bench(target_s)) => {
-                            commands.entity(sel_ent).insert(BenchPos { slot: target_s });
-                            commands.entity(target_ent).insert(BenchPos { slot: sel_s });
-
-                            let p1 = bench_world_pos(target_s);
-                            let p2 = bench_world_pos(sel_s);
-                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
-                                t.translation.x = p1.x;
-                                t.translation.y = p1.y;
+                            if let Some(mut c1) = commands.get_entity(sel_ent) {
+                                c1.insert(BenchPos { slot: target_s });
                             }
-                            if let Ok(mut t) = transforms.get_mut(target_ent) {
-                                t.translation.x = p2.x;
-                                t.translation.y = p2.y;
+                            if let Some(mut c2) = commands.get_entity(target_ent) {
+                                c2.insert(BenchPos { slot: sel_s });
+                            }
+                            if true {
+
+                                let p1 = bench_world_pos(target_s);
+                                let p2 = bench_world_pos(sel_s);
+                                if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                    t.translation.x = p1.x;
+                                    t.translation.y = p1.y;
+                                }
+                                if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                    t.translation.x = p2.x;
+                                    t.translation.y = p2.y;
+                                }
                             }
                         }
                         (UnitLocation::Board(board_g), UnitLocation::Bench(bench_s)) => {
-                            commands.entity(sel_ent).remove::<GridPos>().insert(BenchPos { slot: bench_s });
-                            commands.entity(target_ent).remove::<BenchPos>().insert(board_g);
-
-                            let p_bench = bench_world_pos(bench_s);
-                            let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
-                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
-                                t.translation.x = p_bench.x;
-                                t.translation.y = p_bench.y;
-                                t.translation.z = 10.0;
+                            if let Some(mut c1) = commands.get_entity(sel_ent) {
+                                c1.remove::<GridPos>().insert(BenchPos { slot: bench_s });
                             }
-                            if let Ok(mut t) = transforms.get_mut(target_ent) {
-                                t.translation.x = p_board.x;
-                                t.translation.y = p_board.y;
-                                t.translation.z = 10.0 + (board_g.row as f32 * -0.5);
+                            if let Some(mut c2) = commands.get_entity(target_ent) {
+                                c2.remove::<BenchPos>().insert(board_g);
+                            }
+                            if true {
+
+                                let p_bench = bench_world_pos(bench_s);
+                                let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
+                                if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                    t.translation.x = p_bench.x;
+                                    t.translation.y = p_bench.y;
+                                    t.translation.z = 10.0;
+                                }
+                                if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                    t.translation.x = p_board.x;
+                                    t.translation.y = p_board.y;
+                                    t.translation.z = 10.0 + (board_g.row as f32 * -0.5);
+                                }
                             }
                         }
                         (UnitLocation::Bench(bench_s), UnitLocation::Board(board_g)) => {
-                            commands.entity(sel_ent).remove::<BenchPos>().insert(board_g);
-                            commands.entity(target_ent).remove::<GridPos>().insert(BenchPos { slot: bench_s });
-
-                            let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
-                            let p_bench = bench_world_pos(bench_s);
-                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
-                                t.translation.x = p_board.x;
-                                t.translation.y = p_board.y;
-                                t.translation.z = 10.0 + (board_g.row as f32 * -0.5);
+                            if let Some(mut c1) = commands.get_entity(sel_ent) {
+                                c1.remove::<BenchPos>().insert(board_g);
                             }
-                            if let Ok(mut t) = transforms.get_mut(target_ent) {
-                                t.translation.x = p_bench.x;
-                                t.translation.y = p_bench.y;
-                                t.translation.z = 10.0;
+                            if let Some(mut c2) = commands.get_entity(target_ent) {
+                                c2.remove::<GridPos>().insert(BenchPos { slot: bench_s });
+                            }
+                            if true {
+
+                                let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
+                                let p_bench = bench_world_pos(bench_s);
+                                if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                    t.translation.x = p_board.x;
+                                    t.translation.y = p_board.y;
+                                    t.translation.z = 10.0 + (board_g.row as f32 * -0.5);
+                                }
+                                if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                    t.translation.x = p_bench.x;
+                                    t.translation.y = p_bench.y;
+                                    t.translation.z = 10.0;
+                                }
                             }
                         }
                     }
@@ -1553,18 +1651,20 @@ pub fn handle_unit_and_tile_interaction(
                             faction: Faction::Player,
                         };
 
-                        if let UnitLocation::Bench(_) = sel_loc {
-                            let active_count = board_units.iter().count();
-                            if active_count >= MAX_PLAYER_UNITS {
-                                info!("[DEPLOY] Board is full (5/5)! Cannot deploy another hero.");
-                                if let Ok(mut txt) = tooltip.get_single_mut() {
-                                    *txt = Text::new("⚠️ Board squad is full (5/5)! Swap with an active hero instead.".to_string());
+                        if let Some(mut c) = commands.get_entity(sel_ent) {
+                            if let UnitLocation::Bench(_) = sel_loc {
+                                let active_count = board_units.iter().count();
+                                if active_count >= MAX_PLAYER_UNITS {
+                                    info!("[DEPLOY] Board is full (5/5)! Cannot deploy another hero.");
+                                    if let Ok(mut txt) = tooltip.get_single_mut() {
+                                        *txt = Text::new("⚠️ Board squad is full (5/5)! Swap with an active hero instead.".to_string());
+                                    }
+                                    return;
                                 }
-                                return;
+                                c.remove::<BenchPos>().insert(target_g);
+                            } else {
+                                c.insert(target_g);
                             }
-                            commands.entity(sel_ent).remove::<BenchPos>().insert(target_g);
-                        } else {
-                            commands.entity(sel_ent).insert(target_g);
                         }
 
                         let p = grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
@@ -1578,10 +1678,12 @@ pub fn handle_unit_and_tile_interaction(
                         info!("[MOVE] Placed hero on Board ({}, {})", target_g.col, target_g.row);
                     }
                 } else if let Some(slot) = hovered.bench_slot {
-                    if let UnitLocation::Board(_) = sel_loc {
-                        commands.entity(sel_ent).remove::<GridPos>().insert(BenchPos { slot });
-                    } else {
-                        commands.entity(sel_ent).insert(BenchPos { slot });
+                    if let Some(mut c) = commands.get_entity(sel_ent) {
+                        if let UnitLocation::Board(_) = sel_loc {
+                            c.remove::<GridPos>().insert(BenchPos { slot });
+                        } else {
+                            c.insert(BenchPos { slot });
+                        }
                     }
 
                     let p = bench_world_pos(slot);
@@ -1679,10 +1781,31 @@ pub fn setup_stage_enemies(
     units: Query<(Entity, &Unit)>,
     mut title_query: Query<&mut Text, (With<StageTitleText>, Without<StageDescText>)>,
     mut desc_query: Query<&mut Text, (With<StageDescText>, Without<StageTitleText>)>,
+    pvp_mgr: Res<crate::net::PvpManager>,
 ) {
+    if pvp_mgr.active {
+        for (entity, unit) in units.iter() {
+            if unit.faction == Faction::Enemy {
+                if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
+            }
+        }
+        for mut text in title_query.iter_mut() {
+            *text = Text::new(format!("⚔️ Online PvP Arena - Round #{}", pvp_mgr.round));
+        }
+        for mut text in desc_query.iter_mut() {
+            *text = Text::new(format!("Room: {} | You: {} ({} HP) vs Opponent: {} ({} HP)", pvp_mgr.room_code, pvp_mgr.player_name, pvp_mgr.player_hp, pvp_mgr.opponent_name, pvp_mgr.opponent_hp));
+        }
+        let player_count = units.iter().filter(|(_, u)| u.faction == Faction::Player).count();
+        if player_count == 0 {
+            spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
+            spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
+            spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 1, 2);
+        }
+        return;
+    }
     for (entity, unit) in units.iter() {
         if unit.faction == Faction::Enemy {
-            commands.entity(entity).despawn_recursive();
+            if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
         }
     }
 
@@ -2015,5 +2138,116 @@ pub fn show_placement_ui_on_placement(
 ) {
     for mut vis in query.iter_mut() {
         *vis = Visibility::Inherited;
+    }
+}
+
+pub fn handle_keyboard_gameplay_shortcuts(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    textures: Res<GameTextures>,
+    mut economy: ResMut<PlayerEconomy>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
+    mut tooltip: Query<&mut Text, With<TooltipText>>,
+    hovered: Res<HoveredTile>,
+    mut selected: ResMut<SelectedUnitState>,
+    board_units: Query<(Entity, &Unit, &GridPos, &StarLevel), Without<DeadUnit>>,
+    bench_units: Query<(Entity, &Unit, &BenchPos, &StarLevel), Without<DeadUnit>>,
+) {
+    // 1. Buy cards with 1, 2, 3, 4 (and Numpad 1-4)
+    let mut buy_slot: Option<usize> = None;
+    if keyboard.just_pressed(KeyCode::Digit1) || keyboard.just_pressed(KeyCode::Numpad1) {
+        buy_slot = Some(0);
+    } else if keyboard.just_pressed(KeyCode::Digit2) || keyboard.just_pressed(KeyCode::Numpad2) {
+        buy_slot = Some(1);
+    } else if keyboard.just_pressed(KeyCode::Digit3) || keyboard.just_pressed(KeyCode::Numpad3) {
+        buy_slot = Some(2);
+    } else if keyboard.just_pressed(KeyCode::Digit4) || keyboard.just_pressed(KeyCode::Numpad4) {
+        buy_slot = Some(3);
+    }
+
+    if let Some(slot_idx) = buy_slot {
+        if let Some(class) = economy.shop_slots[slot_idx] {
+            let cost = unit_cost(class);
+            if economy.gold < cost {
+                info!("[SHOP] Cannot buy {}: Not enough gold (Have: {}G, Need: {}G)", class.name(), economy.gold, cost);
+                if let Ok(mut txt) = tooltip.get_single_mut() {
+                    *txt = Text::new(format!("⚠️ Not enough gold! Need {}G, have {}G.", cost, economy.gold));
+                }
+            } else {
+                let occupied_slots: Vec<usize> = bench_units.iter().map(|(_, _, b, _)| b.slot).collect();
+                let free_slot = (0..BENCH_SLOTS).find(|s| !occupied_slots.contains(s));
+
+                if let Some(slot) = free_slot {
+                    if let Some(bought_class) = economy.buy_slot(slot_idx) {
+                        spawn_bench_unit(
+                            &mut commands,
+                            &textures,
+                            bought_class,
+                            slot,
+                            1,
+                        );
+                        sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                        info!("[SHOP] Recruited {:?} for {}G -> placed on Reserve Bench Slot #{} (Remaining Gold: {}G)", bought_class, cost, slot + 1, economy.gold);
+                        if let Ok(mut txt) = tooltip.get_single_mut() {
+                            *txt = Text::new(format!("Recruited {} for {}G (Placed on Bench #{}) [HotKey #{}]", bought_class.name(), cost, slot + 1, slot_idx + 1));
+                        }
+                    }
+                } else {
+                    info!("[SHOP] Reserve bench is full (6/6 slots occupied)!");
+                    if let Ok(mut txt) = tooltip.get_single_mut() {
+                        *txt = Text::new("⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first.".to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Sell unit with S, Delete, or Backspace
+    if keyboard.just_pressed(KeyCode::KeyS) || keyboard.just_pressed(KeyCode::Delete) || keyboard.just_pressed(KeyCode::Backspace) {
+        let mut target_to_sell: Option<(Entity, UnitClass, i32, u8)> = None;
+
+        // A. Hovered board tile
+        if let Some(tile) = &hovered.tile {
+            if tile.faction == Faction::Player {
+                if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player) {
+                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                }
+            }
+        }
+
+        // B. Hovered bench slot
+        if target_to_sell.is_none() {
+            if let Some(slot) = hovered.bench_slot {
+                if let Some((ent, unit, _, star)) = bench_units.iter().find(|(_, _, b, _)| b.slot == slot) {
+                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                }
+            }
+        }
+
+        // C. Currently selected unit
+        if target_to_sell.is_none() {
+            if let Some(sel_ent) = selected.entity {
+                if let Some((ent, unit, _, star)) = board_units.iter().find(|(e, _, _, _)| *e == sel_ent) {
+                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                } else if let Some((ent, unit, _, star)) = bench_units.iter().find(|(e, _, _, _)| *e == sel_ent) {
+                    target_to_sell = Some((ent, unit.class, refund_amount(unit.class, star.0), star.0));
+                }
+            }
+        }
+
+        if let Some((ent, class, refund, star)) = target_to_sell {
+            economy.gold += refund;
+            if let Some(e_cmd) = commands.get_entity(ent) {
+                e_cmd.despawn_recursive();
+            }
+            if selected.entity == Some(ent) {
+                selected.clear();
+            }
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+            info!("[SELL] Hotkey sold {}★ {} for +{}G -> Total: {}G", star, class.name(), refund, economy.gold);
+            if let Ok(mut txt) = tooltip.get_single_mut() {
+                *txt = Text::new(format!("Sold {}★ {} for +{}G! [Key: S]", star, class.name(), refund));
+            }
+        }
     }
 }

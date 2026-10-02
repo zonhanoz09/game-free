@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use std::sync::mpsc::{Receiver, Sender, channel};
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::mpsc::{channel, Receiver, Sender};
+#[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,15 +38,27 @@ impl SoundEffect {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = window, js_name = js_play_sound)]
+    pub fn js_play_sound(path: &str);
+}
+
 #[derive(Event)]
 pub struct PlaySoundEvent(pub SoundEffect);
 
 #[derive(Resource)]
 pub struct SoundManager {
+    #[cfg(not(target_arch = "wasm32"))]
     sender: Sender<SoundEffect>,
     pub muted: bool,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for SoundManager {
     fn default() -> Self {
         let (sender, receiver): (Sender<SoundEffect>, Receiver<SoundEffect>) = channel();
@@ -66,10 +81,23 @@ impl Default for SoundManager {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+impl Default for SoundManager {
+    fn default() -> Self {
+        Self {
+            muted: false,
+        }
+    }
+}
+
 impl SoundManager {
     pub fn play(&self, sound: SoundEffect) {
         if !self.muted {
+            #[cfg(not(target_arch = "wasm32"))]
             let _ = self.sender.send(sound);
+
+            #[cfg(target_arch = "wasm32")]
+            js_play_sound(sound.file_path());
         }
     }
 }
@@ -100,8 +128,10 @@ mod tests {
             SoundEffect::Victory,
             SoundEffect::Defeat,
         ];
-        for s in sounds {
-            assert!(s.file_path().ends_with(".wav"));
+
+        for sound in sounds {
+            assert!(sound.file_path().ends_with(".wav"));
+            assert!(sound.file_path().starts_with("assets/audio/"));
         }
     }
 }

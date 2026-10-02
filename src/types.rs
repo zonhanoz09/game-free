@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use bevy::prelude::*;
 
 pub const GRID_COLS: usize = 3;
@@ -20,13 +21,13 @@ pub enum GameState {
     Defeat,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Faction {
     Player,
     Enemy,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum UnitClass {
     Knight,
     Archer,
@@ -323,6 +324,32 @@ impl FromWorld for GameTextures {
             mage: asset_server.load("textures/mage.png"),
             assassin: asset_server.load("textures/assassin.png"),
             cleric: asset_server.load("textures/cleric.png"),
+        }
+    }
+}
+
+#[derive(Resource, Clone)]
+pub struct GameFonts {
+    pub regular: Handle<Font>,
+    pub bold: Handle<Font>,
+}
+
+impl FromWorld for GameFonts {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+        Self {
+            regular: asset_server.load("fonts/font.ttf"),
+            bold: asset_server.load("fonts/font_bold.ttf"),
+        }
+    }
+}
+
+impl GameFonts {
+    #[allow(dead_code)]
+    pub fn dummy() -> Self {
+        Self {
+            regular: Handle::default(),
+            bold: Handle::default(),
         }
     }
 }

@@ -1562,6 +1562,7 @@ pub fn check_battle_end(
     mut sound_events: EventWriter<PlaySoundEvent>,
     mut economy: ResMut<PlayerEconomy>,
     mut rng: ResMut<BattleRng>,
+    pvp_mgr: Res<crate::net::PvpManager>,
 ) {
     if *current_state.get() != GameState::Battle {
         return;
@@ -1583,12 +1584,25 @@ pub fn check_battle_end(
         info!("==================== [ROUND VICTORY] ====================");
         info!("[VICTORY] All enemies defeated! Surviving player heroes: {}", alive_player);
         sound_events.send(PlaySoundEvent(SoundEffect::Victory));
+        if pvp_mgr.active {
+            crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+                winner_role: pvp_mgr.role.clone(),
+                player_survivors: alive_player,
+            });
+        }
         economy.apply_round_income(true, &mut rng);
         next_state.set(GameState::Victory);
     } else if alive_player == 0 {
         info!("==================== [ROUND DEFEAT] ====================");
         info!("[DEFEAT] All player heroes were eliminated! Surviving enemies: {}", alive_enemy);
         sound_events.send(PlaySoundEvent(SoundEffect::Defeat));
+        if pvp_mgr.active {
+            let opp_role = if pvp_mgr.role == "host" { "guest" } else { "host" };
+            crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+                winner_role: opp_role.to_string(),
+                player_survivors: 0,
+            });
+        }
         economy.apply_round_income(false, &mut rng);
         next_state.set(GameState::Defeat);
     }

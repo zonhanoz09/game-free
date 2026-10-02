@@ -1,0 +1,34 @@
+# ==============================================================================
+# ORACLE CLOUD INFRASTRUCTURE (OCI) CREDENTIALS
+# ==============================================================================
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaaxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..aaaaaaaayyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+fingerprint      = "12:34:56:78:90:ab:cd:ef:12:34:56:78:90:ab:cd:ef"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "ap-singapore-1"
+
+# ==============================================================================
+# OKE CLUSTER & FREE TIER NODE POOL
+# ==============================================================================
+cluster_name        = "tactical-arena-oke-free"
+k8s_version         = "v1.30.1"
+
+# Cấu hình 2 Worker Nodes ARM Ampere A1 (Hoàn toàn nằm trong Free Tier 4 OCPUs & 24GB RAM):
+node_shape          = "VM.Standard.A1.Flex"
+node_count          = 2
+node_ocpus          = 1
+node_memory_in_gbs  = 6
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# ==============================================================================
+# CLOUDFLARE TUNNEL (BỎ QUA GIỚI HẠN 10 MBPS CỦA OCI LOAD BALANCER)
+# ==============================================================================
+# - cloudflare_api_token: Token có quyền Zone.DNS (Edit) và Cloudflare Tunnel (Edit)
+# - cloudflare_account_id: Copy tại thanh bên phải trên Cloudflare Dashboard
+# - cloudflare_zone_id: Copy tại Overview của tên miền
+cloudflare_api_token   = "your_cloudflare_api_token_here"
+cloudflare_account_id  = "your_cloudflare_account_id_here"
+cloudflare_zone_id     = "your_cloudflare_zone_id_here"
+
+domain_name            = "yourdomain.com"
+subdomain              = "game" # Game sẽ chạy tại: https://game.yourdomain.com
