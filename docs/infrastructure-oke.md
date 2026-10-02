@@ -12,10 +12,10 @@ Hệ thống được chuyển đổi sang **Cloudflare Tunnel (`cloudflared`)**
 
 | File | Chức năng |
 | :--- | :--- |
-| [`service.yaml`](file:///home/annhan/Documents/src/game-free/deploy/k8s/service.yaml) | Service loại **ClusterIP** nội bộ (`tactical-arena-service:8080`), không tốn phí, không tạo OCI Load Balancer bên ngoài. |
-| [`cloudflared.yaml`](file:///home/annhan/Documents/src/game-free/deploy/k8s/cloudflared.yaml) | Chạy 2 Pods `cloudflare/cloudflared` phân tán trên các node OKE, nhận traffic từ Cloudflare Edge và chuyển tiếp tới service game nội bộ. |
-| [`deployment.yaml`](file:///home/annhan/Documents/src/game-free/deploy/k8s/deployment.yaml) | Quản lý 2 Pods game server (có `livenessProbe` và `readinessProbe`). |
-| [`hpa.yaml`](file:///home/annhan/Documents/src/game-free/deploy/k8s/hpa.yaml) | Tự động mở rộng (Autoscale) số lượng Pod từ 2 lên tối đa 4 Pod khi CPU > 70%. |
+| [`service.yaml`](../deploy/k8s/service.yaml) | Service ClusterIP nội bộ (`tactical-arena-service:8080`). |
+| [`cloudflared.yaml`](../deploy/k8s/cloudflared.yaml) | Chạy Cloudflare Tunnel và chuyển tiếp request tới service game. |
+| [`deployment.yaml`](../deploy/k8s/deployment.yaml) | Quản lý game server pods với liveness/readiness probe. |
+| [`hpa.yaml`](../deploy/k8s/hpa.yaml) | Autoscale pod theo CPU. |
 
 ---
 

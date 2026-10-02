@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from email.utils import formatdate
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TFVARS_FILE = os.path.join(PROJECT_DIR, "terraform", "terraform.tfvars")
+TFVARS_FILE = os.path.join(PROJECT_DIR, "deploy", "terraform", "terraform.tfvars")
 
 tfvars = {}
 if os.path.exists(TFVARS_FILE):

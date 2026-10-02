@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 Helper script: Unassign & delete ephemeral public IP from OCI compute instance.
-Reads configuration automatically from terraform/terraform.tfvars.
+Reads configuration automatically from deploy/terraform/terraform.tfvars.
 """
 import subprocess, os, sys, time, base64, urllib.request, ssl, json, hashlib, re
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TFVARS_FILE = os.path.join(PROJECT_DIR, "terraform", "terraform.tfvars")
+TFVARS_FILE = os.path.join(PROJECT_DIR, "deploy", "terraform", "terraform.tfvars")
 
 if not os.path.exists(TFVARS_FILE):
     print(f"❌ Error: {TFVARS_FILE} not found.")

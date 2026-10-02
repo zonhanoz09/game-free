@@ -1,13 +1,14 @@
 # 🚀 Hướng Dẫn Triển Khai Game Lên Oracle Cloud (OCI) Free Tier & Cloudflare Bằng Terraform
 
-Hệ thống được thiết kế để triển khai trò chơi **3v3 Tactical Arena Auto-Battler** lên hạ tầng đám mây miễn phí trọn đời (**Always Free**) của **Oracle Cloud Infrastructure (OCI)** và kết nối với **Cloudflare** (Quản lý DNS, SSL HTTPS miễn phí, CDN & chống DDoS).
+Hệ thống triển khai **Tactical Arena CCG Auto-Battler** lên OCI Always Free và
+Cloudflare. Runtime hiện tại là Rust/Axum server, WebAssembly client và WebSocket PvP.
 
 ---
 
 ## 📌 Tổng Quan Kiến Trúc Hạ Tầng
 - **Oracle Cloud (Always Free)**:
   - Máy ảo **Ampere A1 Flex** (ARM 64-bit): 2 OCPU, 12 GB RAM, 50 GB Boot Volume (Nằm trong hạn mức miễn phí 4 OCPU, 24 GB RAM, 200 GB Storage).
-  - Virtual Cloud Network (VCN), Internet Gateway, Subnet và Security List tự động mở cổng `22` (SSH), `80` (HTTP), `443` (HTTPS), `8080` (Game/WebSocket).
+  - Virtual Cloud Network, subnet và security list phục vụ Bastion/Cloudflare Tunnel.
   - Tự động chạy `cloud-init` cài đặt Docker, mở Firewall nội bộ của Ubuntu (`iptables`) và thiết lập dịch vụ systemd cho container.
 - **Cloudflare**:
   - Tự động tạo bản ghi DNS (Type A) trỏ về Public IP của máy ảo OCI.
@@ -60,9 +61,9 @@ chmod 600 ~/.oci/oci_api_key.pem
 
 ## ⚙️ Bước 3: Cấu Hình Terraform
 
-1. Di chuyển vào thư mục `terraform`:
+1. Di chuyển vào thư mục `deploy/terraform`:
    ```bash
-   cd terraform
+   cd deploy/terraform
    ```
 2. Copy file mẫu để tạo file cấu hình thực tế:
    ```bash
@@ -127,10 +128,10 @@ cd ..
 ```
 
 Script sẽ tự động:
-1. Đọc IP máy chủ từ Terraform state.
+1. Tạo Bastion port-forwarding session tới private instance.
 2. Biên dịch WebAssembly (`wasm32-unknown-unknown`) bản tối ưu Release.
 3. Đồng bộ toàn bộ `apps/server/`, `dist/wasm/`, `assets/` lên máy chủ OCI.
-4. Cài đặt các gói npm và khởi chạy Docker container.
+4. Build image Rust server và khởi chạy Docker container.
 5. In ra đường dẫn truy cập game!
 
 Truy cập ngay: **`https://game.yourdomain.com`** để trải nghiệm game online mượt mà với bạn bè!

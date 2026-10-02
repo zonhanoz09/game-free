@@ -34,7 +34,7 @@
                           │
                           └── ⚔️ [tactical-arena-pvp] Container
                                 ├── Cổng lắng nghe nội bộ: 8080 (expose only, không map host port)
-                                ├── Web Client & Asset Server (Express.js)
+                                ├── Web Client & Asset Server (Axum)
                                 └── Real-time PvP Engine (WebSocket)
 ```
 

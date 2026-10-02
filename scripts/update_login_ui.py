@@ -1,7 +1,7 @@
 import re
 
 def update_login_ui():
-    with open('wasm_dist/index.html', 'r', encoding='utf-8') as f:
+    with open('dist/wasm/index.html', 'r', encoding='utf-8') as f:
         content = f.read()
 
     auth_css = '''
@@ -472,10 +472,10 @@ def update_login_ui():
         "errorDiv.style.display = 'flex';"
     )
 
-    with open('wasm_dist/index.html', 'w', encoding='utf-8') as f:
+    with open('dist/wasm/index.html', 'w', encoding='utf-8') as f:
         f.write(content)
 
-    print('Successfully applied high-end login styling to wasm_dist/index.html!')
+    print('Successfully applied high-end login styling to dist/wasm/index.html!')
 
 if __name__ == '__main__':
     update_login_ui()
