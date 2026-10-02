@@ -1118,7 +1118,10 @@
     <script type="module">
         import init, { js_to_rust_pvp } from './game-free.js';
 
-        // ==========================================\n        // USER PROFILE & RUST API MANAGER\n        // ==========================================\n        const AVATAR_ICONS = {
+        // ==========================================
+        // USER PROFILE & RUST API MANAGER
+        // ==========================================
+        const AVATAR_ICONS = {
             knight: '🛡️',
             archer: '🏹',
             mage: '🔮',
@@ -1178,7 +1181,10 @@
         }
         syncUserProfileFromOci();
 
-        // ==========================================\n        // MODALS MANAGEMENT\n        // ==========================================\n        const guideModal = document.getElementById('guide-modal');
+        // ==========================================
+        // MODALS MANAGEMENT
+        // ==========================================
+        const guideModal = document.getElementById('guide-modal');
         const authModal = document.getElementById('auth-modal');
         const leaderboardModal = document.getElementById('leaderboard-modal');
         const pvpHubModal = document.getElementById('pvp-hub-modal');
@@ -1369,7 +1375,10 @@
             }
         });
 
-        // ==========================================\n        // RUST LIGHTWEIGHT WEBSOCKET CLIENT\n        // ==========================================\n        let pvpState = {
+        // ==========================================
+        // RUST LIGHTWEIGHT WEBSOCKET CLIENT
+        // ==========================================
+        let pvpState = {
             active: false,
             roomCode: null,
             role: null,
