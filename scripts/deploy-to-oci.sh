@@ -59,7 +59,7 @@ rsync -avz -e "ssh -i $HOME/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p ${LOC
     --exclude "node_modules" \
     --exclude ".terraform" \
     --exclude "*.tfstate*" \
-    wasm_dist server/ \
+    wasm_dist server Dockerfile \
     ubuntu@127.0.0.1:/opt/game-free/app/
 
 # 4. Build và khởi động Rust WebSocket Server trên OCI

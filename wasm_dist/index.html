@@ -497,7 +497,428 @@
         }
     
         /* ========================================== */
-        /* AUTH SCREEN & LOGIN MODAL (PREMIUM GAMING UI) */
+        
+        /* ========================================== */
+        /* PROFILE & WIREFRAME MODAL STYLES           */
+        /* ========================================== */
+        #profile-modal .modal-card {
+            max-width: 960px;
+            width: 95%;
+            background: linear-gradient(180deg, #0b1120 0%, #030712 100%);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            box-shadow: 0 0 60px rgba(79, 70, 229, 0.25), 0 25px 50px -12px rgba(0, 0, 0, 0.95);
+            border-radius: 18px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        .profile-wireframe-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            .profile-wireframe-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .profile-left-col {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .profile-avatar-wrapper {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            box-shadow: 0 0 25px rgba(129, 140, 248, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.2);
+            border: 3px solid #818cf8;
+            animation: avatarGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes avatarGlow {
+            0% { box-shadow: 0 0 15px rgba(129, 140, 248, 0.3); border-color: #6366f1; }
+            100% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.6); border-color: #c084fc; }
+        }
+
+        .profile-title-tag {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #facc15;
+            background: rgba(245, 158, 11, 0.15);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .exp-bar-container {
+            width: 100%;
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 3px;
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+            height: 18px;
+        }
+
+        .exp-bar-fill {
+            height: 100%;
+            width: 45%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            border-radius: 8px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .exp-bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        /* 3D Tilt Cardback Preview */
+        .cardback-tilt-box {
+            perspective: 800px;
+            width: 140px;
+            height: 200px;
+            margin: 0 auto;
+            cursor: pointer;
+        }
+
+        .cardback-3d-card {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #eab308;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6), 0 0 15px rgba(234, 179, 8, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform-style: preserve-3d;
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cardback-3d-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.2) 45%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .cardback-3d-card:hover {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 25px rgba(234, 179, 8, 0.6);
+        }
+
+        /* Right Column */
+        .profile-right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .season-rank-banner {
+            background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 50%, #3b0764 100%);
+            border: 1px solid #c084fc;
+            border-radius: 14px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 0 25px rgba(192, 132, 252, 0.2);
+        }
+
+        .rank-stars-display {
+            color: #fbbf24;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+        }
+
+        .stats-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .stats-summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-card-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-card-val {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #38bdf8;
+        }
+
+        .stat-card-lbl {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .recent-matches-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .recent-matches-table th {
+            text-align: left;
+            padding: 8px 12px;
+            background: #0f172a;
+            color: #94a3b8;
+            border-bottom: 1px solid #334155;
+        }
+
+        .recent-matches-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        /* ========================================== */
+        /* IN-GAME HERO HUD STYLES                    */
+        /* ========================================== */
+        .hero-hud-root {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            overflow: hidden;
+            display: none;
+        }
+
+        .hero-hud-avatar-box {
+            position: absolute;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 8px 14px;
+            border-radius: 30px;
+            border: 2px solid #38bdf8;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            transition: transform 0.15s ease;
+        }
+
+        .hero-hud-top {
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-color: #ef4444;
+        }
+
+        .hero-hud-bottom {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-color: #38bdf8;
+        }
+
+        .hero-hud-avatar-circle {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            position: relative;
+            border: 2px solid #fff;
+            cursor: pointer;
+        }
+
+        .hero-hp-badge {
+            position: absolute;
+            bottom: -5px;
+            right: -8px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 12px;
+            border: 1.5px solid #fff;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+        }
+
+        .hero-shield-badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 12px;
+            border: 1.5px solid #7dd3fc;
+            display: none;
+        }
+
+        .hero-mana-bar {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .mana-crystal {
+            width: 14px;
+            height: 18px;
+            background: #1e3a8a;
+            border-radius: 3px;
+            transform: skewX(-12deg);
+            border: 1px solid #3b82f6;
+            transition: all 0.3s ease;
+        }
+
+        .mana-crystal.filled {
+            background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+            box-shadow: 0 0 8px #60a5fa;
+            border-color: #bfdbfe;
+        }
+
+        .hero-power-btn {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            border: 2px solid #fde68a;
+            color: #fff;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 4px 10px rgba(217, 119, 6, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .hero-power-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+        }
+
+        /* Damage feedback shake */
+        @keyframes damageShake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-6px, 3px) rotate(-3deg); filter: drop-shadow(0 0 12px #ef4444); }
+            40% { transform: translate(6px, -3px) rotate(3deg); }
+            60% { transform: translate(-4px, 2px) rotate(-2deg); }
+            80% { transform: translate(4px, -1px) rotate(1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        .shake-damage {
+            animation: damageShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            border-color: #ef4444 !important;
+        }
+
+        /* Emote bubble */
+        .hero-emote-bubble {
+            position: absolute;
+            bottom: 75px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: #fff;
+            color: #0f172a;
+            font-weight: 800;
+            padding: 8px 14px;
+            border-radius: 18px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            font-size: 1.2rem;
+            pointer-events: none;
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            white-space: nowrap;
+        }
+
+        .hero-emote-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: #fff transparent;
+            display: block;
+            width: 0;
+        }
+
+        .hero-emote-bubble.active {
+            transform: translateX(-50%) scale(1);
+        }
+
+        /* Foil Card Effect */
+        .foil-card {
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(168, 85, 247, 0.15)) !important;
+            border: 2px solid #facc15 !important;
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.4) !important;
+            position: relative;
+        }
+
+        .foil-card::before {
+            content: '✨ TINH ANH (FOIL)';
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #facc15;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #facc15;
+        }
+
+/* AUTH SCREEN & LOGIN MODAL (PREMIUM GAMING UI) */
         /* ========================================== */
         #auth-modal {
             background: radial-gradient(circle at center, rgba(15, 23, 42, 0.88) 0%, rgba(3, 7, 18, 0.96) 100%);
@@ -1118,6 +1539,12 @@
             <button id="btn-logout-chip" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.75rem; font-weight:700; margin-left:4px;" title="Đăng xuất">[Thoát]</button>
         </div>
         <!-- Gold Chip Display -->
+                <!-- Gems Chip Display -->
+        <div id="user-gems-chip" class="gold-chip" style="background:#1e1b4b; border-color:#818cf8;" title="Số Gems hiện có của bạn">
+            <span style="font-size: 1.1rem;">💎</span>
+            <span id="user-gems-val" style="font-weight: 800; color: #a5b4fc; font-size: 0.95rem;">10</span>
+            <span style="font-size: 0.78rem; color: #c7d2fe; font-weight: 700;">Gems</span>
+        </div>
         <div id="user-gold-chip" class="gold-chip" title="Số vàng hiện có của bạn">
             <span style="font-size: 1.1rem;">💰</span>
             <span id="user-gold-val" style="font-weight: 800; color: #facc15; font-size: 0.95rem;">100</span>
@@ -1158,7 +1585,197 @@
     </div>
 
     
-    <!-- Modal: CỬA HÀNG THẺ BÀI & VẬT PHẨM (SHOP) -->
+        <!-- Modal: HỒ SƠ NGƯỜI CHƠI (CHARACTER & PROFILE WIREDRAME) -->
+    <div id="profile-modal" class="modal-overlay">
+        <div class="modal-card">
+            <!-- Header: Back, Title, Settings, Currency -->
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); border-bottom: 2px solid #818cf8;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <button class="btn btn-sm" id="btn-profile-back" style="background:rgba(0,0,0,0.3); border:1px solid #6366f1;">← Quay lại</button>
+                    <div>
+                        <h2 style="font-size:1.25rem; font-weight:800; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.5); margin:0;">HỒ SƠ NGƯỜI CHƠI</h2>
+                        <div style="font-size:0.75rem; color:#c7d2fe;">Hệ thống Chiến Tích, Xếp Hạng & Tùy Chỉnh Nhân Vật</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="gold-chip" style="background:rgba(0,0,0,0.4); border-color:#eab308;">
+                        <span>🪙</span>
+                        <span id="profile-gold-val" style="color:#facc15; font-weight:800;">100</span>
+                        <span>Vàng</span>
+                    </div>
+                    <div class="gold-chip" style="background:rgba(0,0,0,0.4); border-color:#818cf8;">
+                        <span>💎</span>
+                        <span id="profile-gems-val" style="color:#a5b4fc; font-weight:800;">10</span>
+                        <span>Gems</span>
+                    </div>
+                    <button class="modal-close-btn" id="btn-close-profile">✕</button>
+                </div>
+            </div>
+
+            <!-- Wireframe Body -->
+            <div class="modal-body" style="padding:0; overflow-y:auto; max-height:75vh;">
+                <div class="profile-wireframe-grid">
+                    <!-- Left Column: Avatar, Level, Cosmetics Customization -->
+                    <div class="profile-left-col">
+                        <div class="profile-avatar-wrapper" id="profile-avatar-preview">
+                            <span id="profile-avatar-icon">🛡️</span>
+                        </div>
+                        <div class="profile-title-tag" id="profile-title-tag">ĐẠI TƯỚNG HOÀNG GIA</div>
+                        
+                        <div style="text-align:center;">
+                            <div id="profile-display-name" style="font-size:1.2rem; font-weight:800; color:#fff;">Người Chơi</div>
+                            <div id="profile-user-tag" style="font-size:0.75rem; color:#94a3b8;">#p_user</div>
+                        </div>
+
+                        <!-- Level & Interactive EXP Bar -->
+                        <div style="width:100%;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#94a3b8; margin-bottom:4px;">
+                                <span id="profile-level-badge" style="font-weight:700; color:#38bdf8;">Cấp 1</span>
+                                <span id="profile-exp-pct">0%</span>
+                            </div>
+                            <div class="exp-bar-container">
+                                <div id="profile-exp-fill" class="exp-bar-fill"></div>
+                                <div id="profile-exp-text" class="exp-bar-text">0 / 100 EXP</div>
+                            </div>
+                        </div>
+
+                        <!-- Cosmetics Customization Accordions -->
+                        <div style="width:100%; display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+                            <div style="font-size:0.8rem; font-weight:700; color:#e2e8f0; border-bottom:1px solid #334155; padding-bottom:4px;">🎨 TÙY CHỈNH NGOẠI TRANG</div>
+                            
+                            <!-- Avatar Selection -->
+                            <div>
+                                <label style="font-size:0.72rem; color:#94a3b8; display:block; margin-bottom:4px;">Chọn Avatar:</label>
+                                <select id="profile-avatar-select" class="form-input" style="padding:6px; font-size:0.8rem;">
+                                    <option value="avatar_knight">🛡️ Hiệp Sĩ Hoàng Gia</option>
+                                    <option value="avatar_mage">🔮 Pháp Sư Băng Hỏa</option>
+                                    <option value="avatar_archer">🏹 Cung Thủ Thần Nhãn</option>
+                                    <option value="avatar_assassin">🗡️ Sát Thủ Bóng Đêm</option>
+                                    <option value="avatar_cleric">✝️ Mục Sư Thánh Quang</option>
+                                    <option value="avatar_dragon">🐲 Long Thần Thức Tỉnh</option>
+                                </select>
+                            </div>
+
+                            <!-- Cardback Selection with 3D Tilt Preview -->
+                            <div>
+                                <label style="font-size:0.72rem; color:#94a3b8; display:block; margin-bottom:4px;">Lưng Bài (Xem trước 3D Tilt):</label>
+                                <select id="profile-cardback-select" class="form-input" style="padding:6px; font-size:0.8rem; margin-bottom:8px;">
+                                    <option value="cb_classic">📜 Cổ Điển Hoàng Gia</option>
+                                    <option value="cb_flame">🔥 Hỏa Long Rực Cháy</option>
+                                    <option value="cb_void">🌌 Hư Không Thần Bí</option>
+                                    <option value="cb_cyber">⚡ Lôi Thần Điện Tử</option>
+                                </select>
+                                <div class="cardback-tilt-box" id="cardback-tilt-container">
+                                    <div class="cardback-3d-card" id="cardback-tilt-preview">
+                                        <div style="font-size:2rem; margin-bottom:6px;">⚜️</div>
+                                        <div style="font-size:0.75rem; font-weight:800; color:#facc15; text-align:center; padding:0 8px;" id="cardback-preview-title">Lưng Bài Cổ Điển</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Board Skin -->
+                            <div>
+                                <label style="font-size:0.72rem; color:#94a3b8; display:block; margin-bottom:4px;">Bàn Đấu Mặc Định:</label>
+                                <select id="profile-board-select" class="form-input" style="padding:6px; font-size:0.8rem;">
+                                    <option value="board_arena">🏛️ Đấu Trường Chiến Binh</option>
+                                    <option value="board_lava">🌋 Miệng Núi Lửa Dung Nham</option>
+                                    <option value="board_temple">⛩️ Đền Thần Cổ Xưa</option>
+                                </select>
+                            </div>
+
+                            <button id="btn-save-customization" class="btn btn-primary" style="margin-top:4px; font-size:0.8rem;">
+                                💾 Lưu Tùy Chỉnh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Ranked Badge, Stats, Collection Overview, Deck Builder Entry -->
+                    <div class="profile-right-col">
+                        <!-- Season Ranked Banner -->
+                        <div class="season-rank-banner">
+                            <div>
+                                <div style="font-size:0.7rem; color:#c084fc; font-weight:800; letter-spacing:1px;">MÙA GIẢI 1 • XẾP HẠNG</div>
+                                <div id="profile-rank-tier-text" style="font-size:1.35rem; font-weight:900; color:#fff; text-shadow:0 0 10px rgba(192, 132, 252, 0.5);">ĐỒNG III</div>
+                                <div style="font-size:0.75rem; color:#e2e8f0; margin-top:2px;">Điểm MMR: <span id="profile-mmr-val" style="color:#facc15; font-weight:800;">1200</span></div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div class="rank-stars-display" id="profile-stars-display">☆☆☆</div>
+                                <div style="font-size:0.7rem; color:#94a3b8; margin-top:4px;">Tiến trình sao bậc</div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Summary Grid -->
+                        <div class="stats-summary-grid">
+                            <div class="stat-card-box">
+                                <div class="stat-card-val" id="profile-winrate-val">0.0%</div>
+                                <div class="stat-card-lbl">Tỉ Lệ Thắng</div>
+                            </div>
+                            <div class="stat-card-box">
+                                <div class="stat-card-val" id="profile-total-matches">0</div>
+                                <div class="stat-card-lbl">Tổng Trận Đấu</div>
+                            </div>
+                            <div class="stat-card-box">
+                                <div class="stat-card-val" id="profile-wins-val" style="color:#4ade80;">0</div>
+                                <div class="stat-card-lbl">Chiến Thắng</div>
+                            </div>
+                            <div class="stat-card-box">
+                                <div class="stat-card-val" id="profile-streak-val" style="color:#f59e0b;">🔥 0</div>
+                                <div class="stat-card-lbl">Chuỗi Thắng Max</div>
+                            </div>
+                        </div>
+
+                        <!-- Collection Overview -->
+                        <div style="background:rgba(15, 23, 42, 0.6); border:1px solid #334155; border-radius:12px; padding:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-size:0.85rem; font-weight:800; color:#e2e8f0;">🎴 TỔNG QUAN BỘ SƯU TẬP</div>
+                                <button id="btn-profile-to-deck" class="btn btn-gold" style="font-size:0.8rem; padding:6px 14px;">
+                                    [ 🎴 Vào Kho Thẻ & Soạn Bài ]
+                                </button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;">
+                                <div style="background:#0f172a; padding:10px; border-radius:8px; text-align:center; border:1px solid #1e293b;">
+                                    <div style="font-size:1.1rem; font-weight:800; color:#38bdf8;" id="profile-collection-count">1 / 25</div>
+                                    <div style="font-size:0.7rem; color:#94a3b8;">Thẻ Sở Hữu</div>
+                                </div>
+                                <div style="background:#0f172a; padding:10px; border-radius:8px; text-align:center; border:1px solid #1e293b;">
+                                    <div style="font-size:1.1rem; font-weight:800; color:#facc15;" id="profile-foil-count">0</div>
+                                    <div style="font-size:0.7rem; color:#94a3b8;">Thẻ Tinh Anh (Foil)</div>
+                                </div>
+                                <div style="background:#0f172a; padding:10px; border-radius:8px; text-align:center; border:1px solid #1e293b;">
+                                    <div style="font-size:1.1rem; font-weight:800; color:#c084fc;" id="profile-decks-count">1 / 6</div>
+                                    <div style="font-size:0.7rem; color:#94a3b8;">Bộ Bài Đã Lưu</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Row: Recent Matches History -->
+                        <div style="background:rgba(15, 23, 42, 0.6); border:1px solid #334155; border-radius:12px; padding:16px;">
+                            <div style="font-size:0.85rem; font-weight:800; color:#e2e8f0; margin-bottom:10px;">📜 LỊCH SỬ ĐỐI ĐẦU GẦN ĐÂY</div>
+                            <div style="overflow-x:auto;">
+                                <table class="recent-matches-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Kết Quả</th>
+                                            <th>Đối Thủ</th>
+                                            <th>Vòng Đấu</th>
+                                            <th>Thời Gian</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="profile-recent-matches-body">
+                                        <tr>
+                                            <td colspan="4" style="text-align:center; color:#64748b; padding:20px;">Chưa có lịch sử thi đấu nào được ghi nhận.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal: CỬA HÀNG THẺ BÀI & VẬT PHẨM (SHOP) -->
     <div id="shop-modal" class="modal-overlay">
         <div class="modal-card" style="max-width: 820px;">
             <div class="modal-header" style="background: linear-gradient(135deg, #78350f 0%, #b45309 50%, #d97706 100%); border-bottom: 2px solid #f59e0b;">
@@ -1587,9 +2204,13 @@
             if (logoutBtn) logoutBtn.style.display = currentUser.isGuest ? 'none' : 'inline';
 
             const currentGold = (currentUser && currentUser.gold !== undefined) ? currentUser.gold : 100;
+            const currentGems = (currentUser && currentUser.gems !== undefined) ? currentUser.gems : 10;
             if (goldSpan) goldSpan.textContent = currentGold;
             if (shopGoldSpan) shopGoldSpan.textContent = currentGold;
             if (deckGoldSpan) deckGoldSpan.textContent = currentGold;
+
+            const gemsSpan = document.getElementById('user-gems-val');
+            if (gemsSpan) gemsSpan.textContent = currentGems;
         }
         renderUserProfile();
 
@@ -1686,20 +2307,21 @@
                 const sellRefund = c.is_starter ? 0 : (c.star_level * 25 + c.level * 10);
 
                 return `
-                    <div class="deck-card-item ${c.is_starter ? 'starter' : ''}">
+                    <div class="deck-card-item ${c.is_starter ? 'starter' : ''} ${c.is_foil ? 'foil-card' : ''}">
                         <div class="deck-card-header">
                             <div class="deck-card-icon">${info.icon}</div>
                             <div class="deck-card-info">
-                                <div class="deck-card-name">${info.name}</div>
+                                <div class="deck-card-name">${info.name} ${c.is_foil ? '✨' : ''}</div>
                                 <div class="deck-card-badges">
                                     <span class="badge-star">${stars}</span>
                                     <span class="badge-lvl">Cấp ${c.level}</span>
                                     <span style="font-size:0.7rem; color:${info.color}; font-weight:700;">${info.role}</span>
+                                    <span style="font-size:0.7rem; color:#94a3b8; font-weight:600;">x${c.quantity || 1}</span>
                                 </div>
                             </div>
                         </div>
 
-                        ${c.is_starter ? '<div class="starter-badge">⭐ Thẻ Khởi Đầu (Không thể bán)</div>' : ''}
+                        ${c.is_starter ? '<div class="starter-badge">⭐ Thẻ Khởi Đầu (Vĩnh viễn)</div>' : ''}
 
                         <div class="deck-card-stats">
                             <div>❤️ HP: ${(info.hp + (c.hp_bonus || 0)).toFixed(0)} <span style="color:#4ade80;">(+${c.hp_bonus || 0})</span></div>
@@ -1709,13 +2331,14 @@
 
                         <div class="deck-actions-grid">
                             <button class="btn-upgrade-lvl" onclick="window.upgradeCard('${c.id}', 'level')" ${isMaxLvl ? 'disabled style="opacity:0.5;"' : ''}>
-                                ${isMaxLvl ? 'Cấp Tối Đa' : `⬆️ Cấp (+${lvlCost}💰)`}
+                                ${isMaxLvl ? 'Cấp Max' : `⬆️ Cấp (+${lvlCost}💰)`}
                             </button>
                             <button class="btn-upgrade-star" onclick="window.upgradeCard('${c.id}', 'star')" ${isMaxStar ? 'disabled style="opacity:0.5;"' : ''}>
-                                ${isMaxStar ? 'Sao Tối Đa' : `🌟 Sao (+${starCost}💰)`}
+                                ${isMaxStar ? 'Sao Max' : `🌟 Sao (+${starCost}💰)`}
                             </button>
+                            ${c.is_foil ? '<button class="btn" style="background:#eab308; color:#000; font-weight:800; font-size:0.75rem;" disabled>✨ Thẻ Tinh Anh</button>' : `<button class="btn" style="background:#7c3aed; font-size:0.75rem; border-color:#a855f7;" onclick="window.foilCard('${c.id}')">✨ Foil (50💎)</button>`}
                             <button class="btn-sell-card" onclick="window.sellCard('${c.id}')" ${c.is_starter ? 'disabled title="Thẻ bài khởi đầu không thể bán đi!"' : ''}>
-                                ${c.is_starter ? '🛡️ Thẻ bài vĩnh viễn' : `💰 Bán Thẻ (+${sellRefund} Vàng)`}
+                                ${c.is_starter ? '🛡️ Vĩnh viễn' : `💰 Bán (+${sellRefund}G)`}
                             </button>
                         </div>
                     </div>
@@ -1861,8 +2484,12 @@
 
         document.getElementById('user-profile-badge').onclick = (e) => {
             if (e.target.id === 'btn-logout-chip') return;
-            document.getElementById('auth-error-msg').style.display = 'none';
-            authModal.style.display = 'flex';
+            if (currentUser && !currentUser.isGuest) {
+                openProfileModal();
+            } else {
+                document.getElementById('auth-error-msg').style.display = 'none';
+                authModal.style.display = 'flex';
+            }
         };
         document.getElementById('btn-logout-chip').onclick = (e) => {
             e.stopPropagation();
@@ -2027,6 +2654,318 @@
             }
         });
 
+        
+        // ==========================================
+        // PROFILE & HERO HUD MANAGER
+        // ==========================================
+        const profileModal = document.getElementById('profile-modal');
+        const CARDBACK_THEMES = {
+            cb_classic: { bg: 'linear-gradient(135deg, #1e293b, #0f172a)', border: '#eab308', icon: '⚜️', title: 'Cổ Điển Hoàng Gia' },
+            cb_flame: { bg: 'linear-gradient(135deg, #7c2d12, #991b1b)', border: '#f97316', icon: '🔥', title: 'Hỏa Long Rực Cháy' },
+            cb_void: { bg: 'linear-gradient(135deg, #312e81, #1e1b4b)', border: '#a855f7', icon: '🌌', title: 'Hư Không Thần Bí' },
+            cb_cyber: { bg: 'linear-gradient(135deg, #064e3b, #065f46)', border: '#10b981', icon: '⚡', title: 'Lôi Thần Điện Tử' },
+        };
+
+        function updateCardbackPreview(cbId) {
+            const theme = CARDBACK_THEMES[cbId] || CARDBACK_THEMES.cb_classic;
+            const preview = document.getElementById('cardback-tilt-preview');
+            const title = document.getElementById('cardback-preview-title');
+            if (preview) {
+                preview.style.background = theme.bg;
+                preview.style.borderColor = theme.border;
+                preview.innerHTML = `
+                    <div style="font-size:2.2rem; margin-bottom:6px;">${theme.icon}</div>
+                    <div style="font-size:0.75rem; font-weight:800; color:#facc15; text-align:center; padding:0 8px;">${theme.title}</div>
+                `;
+            }
+        }
+
+        // 3D Tilt interaction
+        const tiltBox = document.getElementById('cardback-tilt-container');
+        const tiltCard = document.getElementById('cardback-tilt-preview');
+        if (tiltBox && tiltCard) {
+            tiltBox.onmousemove = (e) => {
+                const rect = tiltBox.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                const rotY = (x / (rect.width / 2)) * 24;
+                const rotX = -(y / (rect.height / 2)) * 24;
+                tiltCard.style.transform = `perspective(600px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.06, 1.06, 1.06)`;
+            };
+            tiltBox.onmouseleave = () => {
+                tiltCard.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+            };
+        }
+
+        const cbSelect = document.getElementById('profile-cardback-select');
+        if (cbSelect) {
+            cbSelect.onchange = () => updateCardbackPreview(cbSelect.value);
+        }
+
+        async function openProfileModal() {
+            closeAllModals();
+            if (profileModal) profileModal.style.display = 'flex';
+            if (!currentUser || currentUser.isGuest) {
+                authModal.style.display = 'flex';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/user/profile?username=${encodeURIComponent(currentUser.username)}`);
+                const data = await res.json();
+                if (data.success) {
+                    const p = data.player;
+                    const r = data.rating;
+                    const c = data.collection;
+
+                    // Header & Currency
+                    const goldVal = document.getElementById('profile-gold-val');
+                    const gemsVal = document.getElementById('profile-gems-val');
+                    if (goldVal) goldVal.textContent = p.gold;
+                    if (gemsVal) gemsVal.textContent = p.gems;
+
+                    // Left Column
+                    const avIcon = document.getElementById('profile-avatar-icon');
+                    const dName = document.getElementById('profile-display-name');
+                    const uTag = document.getElementById('profile-user-tag');
+                    const lvlBadge = document.getElementById('profile-level-badge');
+                    const expPct = document.getElementById('profile-exp-pct');
+                    const expFill = document.getElementById('profile-exp-fill');
+                    const expText = document.getElementById('profile-exp-text');
+
+                    const avKey = (p.avatar_id || 'avatar_knight').replace('avatar_', '');
+                    if (avIcon) avIcon.textContent = AVATAR_ICONS[avKey] || '🛡️';
+                    if (dName) dName.textContent = p.display_name;
+                    if (uTag) uTag.textContent = `#${p.username}`;
+                    if (lvlBadge) lvlBadge.textContent = `Cấp ${p.level}`;
+                    if (expPct) expPct.textContent = `${p.exp_percent.toFixed(0)}%`;
+                    if (expFill) expFill.style.width = `${p.exp_percent}%`;
+                    if (expText) expText.textContent = `${p.current_exp} / ${p.exp_needed} EXP`;
+
+                    // Cosmetics Selectors
+                    const avSel = document.getElementById('profile-avatar-select');
+                    if (avSel) avSel.value = p.avatar_id || 'avatar_knight';
+                    const cbSel = document.getElementById('profile-cardback-select');
+                    if (cbSel) {
+                        cbSel.value = p.cardback_id || 'cb_classic';
+                        updateCardbackPreview(cbSel.value);
+                    }
+                    const bdSel = document.getElementById('profile-board-select');
+                    if (bdSel) bdSel.value = p.board_skin || 'board_arena';
+
+                    // Right Column: Rank & Stats
+                    const rankText = document.getElementById('profile-rank-tier-text');
+                    const starsDisplay = document.getElementById('profile-stars-display');
+                    const mmrVal = document.getElementById('profile-mmr-val');
+                    const winrateVal = document.getElementById('profile-winrate-val');
+                    const totalMatches = document.getElementById('profile-total-matches');
+                    const winsVal = document.getElementById('profile-wins-val');
+                    const streakVal = document.getElementById('profile-streak-val');
+
+                    if (rankText) rankText.textContent = r.rank_display;
+                    if (starsDisplay) starsDisplay.textContent = r.stars_display;
+                    if (mmrVal) mmrVal.textContent = r.mmr;
+                    if (winrateVal) winrateVal.textContent = r.win_rate;
+                    if (totalMatches) totalMatches.textContent = r.total_matches;
+                    if (winsVal) winsVal.textContent = `${r.wins}W / ${r.losses}L`;
+                    if (streakVal) streakVal.textContent = `🔥 ${r.best_streak}`;
+
+                    // Collection Counts
+                    const colCount = document.getElementById('profile-collection-count');
+                    const foilCount = document.getElementById('profile-foil-count');
+                    const decksCount = document.getElementById('profile-decks-count');
+                    if (colCount) colCount.textContent = `${c.total_cards} / ${c.max_collection}`;
+                    if (foilCount) foilCount.textContent = c.total_foils;
+                    if (decksCount) decksCount.textContent = `${(data.decks || []).length} / 6`;
+
+                    // Recent Matches
+                    const recentTbody = document.getElementById('profile-recent-matches-body');
+                    if (recentTbody) {
+                        const matches = data.recent_matches || [];
+                        if (matches.length === 0) {
+                            recentTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b; padding:20px;">Chưa có lịch sử thi đấu nào được ghi nhận.</td></tr>';
+                        } else {
+                            recentTbody.innerHTML = matches.map(m => {
+                                const isWin = m.winner && m.winner.toLowerCase() === currentUser.username.toLowerCase();
+                                const opp = m.host.toLowerCase() === currentUser.username.toLowerCase() ? m.guest : m.host;
+                                const dateStr = new Date(parseInt(m.timestamp) * 1000).toLocaleDateString('vi-VN');
+                                return `
+                                    <tr>
+                                        <td>
+                                            <span style="background:${isWin ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}; color:${isWin ? '#4ade80' : '#ef4444'}; font-weight:800; padding:2px 8px; border-radius:4px; font-size:0.75rem;">
+                                                ${isWin ? '🏆 CHIẾN THẮNG' : '💀 THẤT BẠI'}
+                                            </span>
+                                        </td>
+                                        <td style="color:#e2e8f0; font-weight:700;">${opp || 'Đối thủ'}</td>
+                                        <td style="color:#94a3b8;">${m.rounds} Vòng</td>
+                                        <td style="color:#64748b; font-size:0.75rem;">${dateStr}</td>
+                                    </tr>
+                                `;
+                            }).join('');
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error('[PROFILE LOAD ERROR]', e);
+            }
+        }
+
+        function closeProfileModal() {
+            if (profileModal) profileModal.style.display = 'none';
+        }
+
+        // Customization Save
+        const btnSaveCust = document.getElementById('btn-save-customization');
+        if (btnSaveCust) {
+            btnSaveCust.onclick = async () => {
+                if (!currentUser || currentUser.isGuest) return;
+                const avId = document.getElementById('profile-avatar-select').value;
+                const cbId = document.getElementById('profile-cardback-select').value;
+                const bdId = document.getElementById('profile-board-select').value;
+
+                try {
+                    const res = await fetch('/api/user/customize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: currentUser.username,
+                            avatar_id: avId,
+                            cardback_id: cbId,
+                            board_skin: bdId
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.user) {
+                        currentUser = data.user;
+                        localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
+                        renderUserProfile();
+                        alert('✨ Đã lưu cài đặt ngoại trang & bàn đấu thành công!');
+                    } else {
+                        alert(`❌ Không thể lưu: ${data.message || 'Lỗi không xác định'}`);
+                    }
+                } catch(e) {
+                    alert(`❌ Lỗi mạng: ${e.message}`);
+                }
+            };
+        }
+
+        // Navigation bindings
+        const btnProfileBack = document.getElementById('btn-profile-back');
+        if (btnProfileBack) btnProfileBack.onclick = closeProfileModal;
+        const btnCloseProfile = document.getElementById('btn-close-profile');
+        if (btnCloseProfile) btnCloseProfile.onclick = closeProfileModal;
+        const btnProfileToDeck = document.getElementById('btn-profile-to-deck');
+        if (btnProfileToDeck) btnProfileToDeck.onclick = () => {
+            closeProfileModal();
+            openDeckModal();
+        };
+
+        // Foil Card Handler
+        window.foilCard = async function(cardId) {
+            if (!currentUser || currentUser.isGuest) return;
+            if (!confirm('Nâng cấp thẻ này thành Thẻ Tinh Anh Foil Hologram tốn 50 Gems (hoặc 150 Vàng)?')) return;
+            try {
+                const res = await fetch('/api/cards/foil', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: currentUser.username,
+                        card_id: cardId
+                    })
+                });
+                const data = await res.json();
+                if (data.success && data.user) {
+                    currentUser = data.user;
+                    localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
+                    renderDeckCards();
+                    renderUserProfile();
+                    syncDeckToBevy();
+                    alert(`🎉 ${data.message}`);
+                } else {
+                    alert(`❌ Không thể nâng cấp: ${data.message || 'Lỗi không xác định'}`);
+                }
+            } catch(e) {
+                alert(`❌ Lỗi mạng: ${e.message}`);
+            }
+        };
+
+        // IN-GAME HERO HUD CONTROLS
+        function showHeroHud(playerClass, oppName) {
+            const root = document.getElementById('hero-hud-root');
+            if (root) root.style.display = 'block';
+
+            const pIcon = document.getElementById('player-hud-avatar-icon');
+            const pName = document.getElementById('player-hud-name');
+            const pClass = document.getElementById('player-hud-class');
+            if (pIcon) pIcon.textContent = AVATAR_ICONS[currentUser.avatar] || '🛡️';
+            if (pName) pName.textContent = currentUser.displayName || currentUser.username;
+            if (pClass) pClass.textContent = playerClass || 'Hiệp Sĩ';
+
+            const oName = document.getElementById('opponent-hud-name');
+            if (oName) oName.textContent = oppName || 'Đối Thủ';
+
+            renderManaCrystals('player-mana-bar', 10, 10);
+            renderManaCrystals('opponent-mana-bar', 10, 10);
+        }
+
+        function hideHeroHud() {
+            const root = document.getElementById('hero-hud-root');
+            if (root) root.style.display = 'none';
+        }
+
+        function renderManaCrystals(containerId, total, filled) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            let html = '';
+            for (let i = 0; i < total; i++) {
+                html += `<div class="mana-crystal ${i < filled ? 'filled' : ''}"></div>`;
+            }
+            el.innerHTML = html;
+        }
+
+        function triggerHeroDamageShake(isPlayer) {
+            const box = document.getElementById(isPlayer ? 'player-hero-box' : 'opponent-hero-box');
+            if (box) {
+                box.classList.remove('shake-damage');
+                void box.offsetWidth;
+                box.classList.add('shake-damage');
+                setTimeout(() => box.classList.remove('shake-damage'), 500);
+            }
+        }
+
+        // Hero Emotes
+        window.sendHeroEmote = function(text) {
+            const bubble = document.getElementById('player-emote-bubble');
+            const picker = document.getElementById('hero-emote-picker');
+            if (picker) picker.style.display = 'none';
+            if (bubble) {
+                bubble.textContent = text;
+                bubble.classList.add('active');
+                setTimeout(() => bubble.classList.remove('active'), 2500);
+            }
+            if (window._rust_pvp && window._rust_pvp.ws) {
+                window._rust_pvp.send({ type: 'HERO_EMOTE', emote: text });
+            }
+        };
+
+        const btnEmoteToggle = document.getElementById('btn-hero-emote-toggle');
+        if (btnEmoteToggle) {
+            btnEmoteToggle.onclick = () => {
+                const picker = document.getElementById('hero-emote-picker');
+                if (picker) picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+            };
+        }
+
+        const btnHeroPower = document.getElementById('btn-hero-power');
+        if (btnHeroPower) {
+            btnHeroPower.onclick = () => {
+                alert('⚡ Kỹ Năng Tướng Đã Kích Hoạt! Tăng +20% Sát Thương toàn đội trong lượt kế tiếp!');
+                if (typeof js_to_rust_pvp === 'function') {
+                    js_to_rust_pvp(JSON.stringify({ type: 'HERO_POWER_USED' }));
+                }
+            };
+        }
+
         // ==========================================
         // RUST LIGHTWEIGHT WEBSOCKET CLIENT
         // ==========================================
@@ -2060,6 +2999,13 @@
         }
 
         function updateHp(playerHp, opponentHp) {
+            if (playerHp < pvpState.playerHp) {
+                triggerHeroDamageShake(true);
+            }
+            if (opponentHp < pvpState.opponentHp) {
+                triggerHeroDamageShake(false);
+            }
+
             pvpState.playerHp = playerHp;
             pvpState.opponentHp = opponentHp;
 
@@ -2072,6 +3018,12 @@
             const oLabel = document.getElementById('opponent-label');
             if (pLabel) pLabel.textContent = `Bạn (${playerHp} HP)`;
             if (oLabel) oLabel.textContent = `Đối thủ (${opponentHp} HP)`;
+
+            // Update in-game Hero HUD badges
+            const pHpHud = document.getElementById('player-hud-hp');
+            const oHpHud = document.getElementById('opponent-hud-hp');
+            if (pHpHud) pHpHud.textContent = `❤️ ${Math.max(0, playerHp)}`;
+            if (oHpHud) oHpHud.textContent = `❤️ ${Math.max(0, opponentHp)}`;
         }
 
         function updateStatusChip(text, isConnected) {
@@ -2192,6 +3144,14 @@
                     console.log('[RUST WS -> CLIENT]', msg);
 
                     switch (msg.type) {
+                        case 'HERO_EMOTE':
+                            const oppBubble = document.getElementById('opponent-emote-bubble');
+                            if (oppBubble) {
+                                oppBubble.textContent = msg.emote;
+                                oppBubble.classList.add('active');
+                                setTimeout(() => oppBubble.classList.remove('active'), 2500);
+                            }
+                            break;
                         case 'LOBBY_ROOMS_RESPONSE':
                             this.renderLobbyList(msg.rooms || []);
                             break;
@@ -2230,6 +3190,7 @@
 
                             showRoomBadge(`Phòng: ${msg.room_code} vs ${msg.opponent_name}`);
                             showMatchHud();
+                            showHeroHud(currentUser.avatar, msg.opponent_name);
                             updateHudLabels(msg.player_name, msg.opponent_name);
 
                             if (typeof js_to_rust_pvp === 'function') {
@@ -2286,6 +3247,7 @@
                             if (badge) badge.style.display = 'none';
                             const hud = document.getElementById('match-hud');
                             if (hud) hud.style.display = 'none';
+                            hideHeroHud();
                             break;
 
                         case 'ERROR':
@@ -2414,5 +3376,63 @@
 
         run();
     </script>
+
+    <!-- ========================================== -->
+    <!-- IN-GAME HERO HUD (WARCRAFT/HEARTHSTONE STYLE) -->
+    <!-- ========================================== -->
+    <div id="hero-hud-root" class="hero-hud-root">
+        <!-- Opponent Hero HUD (Top-Center) -->
+        <div id="opponent-hero-box" class="hero-hud-avatar-box hero-hud-top">
+            <div id="opponent-hud-avatar" class="hero-hud-avatar-circle" title="Tướng địch">
+                <span>👹</span>
+                <div id="opponent-hud-hp" class="hero-hp-badge">❤️ 100</div>
+                <div id="opponent-hud-shield" class="hero-shield-badge">🛡️ 0</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="opponent-hud-name" style="font-weight:800; font-size:0.85rem; color:#f87171;">Đối Thủ</span>
+                    <span id="opponent-hud-rank" style="font-size:0.7rem; color:#facc15; background:#0f172a; padding:1px 6px; border-radius:4px;">BẠC III</span>
+                </div>
+                <div id="opponent-mana-bar" class="hero-mana-bar">
+                    <!-- Crystals injected via JS -->
+                </div>
+            </div>
+            <div id="opponent-emote-bubble" class="hero-emote-bubble">👋 Chào bạn!</div>
+        </div>
+
+        <!-- Player Hero HUD (Bottom-Center) -->
+        <div id="player-hero-box" class="hero-hud-avatar-box hero-hud-bottom">
+            <div id="player-hud-avatar" class="hero-hud-avatar-circle" title="Nhấn để gửi cảm xúc (Emote)">
+                <span id="player-hud-avatar-icon">🛡️</span>
+                <div id="player-hud-hp" class="hero-hp-badge">❤️ 100</div>
+                <div id="player-hud-shield" class="hero-shield-badge">🛡️ 0</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="player-hud-name" style="font-weight:800; font-size:0.85rem; color:#38bdf8;">Bạn</span>
+                    <span id="player-hud-class" style="font-size:0.7rem; color:#818cf8; background:#1e1b4b; padding:1px 6px; border-radius:4px;">Hiệp Sĩ</span>
+                </div>
+                <div id="player-mana-bar" class="hero-mana-bar">
+                    <!-- Crystals injected via JS -->
+                </div>
+            </div>
+            <button id="btn-hero-power" class="hero-power-btn" title="Kỹ năng đặc trưng của Tướng">
+                ⚡ Kỹ Năng
+            </button>
+            <button id="btn-hero-emote-toggle" class="btn" style="background:#334155; font-size:0.75rem; padding:4px 8px; border-radius:14px;" title="Gửi Emote">
+                💬
+            </button>
+            <div id="player-emote-bubble" class="hero-emote-bubble">⚔️ Quyết chiến!</div>
+            
+            <!-- Emote quick picker menu -->
+            <div id="hero-emote-picker" style="display:none; position:absolute; bottom:70px; right:0; background:#0f172a; border:1px solid #38bdf8; border-radius:12px; padding:6px; gap:8px; box-shadow:0 6px 20px rgba(0,0,0,0.8); z-index:110;">
+                <button class="btn btn-sm" onclick="window.sendHeroEmote('👋 Chào bạn!')">👋 Chào</button>
+                <button class="btn btn-sm" onclick="window.sendHeroEmote('⚔️ Quyết chiến!')">⚔️ Đấu</button>
+                <button class="btn btn-sm" onclick="window.sendHeroEmote('😂 Hay lắm!')">😂 Cười</button>
+                <button class="btn btn-sm" onclick="window.sendHeroEmote('🛡️ Phòng thủ!')">🛡️ Thủ</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
