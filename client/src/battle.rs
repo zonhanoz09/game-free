@@ -112,13 +112,17 @@ impl CameraShake2d {
 pub struct BattleTurnManager {
     pub active_attacker: Option<Entity>,
     pub cooldown_timer: Timer,
+    pub acted_this_cycle: std::collections::HashSet<Entity>,
+    pub cycle_turn_count: u32,
 }
 
 impl Default for BattleTurnManager {
     fn default() -> Self {
         Self {
             active_attacker: None,
-            cooldown_timer: Timer::from_seconds(0.10, TimerMode::Once),
+            cooldown_timer: Timer::from_seconds(0.35, TimerMode::Once),
+            acted_this_cycle: std::collections::HashSet::new(),
+            cycle_turn_count: 0,
         }
     }
 }
@@ -185,6 +189,8 @@ pub fn on_enter_battle(
 ) {
     turn_manager.active_attacker = None;
     turn_manager.cooldown_timer.reset();
+    turn_manager.acted_this_cycle.clear();
+    turn_manager.cycle_turn_count = 0;
 
     for entity in units.iter() {
         commands.entity(entity).insert(ActionGauge { current: 0.0 });
@@ -551,6 +557,25 @@ pub fn battle_tick_system(
     }
 
     turn_manager.active_attacker = Some(actor_entity);
+    turn_manager.acted_this_cycle.insert(actor_entity);
+
+    let living_units: std::collections::HashSet<Entity> = units.iter().map(|(e, ..)| e).collect();
+    turn_manager.acted_this_cycle.retain(|e| living_units.contains(e));
+    let living_count = living_units.len();
+
+    if living_count > 0 && turn_manager.acted_this_cycle.len() >= living_count {
+        turn_manager.cycle_turn_count += 1;
+        turn_manager.acted_this_cycle.clear();
+        crate::net::rust_to_js_pvp(&format!(
+            r#"{{"type":"ROUND_TURN_COMPLETED","turn":{},"total":{}}}"#,
+            turn_manager.cycle_turn_count, living_count
+        ));
+    } else {
+        crate::net::rust_to_js_pvp(&format!(
+            r#"{{"type":"STRIKE_ACTION","acted":{},"total":{},"current_turn":{}}}"#,
+            turn_manager.acted_this_cycle.len(), living_count, turn_manager.cycle_turn_count
+        ));
+    }
 
     commands.spawn((
         Sprite {
