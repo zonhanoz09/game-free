@@ -172,9 +172,18 @@ pub fn pvp_network_system(
                     pvp_mgr.is_ready = false;
                     pvp_mgr.opponent_ready = false;
                     pvp_mgr.match_winner = None;
+                    pvp_mgr.opponent_lineup.clear();
+
+                    // Immediately clear any single-player bot enemy units from the board!
+                    for (ent, unit) in all_board_units.iter() {
+                        if unit.faction == Faction::Enemy {
+                            commands.entity(ent).despawn_recursive();
+                        }
+                    }
+
                     info!(
-                        "[PVP] Room joined: {} as {}",
-                        pvp_mgr.room_code, pvp_mgr.role
+                        "[PVP] Room joined: {} as {} vs {}",
+                        pvp_mgr.room_code, pvp_mgr.role, pvp_mgr.opponent_name
                     );
                 }
                 PvpMessage::StartRound {
@@ -232,49 +241,17 @@ pub fn pvp_network_system(
                     }
 
                     // 4. Spawn opponent lineup on enemy side!
+                    // Mirror columns so opponent frontline (col 2) faces player frontline (col 0 on enemy board)
                     for u in &opponent_lineup {
+                        let mirrored_col = (2usize).saturating_sub(u.col).min(2);
                         spawn_unit_ext(
                             &mut commands,
                             &textures,
                             u.class,
                             Faction::Enemy,
-                            u.col,
+                            mirrored_col,
                             u.row,
                             u.star_level,
-                            false,
-                        );
-                    }
-
-                    // Fallback: If opponent has no units, spawn starter enemy squad
-                    if opponent_lineup.is_empty() {
-                        spawn_unit_ext(
-                            &mut commands,
-                            &textures,
-                            UnitClass::Knight,
-                            Faction::Enemy,
-                            0,
-                            0,
-                            1,
-                            false,
-                        );
-                        spawn_unit_ext(
-                            &mut commands,
-                            &textures,
-                            UnitClass::Archer,
-                            Faction::Enemy,
-                            1,
-                            1,
-                            1,
-                            false,
-                        );
-                        spawn_unit_ext(
-                            &mut commands,
-                            &textures,
-                            UnitClass::Assassin,
-                            Faction::Enemy,
-                            2,
-                            2,
-                            1,
                             false,
                         );
                     }
@@ -294,10 +271,22 @@ pub fn pvp_network_system(
                 } => {
                     pvp_mgr.player_hp = player_hp;
                     pvp_mgr.opponent_hp = opponent_hp;
+                    pvp_mgr.round += 1;
+                    pvp_mgr.is_ready = false;
+                    pvp_mgr.opponent_ready = false;
+
+                    // Clear defeated enemies from board
+                    for (ent, unit) in all_board_units.iter() {
+                        if unit.faction == Faction::Enemy {
+                            commands.entity(ent).despawn_recursive();
+                        }
+                    }
+
                     info!(
-                        "[PVP] Match HP updated: Player {} HP, Opponent {} HP (Damage: {})",
-                        player_hp, opponent_hp, damage_dealt
+                        "[PVP] Match HP updated: Player {} HP, Opponent {} HP (Damage: {}) -> Next Round {}",
+                        player_hp, opponent_hp, damage_dealt, pvp_mgr.round
                     );
+                    next_state.set(GameState::Placement);
                 }
                 PvpMessage::MatchEnd { winner } => {
                     pvp_mgr.match_winner = Some(winner.clone());

@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3v3 Tactical Arena (PVP Auto-Battler)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3v3 Tactical Arena - Đấu Trường Đối Kháng Online (Rust Server & OCI Database)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>⚔️</text></svg>">
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         body, html {
@@ -17,37 +19,38 @@
             height: 100%;
             overflow: hidden;
             background-color: #0b0f19;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: #f1f5f9;
+            color: #f8fafc;
         }
 
         #canvas-wrapper {
             position: absolute;
-            top: 50px;
+            top: 52px;
             left: 0;
             right: 0;
             bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #000;
+            background: #090d16;
         }
 
         canvas {
-            width: 100%;
-            height: 100%;
             display: block;
             outline: none;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.85);
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 16 / 9;
         }
 
-        /* Top HUD Bar */
+        /* Top Bar */
         #top-bar {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 50px;
-            background: rgba(15, 23, 42, 0.95);
+            height: 52px;
+            background: rgba(15, 23, 42, 0.96);
             border-bottom: 2px solid #1e293b;
             display: flex;
             align-items: center;
@@ -62,7 +65,7 @@
             align-items: center;
             gap: 8px;
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             color: #38bdf8;
             letter-spacing: 0.5px;
         }
@@ -88,13 +91,17 @@
         .match-hud {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
+            background: rgba(11, 15, 25, 0.85);
+            padding: 4px 16px;
+            border-radius: 24px;
+            border: 1px solid #334155;
         }
 
         .player-hp-box {
             display: flex;
             flex-direction: column;
-            width: 140px;
+            width: 130px;
             gap: 3px;
         }
 
@@ -155,6 +162,16 @@
             background: #0369a1;
         }
 
+        .btn-success {
+            background: #059669;
+            border-color: #10b981;
+            color: #ecfdf5;
+        }
+
+        .btn-success:hover {
+            background: #047857;
+        }
+
         .btn-gold {
             background: #b45309;
             border-color: #f59e0b;
@@ -163,6 +180,25 @@
 
         .btn-gold:hover {
             background: #d97706;
+        }
+
+        .btn-danger {
+            background: #991b1b;
+            border-color: #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-pulse {
+            animation: pulseGlow 1.8s infinite;
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
         }
 
         .room-input {
@@ -205,12 +241,12 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.82);
+            background: rgba(0, 0, 0, 0.85);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(5px);
         }
 
         .modal-card {
@@ -218,13 +254,13 @@
             border: 2px solid #38bdf8;
             border-radius: 12px;
             width: 90%;
-            max-width: 750px;
+            max-width: 680px;
             max-height: 85vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.8), 0 8px 12px -6px rgba(0, 0, 0, 0.8);
             overflow: hidden;
-            animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes modalPop {
@@ -288,7 +324,7 @@
         .form-input {
             background: #1e293b;
             border: 1px solid #334155;
-            padding: 8px 12px;
+            padding: 10px 12px;
             border-radius: 6px;
             color: #fff;
             font-size: 0.95rem;
@@ -301,22 +337,61 @@
 
         .avatar-picker {
             display: flex;
-            gap: 10px;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .avatar-option {
-            font-size: 1.5rem;
-            padding: 8px;
+            font-size: 1.6rem;
+            padding: 10px 14px;
             border: 2px solid #334155;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s;
+            background: #1e293b;
         }
 
         .avatar-option:hover, .avatar-option.selected {
             border-color: #38bdf8;
-            background: #1e293b;
+            background: #243247;
             transform: scale(1.1);
+        }
+
+        /* Styled Cards in Hub */
+        .hub-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .hub-card {
+            background: #131c31;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: border-color 0.2s;
+        }
+
+        .hub-card:hover {
+            border-color: #38bdf8;
+        }
+
+        .hub-card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #facc15;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hub-card-desc {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.4;
         }
 
         /* Table styles */
@@ -393,7 +468,7 @@
         /* Loading Spinner */
         #loading-screen {
             position: absolute;
-            top: 50px;
+            top: 52px;
             left: 0;
             right: 0;
             bottom: 0;
@@ -456,100 +531,159 @@
     </script>
 </head>
 <body>
-    <div id="top-bar">
-        <div class="title-badge">
+    <div id=\"top-bar\">
+        <div class=\"title-badge\">
             <span>⚔️</span>
-            <span>3v3 Tactical Arena</span>
-            <span id="room-badge" style="display:none; color: #facc15; font-size: 0.9rem; margin-left: 6px;"></span>
+            <span>Tactical Arena</span>
+            <span id=\"room-badge\" style=\"display:none; color: #facc15; font-size: 0.88rem; margin-left: 6px; background:#1e293b; padding:2px 8px; border-radius:4px; border:1px solid #f59e0b;\"></span>
         </div>
 
         <!-- User Profile Chip -->
-        <div id="user-profile-badge" class="user-chip" title="Xem hồ sơ / Đăng nhập">
-            <span id="user-avatar-icon">🛡️</span>
-            <span id="user-name-display" style="font-weight: 700; font-size: 0.85rem;">Khách</span>
-            <span id="user-elo-badge" style="background:#0f172a; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color:#facc15;">1000 ELO</span>
+        <div id=\"user-profile-badge\" class=\"user-chip\" title=\"Xem hồ sơ / Đăng nhập / Đổi tài khoản\">
+            <span id=\"user-avatar-icon\">🛡️</span>
+            <span id=\"user-name-display\" style=\"font-weight: 700; font-size: 0.85rem;\">Đang tải...</span>
+            <span id=\"user-elo-badge\" style=\"background:#0f172a; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color:#facc15;\">1000 ELO</span>
+            <button id=\"btn-logout-chip\" style=\"background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.75rem; font-weight:700; margin-left:4px;\" title=\"Đăng xuất\">[Thoát]</button>
         </div>
 
-        <div class="match-hud" id="match-hud" style="display: none;">
-            <div class="player-hp-box">
-                <span id="player-label" style="color: #60a5fa; font-weight: bold;">Bạn (100 HP)</span>
-                <div class="hp-bar-bg"><div id="player-hp-bar" class="hp-bar-fill-blue"></div></div>
+        <!-- Realtime Match HUD -->
+        <div class=\"match-hud\" id=\"match-hud\" style=\"display: none;\">
+            <div class=\"player-hp-box\">
+                <span id=\"player-label\" style=\"color: #60a5fa; font-weight: bold; font-size: 0.82rem;\">Bạn (100 HP)</span>
+                <div class=\"hp-bar-bg\"><div id=\"player-hp-bar\" class=\"hp-bar-fill-blue\"></div></div>
             </div>
-            <span style="font-weight: bold; color: #64748b;">VS</span>
-            <div class="player-hp-box">
-                <span id="opponent-label" style="color: #f87171; font-weight: bold;">Đối thủ (100 HP)</span>
-                <div class="hp-bar-bg"><div id="opponent-hp-bar" class="hp-bar-fill-red"></div></div>
+            <div style=\"display:flex; flex-direction:column; align-items:center;\">
+                <span style=\"font-weight: 800; color: #f59e0b; font-size: 0.8rem;\" id=\"round-indicator\">VÒNG 1</span>
+                <span style=\"font-size: 0.7rem; color: #94a3b8;\" id=\"ready-indicator\">Đang bày trận</span>
+            </div>
+            <div class=\"player-hp-box\">
+                <span id=\"opponent-label\" style=\"color: #f87171; font-weight: bold; font-size: 0.82rem;\">Đối thủ (100 HP)</span>
+                <div class=\"hp-bar-bg\"><div id=\"opponent-hp-bar\" class=\"hp-bar-fill-red\"></div></div>
             </div>
         </div>
 
-        <div class="pvp-controls">
-            <span id="conn-status" class="status-chip">Đang kết nối...</span>
-            <button id="btn-leaderboard" class="btn btn-gold">🏆 Xếp Hạng</button>
-            <button id="btn-lobby-rooms" class="btn">📋 Phòng Chờ</button>
-            <button id="btn-create-room" class="btn btn-primary">➕ Tạo Phòng</button>
-            <input id="room-code-input" class="room-input" placeholder="MÃ..." maxlength="4" />
-            <button id="btn-join-room" class="btn">🚪 Vào</button>
-            <button id="btn-quick-match" class="btn">⚡ Ghép Nhanh</button>
-            <button id="btn-guide" class="btn" style="background:#2563eb; border-color:#3b82f6;">📖 [H]</button>
+        <div class=\"pvp-controls\">
+            <span id=\"conn-status\" class=\"status-chip\">Đang kết nối...</span>
+            <button id=\"btn-open-pvp-hub\" class=\"btn btn-primary btn-pulse\">⚔️ Đấu Online 2 Người</button>
+            <button id=\"btn-leaderboard\" class=\"btn btn-gold\">🏆 Bảng Vàng</button>
+            <button id=\"btn-guide\" class=\"btn\" style=\"background:#2563eb; border-color:#3b82f6;\">📖 [H]</button>
         </div>
     </div>
 
-    <!-- Modal: Auth (Đăng Nhập / Đăng Ký) -->
-    <div id="auth-modal" class="modal-overlay">
-        <div class="modal-card" style="max-width: 440px;">
-            <div class="modal-header">
-                <h2 id="auth-title">👤 Tài Khoản Người Chơi</h2>
-                <button class="modal-close-btn" id="btn-close-auth">✕</button>
+    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ (OCI DATABASE) -->
+    <div id=\"auth-modal\" class=\"modal-overlay\">
+        <div class=\"modal-card\" style=\"max-width: 460px;\">
+            <div class=\"modal-header\">
+                <h2 id=\"auth-title\">👤 Tài Khoản Người Chơi OCI</h2>
+                <button class=\"modal-close-btn\" id=\"btn-close-auth\">✕</button>
             </div>
-            <div class="modal-body">
-                <div style="display: flex; gap: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
-                    <button id="tab-login" class="btn btn-primary" style="flex:1;">Đăng Nhập</button>
-                    <button id="tab-register" class="btn" style="flex:1;">Đăng Ký Mới</button>
+            <div class=\"modal-body\">
+                <div style=\"display: flex; gap: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px;\">
+                    <button id=\"tab-login\" class=\"btn btn-primary\" style=\"flex:1; justify-content:center;\">🔑 Đăng Nhập</button>
+                    <button id=\"tab-register\" class=\"btn\" style=\"flex:1; justify-content:center;\">📝 Đăng Ký Mới</button>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Tên tài khoản (Username):</label>
-                    <input type="text" id="auth-username" class="form-input" placeholder="vd: player_one" maxlength="20">
+                <div class=\"form-group\">
+                    <label class=\"form-label\">Tên đăng nhập (Username):</label>
+                    <input type=\"text\" id=\"auth-username\" class=\"form-input\" placeholder=\"vd: player_one\" maxlength=\"20\">
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Mật khẩu:</label>
-                    <input type="password" id="auth-password" class="form-input" placeholder="Mật khẩu ít nhất 4 ký tự">
+                <div class=\"form-group\">
+                    <label class=\"form-label\">Mật khẩu:</label>
+                    <input type=\"password\" id=\"auth-password\" class=\"form-input\" placeholder=\"Mật khẩu ít nhất 4 ký tự\">
                 </div>
 
-                <div id="register-fields" style="display: none; flex-direction: column; gap: 12px;">
-                    <div class="form-group">
-                        <label class="form-label">Tên hiển thị trong game:</label>
-                        <input type="text" id="auth-display-name" class="form-input" placeholder="vd: Chiến Thần Sấm" maxlength="24">
+                <div id=\"register-fields\" style=\"display: none; flex-direction: column; gap: 12px;\">
+                    <div class=\"form-group\">
+                        <label class=\"form-label\">Tên hiển thị trong game (Biệt danh):</label>
+                        <input type=\"text\" id=\"auth-display-name\" class=\"form-input\" placeholder=\"vd: Chiến Thần Sấm\" maxlength=\"24\">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Chọn Avatar đại diện:</label>
-                        <div class="avatar-picker" id="avatar-selector">
-                            <span class="avatar-option selected" data-avatar="knight">🛡️</span>
-                            <span class="avatar-option" data-avatar="archer">🏹</span>
-                            <span class="avatar-option" data-avatar="mage">🔮</span>
-                            <span class="avatar-option" data-avatar="assassin">🗡️</span>
-                            <span class="avatar-option" data-avatar="cleric">✨</span>
+                    <div class=\"form-group\">
+                        <label class=\"form-label\">Chọn Tướng đại diện (Avatar):</label>
+                        <div class=\"avatar-picker\" id=\"avatar-selector\">
+                            <span class=\"avatar-option selected\" data-avatar=\"knight\" title=\"Hiệp Sĩ (Knight)\">🛡️</span>
+                            <span class=\"avatar-option\" data-avatar=\"archer\" title=\"Cung Thủ (Archer)\">🏹</span>
+                            <span class=\"avatar-option\" data-avatar=\"mage\" title=\"Pháp Sư (Mage)\">🔮</span>
+                            <span class=\"avatar-option\" data-avatar=\"assassin\" title=\"Sát Thủ (Assassin)\">🗡️</span>
+                            <span class=\"avatar-option\" data-avatar=\"cleric\" title=\"Mục Sư (Cleric)\">✨</span>
                         </div>
                     </div>
                 </div>
 
-                <div id="auth-error-msg" style="color: #ef4444; font-size: 0.85rem; display: none;"></div>
+                <div style=\"background:#131c31; border:1px solid #1e293b; border-radius:6px; padding:10px; font-size:0.8rem; color:#94a3b8; display:flex; gap:8px; align-items:center;\">
+                    <span>☁️</span>
+                    <span>Tài khoản, ELO và thống kê thắng/thua được lưu trữ vĩnh viễn trên cơ sở dữ liệu <strong>OCI Free Tier</strong>.</span>
+                </div>
 
-                <button id="btn-auth-submit" class="btn btn-primary" style="padding: 10px; justify-content: center; font-size: 1rem; margin-top: 8px;">Đăng Nhập Ngay</button>
+                <div id=\"auth-error-msg\" style=\"color: #ef4444; font-size: 0.85rem; display: none; font-weight: 600;\"></div>
+
+                <div style=\"display: flex; gap: 10px; margin-top: 6px;\">
+                    <button id=\"btn-auth-submit\" class=\"btn btn-primary\" style=\"flex: 1; padding: 10px; justify-content: center; font-size: 0.95rem;\">Đăng Nhập Ngay</button>
+                    <button id=\"btn-auth-guest\" class=\"btn\" style=\"padding: 10px; justify-content: center; font-size: 0.85rem;\">Chơi Khách</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: SẢNH ĐỐI KHÁNG 2 NGƯỜI (PvP MATCHMAKING HUB) -->
+    <div id=\"pvp-hub-modal\" class=\"modal-overlay\">
+        <div class=\"modal-card\" style=\"max-width: 650px;\">
+            <div class=\"modal-header\">
+                <h2>⚔️ ĐẤU TRƯỜNG ONLINE 2 NGƯỜI (PvP REALTIME)</h2>
+                <button class=\"modal-close-btn\" id=\"btn-close-pvp-hub\">✕</button>
+            </div>
+            <div class=\"modal-body\">
+                <div class=\"hub-grid\">
+                    <!-- Quick Match Card -->
+                    <div class=\"hub-card\" style=\"border-color: #38bdf8;\">
+                        <div class=\"hub-card-title\">⚡ Ghép Nhanh Tự Động</div>
+                        <div class=\"hub-card-desc\">Hệ thống tự động tìm và kết nối bạn với người chơi khác trong vòng vài giây để đấu ngay.</div>
+                        <button id=\"btn-hub-quick-match\" class=\"btn btn-primary\" style=\"margin-top:auto; padding:10px; justify-content:center;\">⚡ TÌM ĐỐI THỦ NGAY</button>
+                    </div>
+
+                    <!-- Create Room Card -->
+                    <div class=\"hub-card\">
+                        <div class=\"hub-card-title\">🏠 Tạo Phòng Riêng</div>
+                        <div class=\"hub-card-desc\">Tạo phòng mới và nhận mã phòng 4 ký tự để gửi cho bạn bè cùng vào chiến.</div>
+                        <button id=\"btn-hub-create-room\" class=\"btn btn-success\" style=\"margin-top:auto; padding:10px; justify-content:center;\">➕ TẠO PHÒNG MỚI</button>
+                    </div>
+                </div>
+
+                <!-- Join by Code Box -->
+                <div style=\"background:#131c31; border:1px solid #1e293b; border-radius:10px; padding:14px; display:flex; align-items:center; justify-content:space-between; gap:12px;\">
+                    <div>
+                        <div style=\"font-weight:700; color:#facc15; font-size:0.95rem;\">🔑 Vào Phòng Của Bạn Bè</div>
+                        <div style=\"font-size:0.8rem; color:#94a3b8;\">Nhập mã phòng 4 chữ cái do bạn bè gửi:</div>
+                    </div>
+                    <div style=\"display:flex; gap:8px;\">
+                        <input id=\"hub-room-code-input\" class=\"room-input\" placeholder=\"MÃ...\" maxlength=\"4\" style=\"width:100px; font-size:1.1rem;\">
+                        <button id=\"btn-hub-join-room\" class=\"btn btn-primary\" style=\"padding:8px 16px;\">🚪 Vào Phòng</button>
+                    </div>
+                </div>
+
+                <!-- Live Waiting Rooms -->
+                <div>
+                    <div style=\"display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;\">
+                        <span style=\"font-weight:700; font-size:0.9rem; color:#38bdf8;\">📋 Phòng Chờ Đang Đợi Đối Thủ:</span>
+                        <button id=\"btn-refresh-rooms\" class=\"btn\" style=\"padding:3px 8px; font-size:0.75rem;\">🔄 Làm mới</button>
+                    </div>
+                    <div id=\"hub-rooms-container\" style=\"display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto;\">
+                        <p style=\"color: #64748b; font-style: italic; font-size: 0.85rem;\">Đang quét phòng chờ trên Rust Server...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal: Bảng Xếp Hạng (Leaderboard) -->
-    <div id="leaderboard-modal" class="modal-overlay">
-        <div class="modal-card" style="max-width: 680px;">
-            <div class="modal-header">
-                <h2>🏆 BẢNG VÀNG CAO THỦ (RUST SERVER)</h2>
-                <button class="modal-close-btn" id="btn-close-leaderboard">✕</button>
+    <div id=\"leaderboard-modal\" class=\"modal-overlay\">
+        <div class=\"modal-card\" style=\"max-width: 680px;\">
+            <div class=\"modal-header\">
+                <h2>🏆 BẢNG VÀNG CAO THỦ (OCI DATABASE)</h2>
+                <button class=\"modal-close-btn\" id=\"btn-close-leaderboard\">✕</button>
             </div>
-            <div class="modal-body">
-                <table class="styled-table">
+            <div class=\"modal-body\">
+                <table class=\"styled-table\">
                     <thead>
                         <tr>
                             <th>Hạng</th>
@@ -560,100 +694,73 @@
                             <th>Tỷ Lệ Thắng</th>
                         </tr>
                     </thead>
-                    <tbody id="leaderboard-tbody">
-                        <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng xếp hạng từ Rust Server...</td></tr>
+                    <tbody id=\"leaderboard-tbody\">
+                        <tr><td colspan=\"6\" style=\"text-align: center; color: #94a3b8;\">Đang tải bảng xếp hạng từ Rust Server...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Danh Sách Phòng Chờ (Lobby Browser) -->
-    <div id="rooms-modal" class="modal-overlay">
-        <div class="modal-card" style="max-width: 680px;">
-            <div class="modal-header">
-                <h2>📋 PHÒNG CHỜ REALTIME (RUST WEBSOCKET)</h2>
-                <button class="modal-close-btn" id="btn-close-rooms">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="color: #94a3b8; font-size: 0.85rem;">Danh sách các phòng đang mở đợi đối thủ trên Rust Server:</p>
-                <div id="rooms-list-container" style="display: flex; flex-direction: column; gap: 8px;">
-                    <p style="color: #64748b; font-style: italic;">Chưa có phòng nào đang mở. Hãy bấm "Tạo Phòng" để mời bạn bè!</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal: Hướng Dẫn Chi Tiết -->
-    <div id="guide-modal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-header">
+    <div id=\"guide-modal\" class=\"modal-overlay\">
+        <div class=\"modal-card\">
+            <div class=\"modal-header\">
                 <h2>⚔️ HƯỚNG DẪN CHIẾN ĐẤU & LUẬT CHƠI (AUTO-BATTLER)</h2>
-                <button class="modal-close-btn" id="btn-close-guide" title="Đóng (Esc)">✕</button>
+                <button class=\"modal-close-btn\" id=\"btn-close-guide\" title=\"Đóng (Esc)\">✕</button>
             </div>
-            <div class="guide-body">
-                <div class="guide-section">
-                    <div class="guide-section-title">⌨️ DANH SÁCH PHÍM TẮT NHANH (SHORTCUTS)</div>
-                    <div class="hotkey-grid">
-                        <div class="hotkey-item"><span class="key-badge">1 - 4</span><span>Mua nhanh thẻ tướng Shop 1 đến 4</span></div>
-                        <div class="hotkey-item"><span class="key-badge">S</span><span>Bán tướng đang chọn / đang trỏ (+100% Vàng)</span></div>
-                        <div class="hotkey-item"><span class="key-badge">Chuột Phải</span><span>Click chuột phải vào tướng để Bán nhanh</span></div>
-                        <div class="hotkey-item"><span class="key-badge">D</span><span>Đổi mới Cửa Hàng (Reroll) tốn 2 Vàng</span></div>
-                        <div class="hotkey-item"><span class="key-badge">E</span><span>Khóa / Mở khóa Cửa Hàng (Lock Shop)</span></div>
-                        <div class="hotkey-item"><span class="key-badge">Space</span><span>Bắt đầu hiệp đấu / Khóa bài PvP</span></div>
-                        <div class="hotkey-item"><span class="key-badge">H / F1</span><span>Bật / Tắt cửa sổ Hướng Dẫn</span></div>
-                        <div class="hotkey-item"><span class="key-badge">Esc</span><span>Đóng tất cả cửa sổ Popup</span></div>
+            <div class=\"modal-body\">
+                <div class=\"guide-section\">
+                    <div class=\"guide-section-title\">⌨️ DANH SÁCH PHÍM TẮT NHANH (SHORTCUTS)</div>
+                    <div class=\"hotkey-grid\">
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">1 - 4</span><span>Mua nhanh thẻ tướng Shop 1 đến 4</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">S</span><span>Bán tướng đang chọn / đang trỏ (+100% Vàng)</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">Chuột Phải</span><span>Click chuột phải vào tướng để Bán nhanh</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">D</span><span>Đổi mới Cửa Hàng (Reroll) tốn 2 Vàng</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">E</span><span>Khóa / Mở khóa Cửa Hàng (Lock Shop)</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">Space</span><span>Bắt đầu hiệp đấu / Khóa bài PvP</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">H / F1</span><span>Bật / Tắt cửa sổ Hướng Dẫn</span></div>
+                        <div class=\"hotkey-item\"><span class=\"key-badge\">Esc</span><span>Đóng tất cả cửa sổ Popup</span></div>
                     </div>
                 </div>
 
-                <div class="guide-section">
-                    <div class="guide-section-title">🎮 LỐI CHƠI & ĐIỀU KHIỂN ĐỘI HÌNH</div>
-                    <ul style="margin-left: 20px; font-size: 0.88rem; line-height: 1.6; color: #cbd5e1;">
+                <div class=\"guide-section\">
+                    <div class=\"guide-section-title\">🎮 ĐỐI KHÁNG 2 NGƯỜI CHƠI (ONLINE REALTIME PVP)</div>
+                    <ul style=\"margin-left: 20px; font-size: 0.88rem; line-height: 1.6; color: #cbd5e1;\">
+                        <li><strong>Không Đấu Với Máy:</strong> Khi vào phòng PvP hoặc Ghép Nhanh, toàn bộ bot máy bị xóa bỏ. Bạn sẽ chiến đấu trực tiếp với người chơi khác!</li>
                         <li><strong>Bố trí quân:</strong> Click chuột trái vào tướng trên Bàn đấu hoặc Hàng dự bị, sau đó click vào ô muốn đặt để Di chuyển hoặc Tráo đổi vị trí.</li>
-                        <li><strong>Giới hạn:</strong> Bàn cờ tối đa <strong>5 tướng xuất trận</strong>, Hàng dự bị tối đa <strong>6 tướng</strong>.</li>
-                        <li><strong>Chiến đấu tự động:</strong> Nhấn <strong>[Space]</strong> để khóa bài. Khi cả 2 người cùng sẵn sàng, tướng sẽ tự động giao chiến thời gian thực!</li>
+                        <li><strong>Khóa Trận:</strong> Nhấn <strong>[Space]</strong> hoặc nút <strong>[⚔️ KHÓA TRẬN & SẴN SÀNG]</strong>. Khi cả 2 người cùng bấm, đội hình thật của 2 người sẽ giao đấu trực tiếp!</li>
+                        <li><strong>Trừ Máu & Kết Thúc:</strong> Người thua bị trừ máu theo số lượng tướng còn sống của đối thủ. Người chơi sống sót cuối cùng giành chiến thắng và cộng +25 ELO vào Database!</li>
                     </ul>
                 </div>
 
-                <div class="guide-section">
-                    <div class="guide-section-title">⭐ CƠ CHẾ NÂNG CẤP SAO (STAR FUSION)</div>
-                    <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
+                <div class=\"guide-section\">
+                    <div class=\"guide-section-title\">⭐ CƠ CHẾ NÂNG CẤP SAO (STAR FUSION)</div>
+                    <p style=\"font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;\">
                         • <strong>3 Tướng 1★</strong> ➔ Tự động ghép thành <strong>1 Tướng 2★</strong> (+80% Máu, +60% Sát thương, +Giáp).<br>
                         • <strong>3 Tướng 2★</strong> ➔ Tự động ghép thành <strong>1 Tướng 3★</strong> (Max Sức Mạnh, hào quang hoàng gia).
                     </p>
                 </div>
-
-                <div class="guide-section">
-                    <div class="guide-section-title">🌐 HẠ TẦNG RUST SERVER & WEBSOCKET</div>
-                    <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
-                        • <strong>Rust WebSocket Backend:</strong> Đồng bộ trạng thái trận đấu độ trễ cực thấp (&lt;10ms).<br>
-                        • <strong>OCI Free Tier Database:</strong> Lưu trữ tài khoản và bảng xếp hạng ELO vĩnh viễn.<br>
-                        • Mỗi trận thắng được cộng <strong>+25 ELO</strong>, thua bị trừ <strong>-20 ELO</strong>.
-                    </p>
-                </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; padding:12px 20px; border-top:1px solid #1e293b;">
-                <button class="btn btn-primary" id="btn-got-it" style="padding: 8px 24px;">Đã Hiểu - Bắt Đầu Chiến!</button>
+            <div style=\"display:flex; justify-content:flex-end; padding:12px 20px; border-top:1px solid #1e293b;\">
+                <button class=\"btn btn-primary\" id=\"btn-got-it\" style=\"padding: 8px 24px;\">Đã Hiểu - Bắt Đầu Chiến!</button>
             </div>
         </div>
     </div>
 
-    <div id="canvas-wrapper">
-        <div id="loading-screen">
-            <div class="spinner"></div>
-            <h2 style="color: #f1f5f9; margin-bottom: 8px;">Đang tải 3v3 Tactical Arena...</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem;">Khởi tạo WebAssembly & Tài nguyên đồ họa...</p>
+    <div id=\"canvas-wrapper\">
+        <div id=\"loading-screen\">
+            <div class=\"spinner\"></div>
+            <h2 style=\"color: #f1f5f9; margin-bottom: 8px;\">Đang tải 3v3 Tactical Arena...</h2>
+            <p style=\"color: #94a3b8; font-size: 0.9rem;\">Khởi tạo WebAssembly & Tài nguyên đồ họa...</p>
         </div>
-        <canvas id="bevy-canvas" width="1280" height="720"></canvas>
+        <canvas id=\"bevy-canvas\" width=\"1280\" height=\"720\"></canvas>
     </div>
 
-    <script type="module">
+    <script type=\"module\">
         import init, { js_to_rust_pvp } from './game-free.js';
 
-        // ==========================================
-        // USER PROFILE & RUST API MANAGER
-        // ==========================================
-        const AVATAR_ICONS = {
+        // ==========================================\n        // USER PROFILE & RUST API MANAGER\n        // ==========================================\n        const AVATAR_ICONS = {
             knight: '🛡️',
             archer: '🏹',
             mage: '🔮',
@@ -687,9 +794,12 @@
             const avatarSpan = document.getElementById('user-avatar-icon');
             const nameSpan = document.getElementById('user-name-display');
             const eloSpan = document.getElementById('user-elo-badge');
+            const logoutBtn = document.getElementById('btn-logout-chip');
+
             if (avatarSpan) avatarSpan.textContent = AVATAR_ICONS[currentUser.avatar] || '🛡️';
             if (nameSpan) nameSpan.textContent = currentUser.displayName || currentUser.username;
             if (eloSpan) eloSpan.textContent = `${currentUser.elo || 1000} ELO`;
+            if (logoutBtn) logoutBtn.style.display = currentUser.isGuest ? 'none' : 'inline';
         }
         renderUserProfile();
 
@@ -710,30 +820,59 @@
         }
         syncUserProfileFromOci();
 
-        // ==========================================
-        // MODALS MANAGEMENT
-        // ==========================================
-        const guideModal = document.getElementById('guide-modal');
+        // ==========================================\n        // MODALS MANAGEMENT\n        // ==========================================\n        const guideModal = document.getElementById('guide-modal');
         const authModal = document.getElementById('auth-modal');
         const leaderboardModal = document.getElementById('leaderboard-modal');
-        const roomsModal = document.getElementById('rooms-modal');
+        const pvpHubModal = document.getElementById('pvp-hub-modal');
 
         function closeAllModals() {
             if (guideModal) guideModal.style.display = 'none';
             if (authModal) authModal.style.display = 'none';
             if (leaderboardModal) leaderboardModal.style.display = 'none';
-            if (roomsModal) roomsModal.style.display = 'none';
+            if (pvpHubModal) pvpHubModal.style.display = 'none';
+        }
+
+        // Show Auth Modal if user is still a guest on first visit
+        if (currentUser.isGuest) {
+            setTimeout(() => {
+                authModal.style.display = 'flex';
+            }, 600);
         }
 
         document.getElementById('btn-guide').onclick = () => { guideModal.style.display = 'flex'; };
         document.getElementById('btn-close-guide').onclick = () => { guideModal.style.display = 'none'; };
         document.getElementById('btn-got-it').onclick = () => { guideModal.style.display = 'none'; };
 
-        document.getElementById('user-profile-badge').onclick = () => {
+        document.getElementById('user-profile-badge').onclick = (e) => {
+            if (e.target.id === 'btn-logout-chip') return;
             document.getElementById('auth-error-msg').style.display = 'none';
             authModal.style.display = 'flex';
         };
+        document.getElementById('btn-logout-chip').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('Bạn có chắc muốn đăng xuất tài khoản?')) {
+                localStorage.removeItem('tac_arena_user');
+                const guestId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                currentUser = {
+                    username: 'guest_' + guestId.toLowerCase(),
+                    displayName: 'Hiệp Sĩ #' + guestId,
+                    avatar: 'knight',
+                    elo: 1000,
+                    wins: 0,
+                    losses: 0,
+                    matches: 0,
+                    isGuest: true
+                };
+                renderUserProfile();
+                authModal.style.display = 'flex';
+            }
+        };
         document.getElementById('btn-close-auth').onclick = () => { authModal.style.display = 'none'; };
+        document.getElementById('btn-auth-guest').onclick = () => {
+            authModal.style.display = 'none';
+            pvpHubModal.style.display = 'flex';
+            if (window._rust_pvp) window._rust_pvp.refreshLobby();
+        };
 
         // Tab Switch (Login / Register)
         let isRegisterTab = false;
@@ -745,7 +884,7 @@
             document.getElementById('tab-register').className = 'btn';
             document.getElementById('register-fields').style.display = 'none';
             document.getElementById('btn-auth-submit').textContent = 'Đăng Nhập Ngay';
-            document.getElementById('auth-title').textContent = '👤 Đăng Nhập Tài Khoản';
+            document.getElementById('auth-title').textContent = '🔑 Đăng Nhập Tài Khoản OCI';
         };
 
         document.getElementById('tab-register').onclick = () => {
@@ -753,8 +892,8 @@
             document.getElementById('tab-register').className = 'btn btn-primary';
             document.getElementById('tab-login').className = 'btn';
             document.getElementById('register-fields').style.display = 'flex';
-            document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản Mới';
-            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản Rust Server';
+            document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản & Lưu Vào OCI';
+            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản OCI';
         };
 
         // Avatar selector
@@ -776,7 +915,7 @@
             errorDiv.style.display = 'none';
 
             if (!username || !password) {
-                errorDiv.textContent = 'Vui lòng nhập đầy đủ tài khoản và mật khẩu!';
+                errorDiv.textContent = 'Vui lòng nhập đầy đủ tên tài khoản và mật khẩu!';
                 errorDiv.style.display = 'block';
                 return;
             }
@@ -801,10 +940,14 @@
                 }
 
                 currentUser = data.user;
+                currentUser.isGuest = false;
                 localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
                 renderUserProfile();
                 authModal.style.display = 'none';
-                alert(isRegisterTab ? `🎉 Tạo tài khoản "${currentUser.username}" thành công!` : `✅ Đăng nhập thành công! Chào mừng ${currentUser.displayName}!`);
+
+                alert(isRegisterTab ? `🎉 Chúc mừng! Tài khoản "${currentUser.username}" đã lưu vào OCI Cloud Database!` : `✅ Chào mừng ${currentUser.displayName || currentUser.username} quay trở lại!`);
+                pvpHubModal.style.display = 'flex';
+                if (window._rust_pvp) window._rust_pvp.refreshLobby();
             } catch (err) {
                 errorDiv.textContent = 'Lỗi kết nối tới máy chủ Rust: ' + err.message;
                 errorDiv.style.display = 'block';
@@ -815,7 +958,7 @@
         document.getElementById('btn-leaderboard').onclick = async () => {
             leaderboardModal.style.display = 'flex';
             const tbody = document.getElementById('leaderboard-tbody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải danh sách từ Rust Database...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan=\"6\" style=\"text-align: center; color: #94a3b8;\">Đang tải bảng vàng từ OCI Cloud Database...</td></tr>';
             try {
                 const res = await fetch('/api/leaderboard');
                 const data = await res.json();
@@ -832,32 +975,33 @@
 
                         return `
                             <tr>
-                                <td style="font-weight: 800; color: #facc15;">${rankIcon}</td>
-                                <td style="font-size: 1.2rem;">${icon}</td>
+                                <td style=\"font-weight: 800; color: #facc15;\">${rankIcon}</td>
+                                <td style=\"font-size: 1.2rem;\">${icon}</td>
                                 <td><strong>${u.displayName || u.display_name || u.username}</strong></td>
-                                <td style="color: #38bdf8; font-weight: 700;">${u.elo || 1000}</td>
+                                <td style=\"color: #38bdf8; font-weight: 700;\">${u.elo || 1000}</td>
                                 <td>${u.wins || 0}W - ${u.losses || 0}L</td>
-                                <td style="color: #4ade80; font-weight: 600;">${winrate}</td>
+                                <td style=\"color: #4ade80; font-weight: 600;\">${winrate}</td>
                             </tr>
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Chưa có dữ liệu bảng xếp hạng. Hãy là người đầu tiên!</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan=\"6\" style=\"text-align: center; color: #94a3b8;\">Chưa có dữ liệu bảng vàng. Hãy là người đầu tiên!</td></tr>';
                 }
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan=\"6\" style=\"text-align: center; color: #ef4444;\">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
             }
         };
         document.getElementById('btn-close-leaderboard').onclick = () => { leaderboardModal.style.display = 'none'; };
 
-        // Lobby Browser Modal
-        document.getElementById('btn-lobby-rooms').onclick = () => {
-            roomsModal.style.display = 'flex';
-            if (window._rust_pvp) {
-                window._rust_pvp.refreshLobby();
-            }
+        // PVP Hub Modal Controls
+        document.getElementById('btn-open-pvp-hub').onclick = () => {
+            pvpHubModal.style.display = 'flex';
+            if (window._rust_pvp) window._rust_pvp.refreshLobby();
         };
-        document.getElementById('btn-close-rooms').onclick = () => { roomsModal.style.display = 'none'; };
+        document.getElementById('btn-close-pvp-hub').onclick = () => { pvpHubModal.style.display = 'none'; };
+        document.getElementById('btn-refresh-rooms').onclick = () => {
+            if (window._rust_pvp) window._rust_pvp.refreshLobby();
+        };
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeAllModals();
@@ -867,10 +1011,7 @@
             }
         });
 
-        // ==========================================
-        // RUST LIGHTWEIGHT WEBSOCKET CLIENT
-        // ==========================================
-        let pvpState = {
+        // ==========================================\n        // RUST LIGHTWEIGHT WEBSOCKET CLIENT\n        // ==========================================\n        let pvpState = {
             active: false,
             roomCode: null,
             role: null,
@@ -948,12 +1089,12 @@
 
                     this.ws.onclose = () => {
                         console.warn('[RUST WS] Disconnected. Reconnecting in 2s...');
-                        updateStatusChip('⚠️ Đứt kết nối', false);
+                        updateStatusChip('Mất kết nối', false);
                         this.reconnectTimer = setTimeout(() => this.connect(), 2000);
                     };
 
                     this.ws.onerror = (err) => {
-                        console.error('[RUST WS] Error:', err);
+                        console.error('[RUST WS ERROR]', err);
                     };
 
                     this.ws.onmessage = (event) => {
@@ -1010,6 +1151,8 @@
             }
 
             setReady(lineup) {
+                const rInd = document.getElementById('ready-indicator');
+                if (rInd) rInd.textContent = '⏳ Bạn đã khóa (Chờ đối thủ)';
                 this.send({
                     type: 'PLAYER_READY',
                     lineup: lineup
@@ -1056,13 +1199,14 @@
                                 }));
                             }
                             closeAllModals();
+                            alert(`🏠 Bạn đã tạo phòng "${msg.room_code}"! Hãy gửi mã phòng này cho bạn bè.`);
                             break;
 
                         case 'ROOM_JOINED':
                         case 'OPPONENT_JOINED':
                             pvpState.active = true;
                             pvpState.roomCode = msg.room_code;
-                            pvpState.role = msg.role;
+                            pvpState.role = msg.role || pvpState.role || 'guest';
                             pvpState.round = msg.round || 1;
 
                             showRoomBadge(`Phòng: ${msg.room_code} vs ${msg.opponent_name}`);
@@ -1073,12 +1217,17 @@
                                 js_to_rust_pvp(JSON.stringify({
                                     type: 'ROOM_JOINED',
                                     room_code: msg.room_code,
-                                    role: msg.role,
+                                    role: pvpState.role,
                                     player_name: msg.player_name,
                                     opponent_name: msg.opponent_name
                                 }));
                             }
                             closeAllModals();
+                            break;
+
+                        case 'OPPONENT_READY':
+                            const rInd = document.getElementById('ready-indicator');
+                            if (rInd) rInd.textContent = '⚡ Đối thủ đã sẵn sàng!';
                             break;
 
                         case 'WAITING_FOR_MATCH':
@@ -1088,6 +1237,11 @@
                         case 'START_ROUND':
                             console.log('[RUST WS] ROUND START:', msg);
                             updateHp(msg.player_hp, msg.opponent_hp);
+                            const roundInd = document.getElementById('round-indicator');
+                            const readyInd = document.getElementById('ready-indicator');
+                            if (roundInd) roundInd.textContent = `VÒNG ${msg.round}`;
+                            if (readyInd) readyInd.textContent = '⚔️ Đang giao chiến!';
+
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify(msg));
                             }
@@ -1095,17 +1249,24 @@
 
                         case 'UPDATE_MATCH_HP':
                             updateHp(msg.player_hp, msg.opponent_hp);
+                            const rInd2 = document.getElementById('ready-indicator');
+                            if (rInd2) rInd2.textContent = 'Bày trận hiệp tiếp theo';
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify(msg));
                             }
                             break;
 
                         case 'MATCH_END':
-                            alert(`Trận đấu kết thúc! Người chiến thắng: ${msg.winner}`);
+                            alert(`⚔️ TRẬN ĐẤU KẾT THÚC!\n🏆 Người chiến thắng: ${msg.winner}\nĐiểm ELO đã được cập nhật vào Database OCI!`);
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify(msg));
                             }
                             syncUserProfileFromOci();
+                            pvpState.active = false;
+                            const badge = document.getElementById('room-badge');
+                            if (badge) badge.style.display = 'none';
+                            const hud = document.getElementById('match-hud');
+                            if (hud) hud.style.display = 'none';
                             break;
 
                         case 'ERROR':
@@ -1118,25 +1279,29 @@
             }
 
             renderLobbyList(rooms) {
-                const container = document.getElementById('rooms-list-container');
+                const container = document.getElementById('hub-rooms-container');
                 if (!container) return;
 
                 if (!rooms || rooms.length === 0) {
-                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">Hiện không có phòng chờ nào rảnh. Hãy bấm "Tạo Phòng" hoặc "Ghép Nhanh"!</p>';
+                    container.innerHTML = '<p style=\"color: #64748b; font-style: italic; font-size: 0.85rem;\">Chưa có phòng nào đang đợi. Hãy bấm \"TẠO PHÒNG MỚI\"!</p>';
                     return;
                 }
 
                 container.innerHTML = rooms.map(r => {
                     const hostAvatar = AVATAR_ICONS[r.host_avatar] || '🛡️';
                     return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid #334155;">
-                            <div>
-                                <span style="font-size:1.1rem; margin-right:6px;">${hostAvatar}</span>
-                                <strong style="color:#f8fafc;">${r.host_name}</strong>
-                                <span style="color:#facc15; font-size:0.8rem; margin-left:6px;">(${r.host_elo || 1000} ELO)</span>
-                                <span style="background:#0f172a; color:#38bdf8; padding:2px 8px; border-radius:4px; margin-left:10px; font-family:monospace; font-weight:700;">Phòng: ${r.code}</span>
+                        <div style=\"display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:8px 12px; border-radius:6px; border:1px solid #334155;\">
+                            <div style=\"display:flex; align-items:center; gap:8px;\">
+                                <span style=\"font-size:1.2rem;\">${hostAvatar}</span>
+                                <div>
+                                    <strong style=\"color:#f8fafc; font-size:0.9rem;\">${r.host_name}</strong>
+                                    <span style=\"color:#38bdf8; font-size:0.75rem; margin-left:4px;\">(${r.host_elo || 1000} ELO)</span>
+                                </div>
                             </div>
-                            <button class="btn btn-primary" onclick="window._rust_pvp.joinRoom('${r.code}')">Vào Trận Ngay</button>
+                            <div style=\"display:flex; align-items:center; gap:8px;\">
+                                <span style=\"font-family:monospace; background:#0f172a; padding:2px 8px; border-radius:4px; color:#facc15; font-weight:700;\">${r.room_code}</span>
+                                <button class=\"btn btn-primary\" style=\"padding:4px 10px; font-size:0.8rem;\" onclick=\"window._rust_pvp.joinRoom('${r.room_code}')\">VÀO CHIẾN</button>
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -1164,22 +1329,25 @@
             }
         };
 
-        // UI Controls
-        document.getElementById('btn-create-room').onclick = () => {
-            rustPvP.createRoom();
+        // Hub Buttons
+        document.getElementById('btn-hub-quick-match').onclick = () => {
+            rustPvP.quickMatch();
+            closeAllModals();
         };
 
-        document.getElementById('btn-join-room').onclick = () => {
-            const code = document.getElementById('room-code-input').value.trim();
+        document.getElementById('btn-hub-create-room').onclick = () => {
+            rustPvP.createRoom();
+            closeAllModals();
+        };
+
+        document.getElementById('btn-hub-join-room').onclick = () => {
+            const code = document.getElementById('hub-room-code-input').value.trim();
             if (!code) {
                 alert('Vui lòng nhập mã phòng (4 ký tự)!');
                 return;
             }
             rustPvP.joinRoom(code);
-        };
-
-        document.getElementById('btn-quick-match').onclick = () => {
-            rustPvP.quickMatch();
+            closeAllModals();
         };
 
         // Engine Start
@@ -1208,12 +1376,12 @@
                 console.error('Lỗi khởi tạo WebAssembly thực sự:', err);
                 const loader = document.getElementById('loading-screen');
                 if (loader) {
-                    let stack = err.stack ? `<pre style="font-size:0.75rem; text-align:left; max-width:800px; overflow:auto; margin-top:10px; background:#1e293b; padding:10px; border-radius:6px; color:#f87171;">${err.stack}</pre>` : '';
+                    let stack = err.stack ? `<pre style=\"font-size:0.75rem; text-align:left; max-width:800px; overflow:auto; margin-top:10px; background:#1e293b; padding:10px; border-radius:6px; color:#f87171;\">${err.stack}</pre>` : '';
                     loader.innerHTML = `
-                        <h3 style="color:#ef4444; margin-bottom:8px;">⚠️ Không thể tải Game trên WebGL/WebGPU</h3>
-                        <p style="color:#cbd5e1; max-width:600px; text-align:center;">${errMsg}</p>
+                        <h3 style=\"color:#ef4444; margin-bottom:8px;\">⚠️ Không thể tải Game trên WebGL/WebGPU</h3>
+                        <p style=\"color:#cbd5e1; max-width:600px; text-align:center;\">${errMsg}</p>
                         ${stack}
-                        <p style="color:#94a3b8; font-size:0.85rem; margin-top:14px;">Mẹo: Hãy chắc chắn trình duyệt hỗ trợ WebGL2 (vào chrome://gpu để kiểm tra).</p>
+                        <p style=\"color:#94a3b8; font-size:0.85rem; margin-top:14px;\">Mẹo: Hãy chắc chắn trình duyệt hỗ trợ WebGL2 (vào chrome://gpu để kiểm tra).</p>
                     `;
                 }
             }

@@ -134,6 +134,7 @@ fn main() {
                 handle_reroll_and_lock_buttons,
                 handle_keyboard_gameplay_shortcuts,
                 auto_star_fusion_system,
+                update_start_button_text,
             )
                 .run_if(in_state(GameState::Placement)),
         )

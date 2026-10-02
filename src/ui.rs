@@ -12,6 +12,9 @@ use bevy::prelude::*;
 pub struct StartBattleButton;
 
 #[derive(Component)]
+pub struct StartBattleText;
+
+#[derive(Component)]
 pub struct ClearBoardButton;
 
 #[derive(Component)]
@@ -954,10 +957,11 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     .with_child((
                         Text::new("⚔️ BATTLE START"),
                         TextFont {
-                            font_size: 15.0,
+                            font_size: 14.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
+                        StartBattleText,
                     ));
 
                     // Clear Button
@@ -1329,6 +1333,9 @@ pub fn handle_start_battle_button(
     if clicked || space_pressed {
         sound_events.send(PlaySoundEvent(SoundEffect::Click));
         if pvp_mgr.active {
+            if pvp_mgr.is_ready {
+                return;
+            }
             let mut lineup = Vec::new();
             for (u, _, g, s) in units.iter() {
                 if u.faction == Faction::Player {
@@ -1349,8 +1356,8 @@ pub fn handle_start_battle_button(
                 lineup.push(crate::net::PvpUnitData { col: 1, row: 2, class: UnitClass::Assassin, star_level: 1 });
             }
             pvp_mgr.is_ready = true;
-            crate::net::send_pvp_message(&crate::net::PvpMessage::PlayerReady { lineup });
-            info!("[PVP] Ready & Locked In! Sent lineup of {} heroes.", pvp_mgr.opponent_lineup.len());
+            crate::net::send_pvp_message(&crate::net::PvpMessage::PlayerReady { lineup: lineup.clone() });
+            info!("[PVP] Ready & Locked In! Sent lineup of {} heroes.", lineup.len());
             return;
         }
 
@@ -1367,6 +1374,28 @@ pub fn handle_start_battle_button(
             spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
             spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
             next_state.set(GameState::Battle);
+        }
+    }
+}
+
+pub fn update_start_button_text(
+    pvp_mgr: Res<crate::net::PvpManager>,
+    mut text_query: Query<&mut Text, With<StartBattleText>>,
+) {
+    if !pvp_mgr.is_changed() {
+        return;
+    }
+    for mut text in text_query.iter_mut() {
+        if pvp_mgr.active {
+            if pvp_mgr.is_ready {
+                *text = Text::new("⏳ ĐÃ KHÓA (CHỜ ĐỐI THỦ)");
+            } else if pvp_mgr.opponent_ready {
+                *text = Text::new("⚡ ĐỐI THỦ ĐÃ SẴN SÀNG!");
+            } else {
+                *text = Text::new("⚔️ KHÓA TRẬN & SẴN SÀNG");
+            }
+        } else {
+            *text = Text::new("⚔️ BATTLE START");
         }
     }
 }
