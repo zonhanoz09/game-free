@@ -19,6 +19,17 @@ pub struct TileBorderVisual;
 pub struct TileCoreVisual;
 
 #[derive(Component)]
+pub struct BenchSlotEntity {
+    pub slot: usize,
+}
+
+#[derive(Component)]
+pub struct BenchSlotBorderVisual;
+
+#[derive(Component)]
+pub struct BenchSlotCoreVisual;
+
+#[derive(Component)]
 pub struct TorchFlameEmitter {
     pub timer: Timer,
     pub pos: Vec2,
@@ -36,6 +47,7 @@ pub struct CenterDividerGlow;
 #[derive(Resource, Default)]
 pub struct HoveredTile {
     pub tile: Option<GridPos>,
+    pub bench_slot: Option<usize>,
 }
 
 pub fn grid_to_world_pos(col: usize, row: usize, faction: Faction) -> Vec2 {
@@ -54,6 +66,14 @@ pub fn grid_to_world_pos(col: usize, row: usize, faction: Faction) -> Vec2 {
         _ => ARENA_CENTER_Y - row_pitch,
     };
 
+    Vec2::new(x, y)
+}
+
+pub fn bench_world_pos(slot: usize) -> Vec2 {
+    let start_x = -340.0;
+    let pitch = 54.0;
+    let x = start_x + (slot as f32) * pitch;
+    let y = -165.0;
     Vec2::new(x, y)
 }
 
@@ -111,7 +131,28 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
         Transform::from_xyz(e_mid.x, e_mid.y, -25.0),
     ));
 
-    // 3. Central Golden Energy Divider Beam
+    // 3. Reserve Bench Shelf Foundation
+    let bench_center_x = (-340.0 + -70.0) * 0.5;
+    commands.spawn((
+        Sprite {
+            custom_size: Some(Vec2::new(340.0, 58.0)),
+            color: Color::srgba(0.08, 0.10, 0.16, 0.90),
+            ..default()
+        },
+        Transform::from_xyz(bench_center_x, -165.0, -20.0),
+    ));
+
+    // Bench Bronze Border Trim
+    commands.spawn((
+        Sprite {
+            custom_size: Some(Vec2::new(344.0, 62.0)),
+            color: Color::srgba(0.45, 0.55, 0.70, 0.40),
+            ..default()
+        },
+        Transform::from_xyz(bench_center_x, -165.0, -21.0),
+    ));
+
+    // 4. Central Golden Energy Divider Beam
     commands.spawn((
         Sprite {
             custom_size: Some(Vec2::new(4.0, 330.0)),
@@ -151,7 +192,7 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
             Transform::from_xyz(0.0, 0.0, 1.0),
         ));
 
-    // 4. Four Corner Braziers / Torches
+    // 5. Four Corner Braziers / Torches
     let torch_positions = [
         Vec2::new(ARENA_CENTER_X - 325.0, ARENA_CENTER_Y + 175.0),
         Vec2::new(ARENA_CENTER_X - 325.0, ARENA_CENTER_Y - 175.0),
@@ -160,7 +201,6 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
     ];
 
     for t_pos in torch_positions {
-        // Torch Stand
         commands.spawn((
             Sprite {
                 custom_size: Some(Vec2::new(14.0, 24.0)),
@@ -170,7 +210,6 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
             Transform::from_xyz(t_pos.x, t_pos.y - 8.0, -5.0),
         ));
 
-        // Torch Fire Crystal Head
         commands.spawn((
             Sprite {
                 custom_size: Some(Vec2::new(12.0, 14.0)),
@@ -180,14 +219,13 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
             Transform::from_xyz(t_pos.x, t_pos.y + 4.0, -4.0),
         ));
 
-        // Ember Particle Emitter
         commands.spawn(TorchFlameEmitter {
             timer: Timer::from_seconds(0.12, TimerMode::Repeating),
             pos: Vec2::new(t_pos.x, t_pos.y + 6.0),
         });
     }
 
-    // 5. 18 Combat Tiles (Player 3x3 + Enemy 3x3)
+    // 6. 18 Combat Tiles (Player 3x3 + Enemy 3x3)
     let factions = [
         (
             Faction::Player,
@@ -213,7 +251,6 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
                         Visibility::default(),
                     ))
                     .with_children(|parent| {
-                        // Outer Tile Border
                         parent.spawn((
                             TileBorderVisual,
                             Sprite {
@@ -224,7 +261,6 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
                             Transform::from_xyz(0.0, 0.0, 0.0),
                         ));
 
-                        // Inner Tile Core Slab
                         parent.spawn((
                             TileCoreVisual,
                             Sprite {
@@ -237,6 +273,38 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
                     });
             }
         }
+    }
+
+    // 7. 6 Reserve Bench Pedestals (Player Reserve Slots)
+    for slot in 0..BENCH_SLOTS {
+        let pos = bench_world_pos(slot);
+        commands
+            .spawn((
+                BenchSlotEntity { slot },
+                Transform::from_xyz(pos.x, pos.y, 0.0),
+                Visibility::default(),
+            ))
+            .with_children(|parent| {
+                parent.spawn((
+                    BenchSlotBorderVisual,
+                    Sprite {
+                        custom_size: Some(Vec2::new(46.0, 46.0)),
+                        color: Color::srgba(0.25, 0.42, 0.65, 0.80),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+
+                parent.spawn((
+                    BenchSlotCoreVisual,
+                    Sprite {
+                        custom_size: Some(Vec2::new(40.0, 40.0)),
+                        color: Color::srgba(0.09, 0.14, 0.22, 0.90),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.5),
+                ));
+            });
     }
 }
 
@@ -306,25 +374,29 @@ pub fn update_cursor_hover(
 ) {
     let Ok(window) = windows.get_single() else {
         hovered.tile = None;
+        hovered.bench_slot = None;
         return;
     };
     let Ok((camera, camera_transform)) = cameras.get_single() else {
         hovered.tile = None;
+        hovered.bench_slot = None;
         return;
     };
 
     let Some(cursor_pos) = window.cursor_position() else {
         hovered.tile = None;
+        hovered.bench_slot = None;
         return;
     };
 
     let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {
         hovered.tile = None;
+        hovered.bench_slot = None;
         return;
     };
 
     let half = TILE_SIZE * 0.5;
-    let mut found = None;
+    let mut found_tile = None;
 
     for &faction in &[Faction::Player, Faction::Enemy] {
         for col in 0..GRID_COLS {
@@ -332,28 +404,56 @@ pub fn update_cursor_hover(
                 let center = grid_to_world_pos(col, row, faction);
                 if (world_pos.x - center.x).abs() <= half && (world_pos.y - center.y).abs() <= half
                 {
-                    found = Some(GridPos { col, row, faction });
+                    found_tile = Some(GridPos { col, row, faction });
                     break;
                 }
             }
-            if found.is_some() {
+            if found_tile.is_some() {
                 break;
             }
         }
-        if found.is_some() {
+        if found_tile.is_some() {
             break;
         }
     }
 
-    hovered.tile = found;
+    let mut found_bench = None;
+    for slot in 0..BENCH_SLOTS {
+        let center = bench_world_pos(slot);
+        if (world_pos.x - center.x).abs() <= 23.0 && (world_pos.y - center.y).abs() <= 23.0 {
+            found_bench = Some(slot);
+            break;
+        }
+    }
+
+    hovered.tile = found_tile;
+    hovered.bench_slot = found_bench;
 }
 
 pub fn update_tile_visuals(
     hovered: Res<HoveredTile>,
     mut tiles: Query<(&TileEntity, &mut Transform, &Children)>,
+    mut bench_tiles: Query<(&BenchSlotEntity, &mut Transform, &Children), Without<TileEntity>>,
     mut borders: Query<&mut Sprite, (With<TileBorderVisual>, Without<TileCoreVisual>)>,
     mut cores: Query<&mut Sprite, (With<TileCoreVisual>, Without<TileBorderVisual>)>,
+    mut bench_borders: Query<
+        &mut Sprite,
+        (
+            With<BenchSlotBorderVisual>,
+            Without<BenchSlotCoreVisual>,
+            Without<TileBorderVisual>,
+        ),
+    >,
+    mut bench_cores: Query<
+        &mut Sprite,
+        (
+            With<BenchSlotCoreVisual>,
+            Without<BenchSlotBorderVisual>,
+            Without<TileCoreVisual>,
+        ),
+    >,
 ) {
+    // 1. Grid Tiles
     for (tile, mut transform, children) in tiles.iter_mut() {
         let is_hovered = hovered
             .tile
@@ -365,8 +465,8 @@ pub fn update_tile_visuals(
             for &child in children.iter() {
                 if let Ok(mut border) = borders.get_mut(child) {
                     border.color = match tile.faction {
-                        Faction::Player => Color::srgb(0.35, 0.85, 1.0), // Glowing cyan
-                        Faction::Enemy => Color::srgb(1.0, 0.45, 0.35),  // Glowing orange-red
+                        Faction::Player => Color::srgb(0.35, 0.85, 1.0),
+                        Faction::Enemy => Color::srgb(1.0, 0.45, 0.35),
                     };
                 }
                 if let Ok(mut core) = cores.get_mut(child) {
@@ -390,6 +490,32 @@ pub fn update_tile_visuals(
                         Faction::Player => Color::srgb(0.07, 0.13, 0.24),
                         Faction::Enemy => Color::srgb(0.20, 0.08, 0.10),
                     };
+                }
+            }
+        }
+    }
+
+    // 2. Bench Slot Pedestals
+    for (bench, mut transform, children) in bench_tiles.iter_mut() {
+        let is_hovered = hovered.bench_slot == Some(bench.slot);
+        if is_hovered {
+            transform.scale = Vec3::splat(1.08);
+            for &child in children.iter() {
+                if let Ok(mut border) = bench_borders.get_mut(child) {
+                    border.color = Color::srgb(1.0, 0.85, 0.25); // Gold glow
+                }
+                if let Ok(mut core) = bench_cores.get_mut(child) {
+                    core.color = Color::srgb(0.15, 0.25, 0.40);
+                }
+            }
+        } else {
+            transform.scale = Vec3::splat(1.0);
+            for &child in children.iter() {
+                if let Ok(mut border) = bench_borders.get_mut(child) {
+                    border.color = Color::srgba(0.25, 0.42, 0.65, 0.80);
+                }
+                if let Ok(mut core) = bench_cores.get_mut(child) {
+                    core.color = Color::srgba(0.09, 0.14, 0.22, 0.90);
                 }
             }
         }
@@ -422,5 +548,27 @@ mod tests {
         assert!(player_front.x < enemy_front.x);
         // Ensure there is at least TILE_SIZE gap between the centers
         assert!(enemy_front.x - player_front.x >= TILE_SIZE);
+    }
+
+    #[test]
+    fn test_bench_positions_within_arena() {
+        for slot in 0..BENCH_SLOTS {
+            let pos = bench_world_pos(slot);
+            assert!(pos.x > -640.0 && pos.x < 640.0);
+            assert!(pos.y > -360.0 && pos.y < 360.0);
+            // All bench slots should be on the player side
+            assert!(pos.x < ARENA_CENTER_X);
+        }
+    }
+
+    #[test]
+    fn test_reserve_bench_slot_spacing_and_ordering() {
+        for slot in 0..BENCH_SLOTS - 1 {
+            let pos_a = bench_world_pos(slot);
+            let pos_b = bench_world_pos(slot + 1);
+            assert!(pos_b.x > pos_a.x);
+            assert_eq!(pos_a.y, pos_b.y);
+            assert!((pos_b.x - pos_a.x - 54.0).abs() < 0.001);
+        }
     }
 }

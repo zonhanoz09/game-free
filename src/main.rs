@@ -45,6 +45,7 @@ fn main() {
         .init_resource::<BattleSpeed>()
         .init_resource::<CurrentStage>()
         .init_resource::<SelectedBenchUnit>()
+        .init_resource::<SelectedUnitState>()
         .init_resource::<SoundManager>()
         .add_event::<PlaySoundEvent>()
         .init_resource::<PlayerEconomy>()
@@ -60,7 +61,7 @@ fn main() {
             Startup,
             (setup_cameras, setup_board, setup_ui, setup_stage_enemies).chain(),
         )
-        // Group 1: Arena visual animations, cursor hover & tile visuals
+        // Group 1: Arena visual animations, cursor hover, selection halo & tile visuals
         .add_systems(
             Update,
             (
@@ -68,6 +69,7 @@ fn main() {
                 animate_idle_bobbing,
                 update_cursor_hover,
                 update_tile_visuals,
+                update_selection_halo,
             ),
         )
         // Group 2: Combat Game Feel (Hit Stop, 2D Camera Shake, VFX, Particles, Recoil, Spotlight, Audio)
@@ -90,6 +92,7 @@ fn main() {
                 update_unit_health_bars,
                 update_floating_text,
                 update_hero_inspection_system,
+                update_shop_cards_ui,
                 handle_speed_toggle,
                 update_gold_display_system,
                 update_synergies_ui,
@@ -110,12 +113,11 @@ fn main() {
         .add_systems(
             Update,
             (
-                update_bench_ui,
-                handle_bench_clicks,
+                handle_shop_clicks,
                 handle_start_battle_button,
                 handle_clear_button,
                 handle_preset_button,
-                handle_tile_mouse_placement,
+                handle_unit_and_tile_interaction,
                 update_tooltip_system,
                 update_unit_count_ui,
                 handle_reroll_and_lock_buttons,

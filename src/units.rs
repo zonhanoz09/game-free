@@ -1,5 +1,5 @@
 ﻿use crate::battle::{ActionGauge, HitStopManager};
-use crate::board::grid_to_world_pos;
+use crate::board::{bench_world_pos, grid_to_world_pos};
 use crate::types::*;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
@@ -27,6 +27,9 @@ pub struct HealthBarRoot2d;
 
 #[derive(Component)]
 pub struct UnitVisualRoot;
+
+#[derive(Component)]
+pub struct UnitSelectionRing;
 
 #[derive(Component)]
 pub struct IdleBobbing {
@@ -119,6 +122,17 @@ pub fn spawn_unit_ext(
 
     entity_cmds
         .with_children(|parent| {
+            // Selection Ring (Pulsing Gold when selected)
+            parent.spawn((
+                UnitSelectionRing,
+                Sprite {
+                    custom_size: Some(Vec2::splat(74.0)),
+                    color: Color::srgba(1.0, 0.85, 0.25, 0.0),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, 0.0, -0.2),
+            ));
+
             // 1. Under-Token Ambient Shadow
             parent.spawn((
                 Sprite {
@@ -208,7 +222,7 @@ pub fn spawn_unit_ext(
                     Transform::from_xyz(0.0, -31.0, 0.5),
                 ))
                 .with_child((
-                    Text2d::new(if is_boss { "[BOSS] TITAN".to_string() } else if star_level > 1 { format!("{} {}", unit_class.name().to_uppercase(), crate::economy::StarLevel(star_level).badge()) } else { unit_class.name().to_uppercase() }),
+                    Text2d::new(if is_boss { "TITAN".to_string() } else if star_level > 1 { format!("{} {}", unit_class.name().to_uppercase(), crate::economy::StarLevel(star_level).badge()) } else { unit_class.name().to_uppercase() }),
                     TextFont {
                         font_size: if is_boss { 9.5 } else { 9.0 },
                         ..default()
@@ -293,6 +307,216 @@ pub fn spawn_unit_ext(
                 });
         })
         .id()
+}
+
+pub fn spawn_bench_unit(
+    commands: &mut Commands,
+    textures: &GameTextures,
+    unit_class: UnitClass,
+    slot: usize,
+    star_level: u8,
+) -> Entity {
+    let world_pos = bench_world_pos(slot);
+    let z_depth = 10.0;
+
+    let outer_border_col = Color::srgb(0.25, 0.65, 1.0);
+    let inner_border_col = Color::srgb(0.10, 0.25, 0.55);
+
+    let mut stats = unit_class.base_stats();
+    if star_level > 1 {
+        let (hp_mult, atk_mult) = match star_level {
+            2 => (1.8, 1.6),
+            _ => (2.8, 2.5),
+        };
+        stats.max_hp = (stats.max_hp * hp_mult).round();
+        stats.hp = stats.max_hp;
+        stats.atk = (stats.atk * atk_mult).round();
+    }
+
+    let token_scale = if star_level == 3 { 1.18 } else if star_level == 2 { 1.08 } else { 1.0 };
+
+    let mut entity_cmds = commands.spawn((
+        Unit {
+            class: unit_class,
+            faction: Faction::Player,
+        },
+        crate::economy::StarLevel(star_level),
+        stats,
+        BenchPos { slot },
+        ChibiSquashStretch::default(),
+        Transform::from_xyz(world_pos.x, world_pos.y, z_depth).with_scale(Vec3::splat(token_scale)),
+        Visibility::default(),
+    ));
+
+    entity_cmds
+        .with_children(|parent| {
+            // Selection Ring
+            parent.spawn((
+                UnitSelectionRing,
+                Sprite {
+                    custom_size: Some(Vec2::splat(74.0)),
+                    color: Color::srgba(1.0, 0.85, 0.25, 0.0),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, 0.0, -0.2),
+            ));
+
+            // 1. Under-Token Ambient Shadow
+            parent.spawn((
+                Sprite {
+                    custom_size: Some(Vec2::new(76.0, 22.0)),
+                    color: Color::srgba(0.02, 0.03, 0.05, 0.55),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, -32.0, -0.5),
+            ));
+
+            // 2. Animated Character Visual Root
+            parent
+                .spawn((
+                    UnitVisualRoot,
+                    IdleBobbing {
+                        base_y: 0.0,
+                        phase: slot as f32 * 0.95,
+                    },
+                    ChibiSquashStretch::default(),
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    Visibility::default(),
+                ))
+                .with_children(|vis_parent| {
+                    // Outer Token Base Ring
+                    vis_parent.spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::splat(68.0)),
+                            color: outer_border_col,
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.0),
+                    ));
+
+                    // Inner Token Accent Rim
+                    vis_parent.spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::splat(64.0)),
+                            color: inner_border_col,
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.1),
+                    ));
+
+                    // Token Dark Portrait Core Matting
+                    vis_parent.spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::splat(58.0)),
+                            color: Color::srgb(0.08, 0.10, 0.15),
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.2),
+                    ));
+
+                    // 2D Character Portrait Artwork Sprite
+                    let portrait_tex = textures.get_unit_texture(unit_class);
+                    vis_parent.spawn((
+                        Sprite {
+                            image: portrait_tex,
+                            custom_size: Some(Vec2::splat(56.0)),
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.3),
+                    ));
+
+                    // Character Class Corner Badge
+                    vis_parent.spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::splat(16.0)),
+                            color: unit_class.color(),
+                            ..default()
+                        },
+                        Transform::from_xyz(-22.0, 22.0, 0.4),
+                    ));
+                });
+
+            // 3. Role Name Plate Banner below token
+            parent
+                .spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::new(60.0, 14.0)),
+                        color: Color::srgba(0.05, 0.07, 0.10, 0.85),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, -31.0, 0.5),
+                ))
+                .with_child((
+                    Text2d::new(if star_level > 1 {
+                        format!("{} {}", unit_class.name().to_uppercase(), crate::economy::StarLevel(star_level).badge())
+                    } else {
+                        unit_class.name().to_uppercase()
+                    }),
+                    TextFont {
+                        font_size: 9.0,
+                        ..default()
+                    },
+                    TextColor(if star_level > 1 {
+                        crate::economy::StarLevel(star_level).color()
+                    } else {
+                        unit_class.color()
+                    }),
+                    Transform::from_xyz(0.0, 0.0, 0.1),
+                ));
+
+            // 4. Overhead Floating Health Bar
+            parent
+                .spawn((
+                    HealthBarRoot2d,
+                    Transform::from_xyz(0.0, 48.0, 1.0),
+                    Visibility::default(),
+                ))
+                .with_children(|bar_parent| {
+                    bar_parent.spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::new(64.0, 7.0)),
+                            color: Color::srgb(0.06, 0.08, 0.12),
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.0),
+                    ));
+
+                    bar_parent.spawn((
+                        HealthBarFill2d,
+                        Sprite {
+                            custom_size: Some(Vec2::new(62.0, 5.0)),
+                            color: Color::srgb(0.2, 0.85, 0.3),
+                            anchor: Anchor::CenterLeft,
+                            ..default()
+                        },
+                        Transform::from_xyz(-31.0, 0.0, 0.1),
+                    ));
+                });
+        });
+
+    entity_cmds.id()
+}
+
+pub fn update_selection_halo(
+    time: Res<Time>,
+    selected: Res<SelectedUnitState>,
+    units: Query<(Entity, &Children), With<Unit>>,
+    mut halos: Query<&mut Sprite, With<UnitSelectionRing>>,
+) {
+    let t = time.elapsed_secs();
+    for (unit_entity, children) in units.iter() {
+        let is_selected = selected.entity == Some(unit_entity);
+        for &child in children.iter() {
+            if let Ok(mut sprite) = halos.get_mut(child) {
+                if is_selected {
+                    let pulse = 0.70 + (t * 6.0).sin() * 0.30;
+                    sprite.color = Color::srgba(1.0, 0.88, 0.20, pulse);
+                } else {
+                    sprite.color = Color::srgba(1.0, 0.85, 0.25, 0.0);
+                }
+            }
+        }
+    }
 }
 
 pub fn animate_idle_bobbing(

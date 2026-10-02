@@ -1,11 +1,11 @@
 use crate::battle::ActionGauge;
 use crate::audio::{PlaySoundEvent, SoundEffect};
-use crate::board::HoveredTile;
-use crate::economy::{unit_cost, GoldDisplayText, PlayerEconomy, ShopLockToggle, ShopRerollButton};
+use crate::board::{bench_world_pos, grid_to_world_pos, HoveredTile};
+use crate::economy::{refund_amount, unit_cost, GoldDisplayText, PlayerEconomy, ShopLockToggle, ShopRerollButton, StarLevel};
 use crate::stages::get_stage_def;
 use crate::synergies::{SynergyContainer, SynergyCountText, SynergyRow, SynergyType};
 use crate::types::*;
-use crate::units::{Unit, spawn_unit, spawn_unit_ext};
+use crate::units::{spawn_bench_unit, spawn_unit, spawn_unit_ext, Unit};
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -27,7 +27,19 @@ pub struct NextStageButton;
 pub struct RetryButton;
 
 #[derive(Component)]
-pub struct BenchButton(pub UnitClass);
+pub struct ShopCard(pub usize);
+
+#[derive(Component)]
+pub struct ShopCardAvatar(pub usize);
+
+#[derive(Component)]
+pub struct ShopCardName(pub usize);
+
+#[derive(Component)]
+pub struct ShopCardCost(pub usize);
+
+#[derive(Component)]
+pub struct ShopLockText;
 
 #[derive(Component)]
 pub struct PlacementUiRoot;
@@ -730,29 +742,20 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
             PlacementUiRoot,
         ))
         .with_children(|parent| {
-            // Bench row (5 classes with mini avatars)
+            // 4 Shop Cards Row
             parent
                 .spawn(Node {
                     flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(10.0),
+                    column_gap: Val::Px(12.0),
                     align_items: AlignItems::Center,
                     ..default()
                 })
                 .with_children(|row| {
-                    let classes = [
-                        UnitClass::Knight,
-                        UnitClass::Archer,
-                        UnitClass::Mage,
-                        UnitClass::Assassin,
-                        UnitClass::Cleric,
-                    ];
-
-                    for class in classes {
-                        let col = class.color();
+                    for i in 0..4 {
                         row.spawn((
                             Button,
                             Node {
-                                width: Val::Px(142.0),
+                                width: Val::Px(175.0),
                                 height: Val::Px(56.0),
                                 flex_direction: FlexDirection::Row,
                                 justify_content: JustifyContent::Start,
@@ -763,20 +766,15 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                                 ..default()
                             },
                             BorderColor(Color::srgba(1.0, 1.0, 1.0, 0.2)),
-                            BackgroundColor(Color::srgba(
-                                col.to_srgba().red * 0.35,
-                                col.to_srgba().green * 0.35,
-                                col.to_srgba().blue * 0.35,
-                                0.95,
-                            )),
+                            BackgroundColor(Color::srgba(0.12, 0.16, 0.22, 0.95)),
                             BorderRadius::all(Val::Px(6.0)),
-                            BenchButton(class),
+                            ShopCard(i),
                         ))
                         .with_children(|btn| {
                             // Avatar thumbnail
                             btn.spawn((
                                 ImageNode {
-                                    image: textures.get_unit_texture(class),
+                                    image: textures.knight.clone(),
                                     ..default()
                                 },
                                 Node {
@@ -785,6 +783,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                                     ..default()
                                 },
                                 BorderRadius::all(Val::Px(4.0)),
+                                ShopCardAvatar(i),
                             ));
 
                             // Info column
@@ -795,25 +794,22 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                             })
                             .with_children(|txt_col| {
                                 txt_col.spawn((
-                                    Text::new(class.name()),
+                                    Text::new("Hero"),
                                     TextFont {
-                                        font_size: 13.5,
+                                        font_size: 13.0,
                                         ..default()
                                     },
                                     TextColor(Color::WHITE),
+                                    ShopCardName(i),
                                 ));
                                 txt_col.spawn((
-                                    Text::new(format!(
-                                        "{}🪙 | HP:{} ATK:{}",
-                                        unit_cost(class),
-                                        class.base_stats().max_hp as i32,
-                                        class.base_stats().atk as i32
-                                    )),
+                                    Text::new("2G"),
                                     TextFont {
-                                        font_size: 10.0,
+                                        font_size: 10.5,
                                         ..default()
                                     },
                                     TextColor(Color::srgba(1.0, 0.85, 0.2, 0.9)),
+                                    ShopCardCost(i),
                                 ));
                             });
                         });
@@ -824,16 +820,67 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
             parent
                 .spawn(Node {
                     flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(16.0),
+                    column_gap: Val::Px(14.0),
                     align_items: AlignItems::Center,
                     ..default()
                 })
                 .with_children(|row| {
+                    // Reroll Shop Button (2G)
+                    row.spawn((
+                        Button,
+                        Node {
+                            width: Val::Px(120.0),
+                            height: Val::Px(36.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(1.5)),
+                            ..default()
+                        },
+                        BorderColor(Color::srgb(1.0, 0.8, 0.2)),
+                        BackgroundColor(Color::srgb(0.28, 0.20, 0.12)),
+                        BorderRadius::all(Val::Px(6.0)),
+                        ShopRerollButton,
+                    ))
+                    .with_child((
+                        Text::new("🎲 Roll 2G [D]"),
+                        TextFont {
+                            font_size: 12.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(1.0, 0.88, 0.3)),
+                    ));
+
+                    // Lock Shop Button
+                    row.spawn((
+                        Button,
+                        Node {
+                            width: Val::Px(110.0),
+                            height: Val::Px(36.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(1.5)),
+                            ..default()
+                        },
+                        BorderColor(Color::srgba(1.0, 1.0, 1.0, 0.15)),
+                        BackgroundColor(Color::srgb(0.20, 0.23, 0.28)),
+                        BorderRadius::all(Val::Px(6.0)),
+                        ShopLockToggle,
+                    ))
+                    .with_child((
+                        Text::new("🔓 Lock [E]"),
+                        TextFont {
+                            font_size: 12.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        ShopLockText,
+                    ));
+
                     // Preset Button
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(130.0),
+                            width: Val::Px(120.0),
                             height: Val::Px(36.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -846,7 +893,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     .with_child((
                         Text::new("Preset Squad"),
                         TextFont {
-                            font_size: 13.0,
+                            font_size: 12.5,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -856,8 +903,8 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(210.0),
-                            height: Val::Px(42.0),
+                            width: Val::Px(190.0),
+                            height: Val::Px(38.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             border: UiRect::all(Val::Px(2.0)),
@@ -869,9 +916,9 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                         StartBattleButton,
                     ))
                     .with_child((
-                        Text::new("BATTLE START"),
+                        Text::new("⚔️ BATTLE START"),
                         TextFont {
-                            font_size: 15.5,
+                            font_size: 15.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -881,7 +928,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(100.0),
+                            width: Val::Px(105.0),
                             height: Val::Px(36.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -893,54 +940,6 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>) {
                     ))
                     .with_child((
                         Text::new("Clear Board"),
-                        TextFont {
-                            font_size: 12.5,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-
-                    // Reroll Shop Button (2G)
-                    row.spawn((
-                        Button,
-                        Node {
-                            width: Val::Px(110.0),
-                            height: Val::Px(36.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            border: UiRect::all(Val::Px(1.0)),
-                            ..default()
-                        },
-                        BorderColor(Color::srgb(1.0, 0.8, 0.2)),
-                        BackgroundColor(Color::srgb(0.28, 0.20, 0.12)),
-                        BorderRadius::all(Val::Px(6.0)),
-                        ShopRerollButton,
-                    ))
-                    .with_child((
-                        Text::new("🎲 Roll 2G"),
-                        TextFont {
-                            font_size: 12.5,
-                            ..default()
-                        },
-                        TextColor(Color::srgb(1.0, 0.88, 0.3)),
-                    ));
-
-                    // Lock Shop Button
-                    row.spawn((
-                        Button,
-                        Node {
-                            width: Val::Px(90.0),
-                            height: Val::Px(36.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.22, 0.25, 0.32)),
-                        BorderRadius::all(Val::Px(6.0)),
-                        ShopLockToggle,
-                    ))
-                    .with_child((
-                        Text::new("🔒 Lock"),
                         TextFont {
                             font_size: 12.5,
                             ..default()
@@ -966,9 +965,10 @@ pub fn update_unit_count_ui(
 
 pub fn update_hero_inspection_system(
     hovered: Res<HoveredTile>,
-    selected: Res<SelectedBenchUnit>,
+    selected: Res<SelectedUnitState>,
     textures: Res<GameTextures>,
-    units: Query<(&Unit, &GridPos, &UnitStats), Without<DeadUnit>>,
+    board_units: Query<(&Unit, &GridPos, &UnitStats), Without<DeadUnit>>,
+    bench_units: Query<(&Unit, &BenchPos, &UnitStats), Without<DeadUnit>>,
     mut avatar_query: Query<&mut ImageNode, With<InspectHeroAvatar>>,
     mut header_query: Query<(&InspectHeader, &mut Text, Option<&mut TextColor>)>,
     mut bar_query: Query<(&InspectStatBar, &mut Node)>,
@@ -978,24 +978,39 @@ pub fn update_hero_inspection_system(
         (Without<InspectHeader>, Without<InspectStatText>),
     >,
 ) {
-    let mut inspected_unit: Option<(UnitClass, Faction, UnitStats)> = None;
+    let mut inspected: Option<(UnitClass, Faction, UnitStats)> = None;
 
     if let Some(tile) = &hovered.tile {
-        if let Some((unit, _, stats)) = units
+        if let Some((unit, _, stats)) = board_units
             .iter()
             .find(|(_, g, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
         {
-            inspected_unit = Some((unit.class, unit.faction, *stats));
+            inspected = Some((unit.class, unit.faction, *stats));
         }
     }
 
-    if inspected_unit.is_none() {
-        if let Some(class) = selected.unit_class {
-            inspected_unit = Some((class, Faction::Player, class.base_stats()));
+    if inspected.is_none() {
+        if let Some(slot) = hovered.bench_slot {
+            if let Some((unit, _, stats)) = bench_units
+                .iter()
+                .find(|(_, b, _)| b.slot == slot)
+            {
+                inspected = Some((unit.class, Faction::Player, *stats));
+            }
         }
     }
 
-    let (class, faction, stats) = inspected_unit.unwrap_or_else(|| {
+    if inspected.is_none() {
+        if let Some(sel_ent) = selected.entity {
+            if let Ok((unit, _, stats)) = board_units.get(sel_ent) {
+                inspected = Some((unit.class, unit.faction, *stats));
+            } else if let Ok((unit, _, stats)) = bench_units.get(sel_ent) {
+                inspected = Some((unit.class, Faction::Player, *stats));
+            }
+        }
+    }
+
+    let (class, faction, stats) = inspected.unwrap_or_else(|| {
         (
             UnitClass::Knight,
             Faction::Player,
@@ -1088,47 +1103,129 @@ pub fn update_hero_inspection_system(
     }
 }
 
-pub fn update_bench_ui(
-    selected: Res<SelectedBenchUnit>,
-    mut buttons: Query<(&BenchButton, &mut BorderColor, &mut BackgroundColor)>,
+pub fn update_shop_cards_ui(
+    economy: Res<PlayerEconomy>,
+    textures: Res<GameTextures>,
+    mut card_buttons: Query<(&ShopCard, &mut BackgroundColor, &mut BorderColor)>,
+    mut avatars: Query<(&ShopCardAvatar, &mut ImageNode, &mut Visibility)>,
+    mut names: Query<(&ShopCardName, &mut Text, &mut TextColor)>,
+    mut costs: Query<(&ShopCardCost, &mut Text), Without<ShopCardName>>,
+    mut lock_button: Query<(&mut BackgroundColor, &mut BorderColor), (With<ShopLockToggle>, Without<ShopCard>)>,
+    mut lock_text: Query<&mut Text, With<ShopLockText>>,
 ) {
-    for (bench_btn, mut border, mut bg) in buttons.iter_mut() {
-        let is_sel = selected.unit_class == Some(bench_btn.0);
-        let col = bench_btn.0.color();
-        if is_sel {
-            *border = BorderColor(Color::srgb(1.0, 0.9, 0.2));
+    for (card, mut bg, mut border) in card_buttons.iter_mut() {
+        let idx = card.0;
+        if let Some(class) = economy.shop_slots[idx] {
+            let col = class.color();
+            let c_rgba = col.to_srgba();
+            *border = BorderColor(Color::srgba(c_rgba.red, c_rgba.green, c_rgba.blue, 0.75));
             *bg = BackgroundColor(Color::srgba(
-                col.to_srgba().red * 0.75,
-                col.to_srgba().green * 0.75,
-                col.to_srgba().blue * 0.75,
-                1.0,
-            ));
-        } else {
-            *border = BorderColor(Color::srgba(1.0, 1.0, 1.0, 0.2));
-            *bg = BackgroundColor(Color::srgba(
-                col.to_srgba().red * 0.35,
-                col.to_srgba().green * 0.35,
-                col.to_srgba().blue * 0.35,
+                c_rgba.red * 0.28,
+                c_rgba.green * 0.28,
+                c_rgba.blue * 0.28,
                 0.95,
             ));
+        } else {
+            *border = BorderColor(Color::srgba(0.25, 0.28, 0.35, 0.35));
+            *bg = BackgroundColor(Color::srgba(0.06, 0.08, 0.11, 0.75));
+        }
+    }
+
+    for (avatar, mut img, mut vis) in avatars.iter_mut() {
+        let idx = avatar.0;
+        if let Some(class) = economy.shop_slots[idx] {
+            img.image = textures.get_unit_texture(class);
+            *vis = Visibility::Inherited;
+        } else {
+            *vis = Visibility::Hidden;
+        }
+    }
+
+    for (name_comp, mut txt, mut col) in names.iter_mut() {
+        let idx = name_comp.0;
+        if let Some(class) = economy.shop_slots[idx] {
+            *txt = Text::new(class.name());
+            col.0 = Color::WHITE;
+        } else {
+            *txt = Text::new("[PURCHASED]");
+            col.0 = Color::srgb(0.45, 0.48, 0.52);
+        }
+    }
+
+    for (cost_comp, mut txt) in costs.iter_mut() {
+        let idx = cost_comp.0;
+        if let Some(class) = economy.shop_slots[idx] {
+            *txt = Text::new(format!("🪙 {}G | {}", unit_cost(class), class.role_title()));
+        } else {
+            *txt = Text::new("--");
+        }
+    }
+
+    if let Ok((mut bg, mut border)) = lock_button.get_single_mut() {
+        if economy.shop_locked {
+            *bg = BackgroundColor(Color::srgb(0.45, 0.35, 0.10));
+            *border = BorderColor(Color::srgb(1.0, 0.85, 0.25));
+        } else {
+            *bg = BackgroundColor(Color::srgb(0.20, 0.23, 0.28));
+            *border = BorderColor(Color::srgba(1.0, 1.0, 1.0, 0.15));
+        }
+    }
+
+    if let Ok(mut txt) = lock_text.get_single_mut() {
+        if economy.shop_locked {
+            *txt = Text::new("🔒 Locked [E]");
+        } else {
+            *txt = Text::new("🔓 Lock [E]");
         }
     }
 }
 
-pub fn handle_bench_clicks(
-    mut selected: ResMut<SelectedBenchUnit>,
-    mut buttons: Query<(&Interaction, &BenchButton), (Changed<Interaction>, With<Button>)>,
+pub fn handle_shop_clicks(
+    mut commands: Commands,
+    textures: Res<GameTextures>,
+    mut economy: ResMut<PlayerEconomy>,
+    bench_units: Query<&BenchPos, (With<Unit>, Without<DeadUnit>)>,
+    mut buttons: Query<(&Interaction, &ShopCard), (Changed<Interaction>, With<Button>)>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut tooltip: Query<&mut Text, With<TooltipText>>,
 ) {
-    for (interaction, bench_btn) in buttons.iter_mut() {
+    for (interaction, shop_card) in buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
-            sound_events.send(PlaySoundEvent(SoundEffect::Click));
-            if selected.unit_class == Some(bench_btn.0) {
-                selected.unit_class = None;
-                info!("[UI] Bench selection deselected");
-            } else {
-                selected.unit_class = Some(bench_btn.0);
-                info!("[UI] Bench hero selected: {:?} (Cost: {}G)", bench_btn.0, unit_cost(bench_btn.0));
+            let slot_idx = shop_card.0;
+            if let Some(class) = economy.shop_slots[slot_idx] {
+                let cost = unit_cost(class);
+                if economy.gold < cost {
+                    info!("[SHOP] Cannot buy {}: Not enough gold (Have: {}G, Need: {}G)", class.name(), economy.gold, cost);
+                    if let Ok(mut txt) = tooltip.get_single_mut() {
+                        *txt = Text::new(format!("⚠️ Not enough gold! Need {}G, have {}G.", cost, economy.gold));
+                    }
+                    continue;
+                }
+
+                let occupied_slots: Vec<usize> = bench_units.iter().map(|b| b.slot).collect();
+                let free_slot = (0..BENCH_SLOTS).find(|s| !occupied_slots.contains(s));
+
+                if let Some(slot) = free_slot {
+                    if let Some(bought_class) = economy.buy_slot(slot_idx) {
+                        spawn_bench_unit(
+                            &mut commands,
+                            &textures,
+                            bought_class,
+                            slot,
+                            1,
+                        );
+                        sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                        info!("[SHOP] Recruited {:?} for {}G -> placed on Reserve Bench Slot #{} (Remaining Gold: {}G)", bought_class, cost, slot + 1, economy.gold);
+                        if let Ok(mut txt) = tooltip.get_single_mut() {
+                            *txt = Text::new(format!("Recruited {} for {}G (Placed on Bench #{})", bought_class.name(), cost, slot + 1));
+                        }
+                    }
+                } else {
+                    info!("[SHOP] Reserve bench is full (6/6 slots occupied)!");
+                    if let Ok(mut txt) = tooltip.get_single_mut() {
+                        *txt = Text::new("⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first.".to_string());
+                    }
+                }
             }
         }
     }
@@ -1160,7 +1257,7 @@ pub fn handle_start_battle_button(
     mut commands: Commands,
     textures: Res<GameTextures>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    units: Query<(&Unit, &UnitStats), Without<DeadUnit>>,
+    units: Query<(&Unit, &UnitStats), (With<GridPos>, Without<DeadUnit>)>,
     mut buttons: Query<(&Interaction, &mut BackgroundColor), With<StartBattleButton>>,
     mut next_state: ResMut<NextState<GameState>>,
     current_state: Res<State<GameState>>,
@@ -1195,10 +1292,10 @@ pub fn handle_start_battle_button(
             .filter(|(u, _)| u.faction == Faction::Player)
             .count();
         if player_count > 0 {
-            info!("[UI] ⚔️ Battle Start triggered! (Active player heroes: {})", player_count);
+            info!("[UI] ⚔️ Battle Start triggered! (Active player heroes on board: {})", player_count);
             next_state.set(GameState::Battle);
         } else {
-            info!("[UI] ⚔️ Battle Start triggered with 0 units: Auto-deployed starter squad (Knight, Archer, Assassin)!");
+            info!("[UI] ⚔️ Battle Start triggered with 0 units on board: Auto-deployed starter squad (Knight, Archer, Assassin)!");
             spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
             spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
             spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
@@ -1210,9 +1307,11 @@ pub fn handle_start_battle_button(
 pub fn handle_clear_button(
     mut commands: Commands,
     mut buttons: Query<&Interaction, (Changed<Interaction>, With<ClearBoardButton>)>,
-    units: Query<(Entity, &Unit)>,
+    board_units: Query<(Entity, &Unit, &StarLevel), (With<GridPos>, Without<DeadUnit>)>,
+    bench_units: Query<(Entity, &Unit, &StarLevel), (With<BenchPos>, Without<DeadUnit>)>,
     current_state: Res<State<GameState>>,
     mut economy: ResMut<PlayerEconomy>,
+    mut selected: ResMut<SelectedUnitState>,
     mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if *current_state.get() != GameState::Placement {
@@ -1224,16 +1323,25 @@ pub fn handle_clear_button(
             sound_events.send(PlaySoundEvent(SoundEffect::Click));
             let mut refunded_count = 0;
             let mut total_refund = 0;
-            for (entity, unit) in units.iter() {
-                if unit.faction == Faction::Player {
-                    let cost = unit_cost(unit.class);
-                    economy.gold += cost;
-                    total_refund += cost;
-                    refunded_count += 1;
-                    commands.entity(entity).despawn_recursive();
-                }
+
+            for (entity, unit, star) in board_units.iter() {
+                let refund = refund_amount(unit.class, star.0);
+                economy.gold += refund;
+                total_refund += refund;
+                refunded_count += 1;
+                commands.entity(entity).despawn_recursive();
             }
-            info!("[UI] Board cleared: {} heroes sold for +{}G -> Total Gold: {}G", refunded_count, total_refund, economy.gold);
+
+            for (entity, unit, star) in bench_units.iter() {
+                let refund = refund_amount(unit.class, star.0);
+                economy.gold += refund;
+                total_refund += refund;
+                refunded_count += 1;
+                commands.entity(entity).despawn_recursive();
+            }
+
+            selected.clear();
+            info!("[UI] Squad cleared: {} heroes sold for +{}G -> Total Gold: {}G", refunded_count, total_refund, economy.gold);
         }
     }
 }
@@ -1242,9 +1350,10 @@ pub fn handle_preset_button(
     mut commands: Commands,
     textures: Res<GameTextures>,
     mut buttons: Query<&Interaction, (Changed<Interaction>, With<PresetButton>)>,
-    units: Query<(Entity, &Unit)>,
+    board_units: Query<(Entity, &Unit, &StarLevel), (With<GridPos>, Without<DeadUnit>)>,
     current_state: Res<State<GameState>>,
     mut economy: ResMut<PlayerEconomy>,
+    mut selected: ResMut<SelectedUnitState>,
     mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if *current_state.get() != GameState::Placement {
@@ -1254,18 +1363,17 @@ pub fn handle_preset_button(
     for interaction in buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
             sound_events.send(PlaySoundEvent(SoundEffect::Click));
-            for (entity, unit) in units.iter() {
-                if unit.faction == Faction::Player {
-                    economy.gold += unit_cost(unit.class);
-                    commands.entity(entity).despawn_recursive();
-                }
+            for (entity, unit, star) in board_units.iter() {
+                economy.gold += refund_amount(unit.class, star.0);
+                commands.entity(entity).despawn_recursive();
             }
+            selected.clear();
 
             if economy.gold >= 7 {
                 economy.gold -= 7;
                 spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 0);
-                spawn_unit(&mut commands, &textures, UnitClass::Knight, Faction::Player, 2, 2);
-                spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 1);
+                spawn_unit(&mut commands, &textures, UnitClass::Archer, Faction::Player, 0, 1);
+                spawn_unit(&mut commands, &textures, UnitClass::Assassin, Faction::Player, 2, 2);
                 info!("[UI] Preset squad deployed (Cost: 7G) -> Remaining Gold: {}G", economy.gold);
             } else {
                 info!("[UI] Cannot deploy preset squad: Need 7G (Current: {}G)", economy.gold);
@@ -1274,111 +1382,263 @@ pub fn handle_preset_button(
     }
 }
 
-pub fn handle_tile_mouse_placement(
+pub fn handle_unit_and_tile_interaction(
     mut commands: Commands,
-    textures: Res<GameTextures>,
     mouse: Res<ButtonInput<MouseButton>>,
     hovered: Res<HoveredTile>,
-    selected: Res<SelectedBenchUnit>,
-    units: Query<(Entity, &Unit, &GridPos), Without<DeadUnit>>,
-    current_state: Res<State<GameState>>,
+    mut selected: ResMut<SelectedUnitState>,
     mut economy: ResMut<PlayerEconomy>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut tooltip: Query<&mut Text, With<TooltipText>>,
+    board_units: Query<(Entity, &Unit, &GridPos, &StarLevel), Without<DeadUnit>>,
+    bench_units: Query<(Entity, &Unit, &BenchPos, &StarLevel), Without<DeadUnit>>,
+    mut transforms: Query<&mut Transform, With<Unit>>,
 ) {
-    if *current_state.get() != GameState::Placement {
-        return;
-    }
-
-    let Some(hovered_tile) = &hovered.tile else {
-        return;
-    };
-    if hovered_tile.faction != Faction::Player {
-        return;
-    };
-
-    let target_col = hovered_tile.col;
-    let target_row = hovered_tile.row;
-
-    let existing_on_tile = units.iter().find(|(_, u, g)| {
-        u.faction == Faction::Player && g.col == target_col && g.row == target_row
-    });
-
-    if mouse.just_pressed(MouseButton::Left) {
-        if let Some(unit_class) = selected.unit_class {
-            let cost = unit_cost(unit_class);
-            if let Some((old_ent, old_unit, _)) = existing_on_tile {
-                let old_cost = unit_cost(old_unit.class);
-                if economy.gold + old_cost >= cost {
-                    economy.gold = economy.gold + old_cost - cost;
-                    commands.entity(old_ent).despawn_recursive();
-                    spawn_unit(
-                        &mut commands,
-                        &textures,
-                        unit_class,
-                        Faction::Player,
-                        target_col,
-                        target_row,
-                    );
-                    info!("[PLACEMENT] Replaced {:?} with {:?} at ({}, {}) -> Remaining Gold: {}G", old_unit.class, unit_class, target_col, target_row, economy.gold);
+    // 1. Right Click -> Sell Unit
+    if mouse.just_pressed(MouseButton::Right) {
+        if let Some(tile) = &hovered.tile {
+            if tile.faction == Faction::Player {
+                if let Some((ent, unit, _, star)) = board_units.iter().find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player) {
+                    let refund = refund_amount(unit.class, star.0);
+                    economy.gold += refund;
+                    commands.entity(ent).despawn_recursive();
+                    if selected.entity == Some(ent) {
+                        selected.clear();
+                    }
                     sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                    info!("[SELL] Sold {}★ {} from Board for +{}G -> Total: {}G", star.0, unit.class.name(), refund, economy.gold);
+                    if let Ok(mut txt) = tooltip.get_single_mut() {
+                        *txt = Text::new(format!("Sold {}★ {} for +{}G!", star.0, unit.class.name(), refund));
+                    }
+                    return;
                 }
-            } else {
-                let current_count = units
-                    .iter()
-                    .filter(|(_, u, _)| u.faction == Faction::Player)
-                    .count();
-                if current_count < MAX_PLAYER_UNITS && economy.gold >= cost {
-                    economy.gold -= cost;
-                    spawn_unit(
-                        &mut commands,
-                        &textures,
-                        unit_class,
-                        Faction::Player,
-                        target_col,
-                        target_row,
-                    );
-                    info!("[PLACEMENT] Deployed {:?} to ({}, {}) (Cost: {}G) -> Remaining Gold: {}G", unit_class, target_col, target_row, cost, economy.gold);
-                    sound_events.send(PlaySoundEvent(SoundEffect::Click));
+            }
+        }
+
+        if let Some(slot) = hovered.bench_slot {
+            if let Some((ent, unit, _, star)) = bench_units.iter().find(|(_, _, b, _)| b.slot == slot) {
+                let refund = refund_amount(unit.class, star.0);
+                economy.gold += refund;
+                commands.entity(ent).despawn_recursive();
+                if selected.entity == Some(ent) {
+                    selected.clear();
                 }
+                sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                info!("[SELL] Sold {}★ {} from Bench #{} for +{}G -> Total: {}G", star.0, unit.class.name(), slot + 1, refund, economy.gold);
+                if let Ok(mut txt) = tooltip.get_single_mut() {
+                    *txt = Text::new(format!("Sold {}★ {} for +{}G!", star.0, unit.class.name(), refund));
+                }
+                return;
             }
         }
     }
 
-    if mouse.just_pressed(MouseButton::Right) {
-        if let Some((old_ent, old_unit, _)) = existing_on_tile {
-            let refund = unit_cost(old_unit.class);
-            economy.gold += refund;
-            commands.entity(old_ent).despawn_recursive();
-            info!("[PLACEMENT] Sold {:?} at ({}, {}) (Refund: +{}G) -> Total Gold: {}G", old_unit.class, target_col, target_row, refund, economy.gold);
-            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+    // 2. Left Click -> Select, Move, or Swap
+    if mouse.just_pressed(MouseButton::Left) {
+        let unit_at_cursor: Option<(Entity, UnitClass, UnitLocation)> = {
+            if let Some(tile) = &hovered.tile {
+                if tile.faction == Faction::Player {
+                    board_units
+                        .iter()
+                        .find(|(_, _, g, _)| g.col == tile.col && g.row == tile.row && g.faction == Faction::Player)
+                        .map(|(e, u, g, _)| (e, u.class, UnitLocation::Board(*g)))
+                } else {
+                    None
+                }
+            } else if let Some(slot) = hovered.bench_slot {
+                bench_units
+                    .iter()
+                    .find(|(_, _, b, _)| b.slot == slot)
+                    .map(|(e, u, b, _)| (e, u.class, UnitLocation::Bench(b.slot)))
+            } else {
+                None
+            }
+        };
+
+        if let Some((target_ent, target_class, target_loc)) = unit_at_cursor {
+            if let Some(sel_ent) = selected.entity {
+                if sel_ent == target_ent {
+                    selected.clear();
+                    sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                } else {
+                    let sel_loc = selected.location.unwrap();
+                    match (sel_loc, target_loc) {
+                        (UnitLocation::Board(sel_g), UnitLocation::Board(target_g)) => {
+                            commands.entity(sel_ent).insert(target_g);
+                            commands.entity(target_ent).insert(sel_g);
+
+                            let p1 = grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
+                            let p2 = grid_to_world_pos(sel_g.col, sel_g.row, Faction::Player);
+                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                t.translation.x = p1.x;
+                                t.translation.y = p1.y;
+                                t.translation.z = 10.0 + (target_g.row as f32 * -0.5);
+                            }
+                            if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                t.translation.x = p2.x;
+                                t.translation.y = p2.y;
+                                t.translation.z = 10.0 + (sel_g.row as f32 * -0.5);
+                            }
+                        }
+                        (UnitLocation::Bench(sel_s), UnitLocation::Bench(target_s)) => {
+                            commands.entity(sel_ent).insert(BenchPos { slot: target_s });
+                            commands.entity(target_ent).insert(BenchPos { slot: sel_s });
+
+                            let p1 = bench_world_pos(target_s);
+                            let p2 = bench_world_pos(sel_s);
+                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                t.translation.x = p1.x;
+                                t.translation.y = p1.y;
+                            }
+                            if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                t.translation.x = p2.x;
+                                t.translation.y = p2.y;
+                            }
+                        }
+                        (UnitLocation::Board(board_g), UnitLocation::Bench(bench_s)) => {
+                            commands.entity(sel_ent).remove::<GridPos>().insert(BenchPos { slot: bench_s });
+                            commands.entity(target_ent).remove::<BenchPos>().insert(board_g);
+
+                            let p_bench = bench_world_pos(bench_s);
+                            let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
+                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                t.translation.x = p_bench.x;
+                                t.translation.y = p_bench.y;
+                                t.translation.z = 10.0;
+                            }
+                            if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                t.translation.x = p_board.x;
+                                t.translation.y = p_board.y;
+                                t.translation.z = 10.0 + (board_g.row as f32 * -0.5);
+                            }
+                        }
+                        (UnitLocation::Bench(bench_s), UnitLocation::Board(board_g)) => {
+                            commands.entity(sel_ent).remove::<BenchPos>().insert(board_g);
+                            commands.entity(target_ent).remove::<GridPos>().insert(BenchPos { slot: bench_s });
+
+                            let p_board = grid_to_world_pos(board_g.col, board_g.row, Faction::Player);
+                            let p_bench = bench_world_pos(bench_s);
+                            if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                                t.translation.x = p_board.x;
+                                t.translation.y = p_board.y;
+                                t.translation.z = 10.0 + (board_g.row as f32 * -0.5);
+                            }
+                            if let Ok(mut t) = transforms.get_mut(target_ent) {
+                                t.translation.x = p_bench.x;
+                                t.translation.y = p_bench.y;
+                                t.translation.z = 10.0;
+                            }
+                        }
+                    }
+                    selected.clear();
+                    sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                    info!("[SWAP] Swapped heroes positions!");
+                }
+            } else {
+                selected.entity = Some(target_ent);
+                selected.location = Some(target_loc);
+                selected.class = Some(target_class);
+                sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                info!("[SELECT] Selected {:?} at {:?}", target_class, target_loc);
+            }
+        } else {
+            if let Some(sel_ent) = selected.entity {
+                let sel_loc = selected.location.unwrap();
+
+                if let Some(tile) = &hovered.tile {
+                    if tile.faction == Faction::Player {
+                        let target_g = GridPos {
+                            col: tile.col,
+                            row: tile.row,
+                            faction: Faction::Player,
+                        };
+
+                        if let UnitLocation::Bench(_) = sel_loc {
+                            let active_count = board_units.iter().count();
+                            if active_count >= MAX_PLAYER_UNITS {
+                                info!("[DEPLOY] Board is full (5/5)! Cannot deploy another hero.");
+                                if let Ok(mut txt) = tooltip.get_single_mut() {
+                                    *txt = Text::new("⚠️ Board squad is full (5/5)! Swap with an active hero instead.".to_string());
+                                }
+                                return;
+                            }
+                            commands.entity(sel_ent).remove::<BenchPos>().insert(target_g);
+                        } else {
+                            commands.entity(sel_ent).insert(target_g);
+                        }
+
+                        let p = grid_to_world_pos(target_g.col, target_g.row, Faction::Player);
+                        if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                            t.translation.x = p.x;
+                            t.translation.y = p.y;
+                            t.translation.z = 10.0 + (target_g.row as f32 * -0.5);
+                        }
+                        selected.clear();
+                        sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                        info!("[MOVE] Placed hero on Board ({}, {})", target_g.col, target_g.row);
+                    }
+                } else if let Some(slot) = hovered.bench_slot {
+                    if let UnitLocation::Board(_) = sel_loc {
+                        commands.entity(sel_ent).remove::<GridPos>().insert(BenchPos { slot });
+                    } else {
+                        commands.entity(sel_ent).insert(BenchPos { slot });
+                    }
+
+                    let p = bench_world_pos(slot);
+                    if let Ok(mut t) = transforms.get_mut(sel_ent) {
+                        t.translation.x = p.x;
+                        t.translation.y = p.y;
+                        t.translation.z = 10.0;
+                    }
+                    selected.clear();
+                    sound_events.send(PlaySoundEvent(SoundEffect::Click));
+                    info!("[MOVE] Placed hero on Bench Slot #{}", slot + 1);
+                }
+            }
         }
     }
 }
 
 pub fn update_tooltip_system(
     hovered: Res<HoveredTile>,
-    selected: Res<SelectedBenchUnit>,
-    units: Query<(&Unit, &GridPos, &UnitStats), Without<DeadUnit>>,
+    selected: Res<SelectedUnitState>,
+    board_units: Query<(&Unit, &GridPos, &UnitStats, &StarLevel), Without<DeadUnit>>,
+    bench_units: Query<(&Unit, &BenchPos, &UnitStats, &StarLevel), Without<DeadUnit>>,
     mut tooltip: Query<&mut Text, With<TooltipText>>,
 ) {
     let Ok(mut text) = tooltip.get_single_mut() else {
         return;
     };
 
+    if let Some(sel_ent) = selected.entity {
+        let (class, star, is_bench) = if let Ok((u, _, _, s)) = board_units.get(sel_ent) {
+            (u.class, s.0, false)
+        } else if let Ok((u, _, _, s)) = bench_units.get(sel_ent) {
+            (u.class, s.0, true)
+        } else {
+            (UnitClass::Knight, 1, false)
+        };
+
+        *text = Text::new(format!(
+            "Selected: {}★ {} ({}) - Left-Click empty slot to place, click another hero to swap, Right-Click to sell.",
+            star,
+            class.name(),
+            if is_bench { "Reserve Bench" } else { "Active Board" }
+        ));
+        return;
+    }
+
     if let Some(tile) = &hovered.tile {
-        if let Some((unit, _, stats)) = units
+        if let Some((unit, _, stats, star)) = board_units
             .iter()
-            .find(|(_, g, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
+            .find(|(_, g, _, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
         {
             *text = Text::new(format!(
-                "Hovering: {} {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0}",
+                "Hovering: {} {}★ {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} (Right-Click to sell)",
                 unit.class.icon(),
+                star.0,
                 unit.class.name(),
-                if unit.faction == Faction::Player {
-                    "Ally"
-                } else {
-                    "Enemy"
-                },
+                if unit.faction == Faction::Player { "Ally" } else { "Enemy" },
                 stats.hp,
                 stats.max_hp,
                 stats.atk,
@@ -1389,21 +1649,27 @@ pub fn update_tooltip_system(
         }
     }
 
-    if let Some(class) = selected.unit_class {
-        let stats = class.base_stats();
-        *text = Text::new(format!(
-            "Selected: {} {} - HP: {:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} (Click on blue grid to place)",
-            class.icon(),
-            class.name(),
-            stats.hp,
-            stats.atk,
-            stats.def,
-            stats.speed,
-        ));
-        return;
+    if let Some(slot) = hovered.bench_slot {
+        if let Some((unit, _, stats, star)) = bench_units
+            .iter()
+            .find(|(_, b, _, _)| b.slot == slot)
+        {
+            *text = Text::new(format!(
+                "Reserve Bench #{}: {} {}★ {} - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} (Click to deploy/swap, Right-Click to sell)",
+                slot + 1,
+                unit.class.icon(),
+                star.0,
+                unit.class.name(),
+                stats.hp,
+                stats.max_hp,
+                stats.atk,
+                stats.def,
+            ));
+            return;
+        }
     }
 
-    *text = Text::new("");
+    *text = Text::new("💡 Click a shop card below to recruit. Left-Click heroes to position/swap. Right-Click to sell for gold.".to_string());
 }
 
 pub fn setup_stage_enemies(
@@ -1693,31 +1959,46 @@ pub fn update_gold_display_system(
 }
 
 pub fn handle_reroll_and_lock_buttons(
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut economy: ResMut<PlayerEconomy>,
     mut rng: ResMut<crate::battle::BattleRng>,
     mut reroll_buttons: Query<&Interaction, (Changed<Interaction>, With<ShopRerollButton>)>,
-    mut lock_buttons: Query<(&Interaction, &mut BorderColor), (Changed<Interaction>, With<ShopLockToggle>)>,
+    mut lock_buttons: Query<&Interaction, (Changed<Interaction>, With<ShopLockToggle>)>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut tooltip: Query<&mut Text, With<TooltipText>>,
 ) {
+    let mut do_reroll = false;
     for interaction in reroll_buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
-            if economy.reroll(&mut rng) {
-                sound_events.send(PlaySoundEvent(SoundEffect::Click));
-            }
+            do_reroll = true;
+        }
+    }
+    if keyboard.just_pressed(KeyCode::KeyD) {
+        do_reroll = true;
+    }
+
+    if do_reroll {
+        if economy.reroll(&mut rng) {
+            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+        } else if let Ok(mut txt) = tooltip.get_single_mut() {
+            *txt = Text::new("⚠️ Need at least 2G to roll the shop!".to_string());
         }
     }
 
-    for (interaction, mut border) in lock_buttons.iter_mut() {
+    let mut toggle_lock = false;
+    for interaction in lock_buttons.iter_mut() {
         if *interaction == Interaction::Pressed {
-            economy.shop_locked = !economy.shop_locked;
-            if economy.shop_locked {
-                border.0 = Color::srgb(1.0, 0.85, 0.2);
-            } else {
-                border.0 = Color::srgba(1.0, 1.0, 1.0, 0.1);
-            }
-            info!("[SHOP] Shop Lock toggled -> Locked: {}", economy.shop_locked);
-            sound_events.send(PlaySoundEvent(SoundEffect::Click));
+            toggle_lock = true;
         }
+    }
+    if keyboard.just_pressed(KeyCode::KeyE) {
+        toggle_lock = true;
+    }
+
+    if toggle_lock {
+        economy.shop_locked = !economy.shop_locked;
+        info!("[SHOP] Shop lock toggled -> Locked: {}", economy.shop_locked);
+        sound_events.send(PlaySoundEvent(SoundEffect::Click));
     }
 }
 

@@ -179,9 +179,9 @@ pub fn update_camera_shake(
 
 pub fn on_enter_battle(
     mut commands: Commands,
-    units: Query<Entity, With<Unit>>,
+    units: Query<Entity, (With<Unit>, With<GridPos>)>,
     mut turn_manager: ResMut<BattleTurnManager>,
-    mut player_units: Query<(&Unit, &mut UnitStats), Without<DeadUnit>>,
+    mut player_units: Query<(&Unit, &mut UnitStats), (With<GridPos>, Without<DeadUnit>)>,
 ) {
     turn_manager.active_attacker = None;
     turn_manager.cooldown_timer.reset();
@@ -1556,7 +1556,7 @@ pub fn check_unit_deaths(
 }
 
 pub fn check_battle_end(
-    units: Query<(&Unit, &UnitStats), Without<DeadUnit>>,
+    units: Query<(&Unit, &UnitStats), (With<GridPos>, Without<DeadUnit>)>,
     mut next_state: ResMut<NextState<GameState>>,
     current_state: Res<State<GameState>>,
     mut sound_events: EventWriter<PlaySoundEvent>,

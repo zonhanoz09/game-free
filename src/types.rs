@@ -3,6 +3,7 @@ use bevy::prelude::*;
 pub const GRID_COLS: usize = 3;
 pub const GRID_ROWS: usize = 3;
 pub const MAX_PLAYER_UNITS: usize = 5;
+pub const BENCH_SLOTS: usize = 6;
 
 // 2D Pixel Layout Constants
 pub const TILE_SIZE: f32 = 88.0;
@@ -54,6 +55,17 @@ pub struct GridPos {
     pub faction: Faction,
 }
 
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BenchPos {
+    pub slot: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnitLocation {
+    Board(GridPos),
+    Bench(usize),
+}
+
 #[derive(Component)]
 pub struct DeadUnit;
 
@@ -79,9 +91,25 @@ impl Default for CurrentStage {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Resource, Default)]
 pub struct SelectedBenchUnit {
     pub unit_class: Option<UnitClass>,
+}
+
+#[derive(Resource, Default, Debug)]
+pub struct SelectedUnitState {
+    pub entity: Option<Entity>,
+    pub location: Option<UnitLocation>,
+    pub class: Option<UnitClass>,
+}
+
+impl SelectedUnitState {
+    pub fn clear(&mut self) {
+        self.entity = None;
+        self.location = None;
+        self.class = None;
+    }
 }
 
 #[allow(dead_code)]
@@ -300,6 +328,18 @@ impl FromWorld for GameTextures {
 }
 
 impl GameTextures {
+    #[allow(dead_code)]
+    pub fn dummy() -> Self {
+        Self {
+            background: Handle::default(),
+            knight: Handle::default(),
+            archer: Handle::default(),
+            mage: Handle::default(),
+            assassin: Handle::default(),
+            cleric: Handle::default(),
+        }
+    }
+
     pub fn get_unit_texture(&self, class: UnitClass) -> Handle<Image> {
         match class {
             UnitClass::Knight => self.knight.clone(),
