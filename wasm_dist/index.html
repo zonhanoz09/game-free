@@ -1,324 +1,267 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3v3 Tactical Arena - Online PvP Auto-Battler</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3v3 Tactical Arena (PVP Auto-Battler)</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-        }
-
-        body {
-            background-color: #0b0f19;
-            color: #e2e8f0;
-            font-family: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
             user-select: none;
         }
 
-        #top-bar {
+        body, html {
             width: 100%;
-            max-width: 1360px;
-            background: linear-gradient(180deg, rgba(17, 24, 39, 0.96) 0%, rgba(15, 23, 42, 0.88) 100%);
-            border-bottom: 2px solid #334155;
-            padding: 8px 16px;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #f1f5f9;
+        }
+
+        #canvas-wrapper {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            bottom: 0;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
+            background: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            outline: none;
+        }
+
+        /* Top HUD Bar */
+        #top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 2px solid #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
             z-index: 100;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            gap: 12px;
+            backdrop-filter: blur(8px);
         }
 
         .title-badge {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-weight: 700;
-            font-size: 1.05rem;
+            font-weight: 800;
+            font-size: 1.1rem;
             color: #38bdf8;
             letter-spacing: 0.5px;
-            white-space: nowrap;
         }
 
+        /* User Profile Chip */
         .user-chip {
             display: flex;
             align-items: center;
             gap: 8px;
             background: #1e293b;
-            border: 1px solid #3b82f6;
-            padding: 4px 10px;
-            border-radius: 8px;
+            border: 1px solid #334155;
+            padding: 4px 12px;
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
         }
 
         .user-chip:hover {
-            background: #2563eb;
-            color: #fff;
-        }
-
-        .pvp-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        button.btn {
-            background: #1e293b;
-            color: #f1f5f9;
-            border: 1px solid #475569;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.85rem;
-            transition: all 0.15s ease-in-out;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-
-        button.btn:hover {
-            background: #334155;
             border-color: #38bdf8;
-            color: #38bdf8;
-            transform: translateY(-1px);
-        }
-
-        button.btn-primary {
-            background: #2563eb;
-            border-color: #3b82f6;
-        }
-
-        button.btn-primary:hover {
-            background: #1d4ed8;
-            border-color: #60a5fa;
-            color: #ffffff;
-        }
-
-        button.btn-gold {
-            background: #d97706;
-            border-color: #f59e0b;
-        }
-
-        button.btn-gold:hover {
-            background: #b45309;
-            border-color: #fbbf24;
-            color: #fff;
-        }
-
-        input.room-input {
-            background: #0f172a;
-            border: 1px solid #475569;
-            color: #38bdf8;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-weight: 700;
-            text-transform: uppercase;
-            width: 85px;
-            text-align: center;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-
-        input.room-input:focus {
-            outline: none;
-            border-color: #38bdf8;
-            box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+            background: #243247;
         }
 
         .match-hud {
             display: flex;
             align-items: center;
-            gap: 14px;
-            background: #0f172a;
-            padding: 4px 12px;
-            border-radius: 8px;
-            border: 1px solid #334155;
+            gap: 20px;
         }
 
         .player-hp-box {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            font-size: 0.8rem;
+            width: 140px;
+            gap: 3px;
         }
 
         .hp-bar-bg {
-            width: 85px;
-            height: 10px;
+            width: 100%;
+            height: 8px;
             background: #334155;
-            border-radius: 5px;
+            border-radius: 4px;
             overflow: hidden;
-            margin-top: 2px;
         }
 
         .hp-bar-fill-blue {
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, #2563eb, #38bdf8);
+            background: #38bdf8;
             transition: width 0.3s ease;
         }
 
         .hp-bar-fill-red {
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, #ef4444, #f87171);
+            background: #ef4444;
             transition: width 0.3s ease;
         }
 
-        .status-chip {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            font-weight: 600;
+        .pvp-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
             background: #1e293b;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #334155;
+            border-color: #94a3b8;
+        }
+
+        .btn-primary {
+            background: #0284c7;
+            border-color: #38bdf8;
+        }
+
+        .btn-primary:hover {
+            background: #0369a1;
+        }
+
+        .btn-gold {
+            background: #b45309;
+            border-color: #f59e0b;
+            color: #fef08a;
+        }
+
+        .btn-gold:hover {
+            background: #d97706;
+        }
+
+        .room-input {
+            width: 75px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #facc15;
+            font-family: monospace;
+            font-size: 0.95rem;
+            font-weight: 700;
+            padding: 5px 8px;
+            border-radius: 6px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .room-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+
+        .status-chip {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: #334155;
             color: #94a3b8;
-            border: 1px solid #334155;
-            white-space: nowrap;
         }
 
         .status-chip.connected {
-            color: #4ade80;
-            border-color: #22c55e;
+            background: #064e3b;
+            color: #34d399;
         }
 
-        #canvas-wrapper {
-            position: relative;
-            width: 100vw;
-            height: calc(100vh - 54px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #050811;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            max-width: 1280px;
-            aspect-ratio: 16 / 9;
-            object-fit: contain;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
-            border-radius: 4px;
-        }
-
-        #loading-screen {
-            position: absolute;
-            inset: 0;
-            background: #0b0f19;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-            transition: opacity 0.5s ease;
-            padding: 20px;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #1e293b;
-            border-top: 4px solid #38bdf8;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    
-        button, input, select, textarea {
-            font-family: inherit;
-        }
-
-        /* Modal Base */
+        /* Modals */
         .modal-overlay {
             position: fixed;
-            inset: 0;
-            background: rgba(3, 7, 18, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 200;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.82);
             display: none;
             justify-content: center;
             align-items: center;
-            padding: 16px;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
         }
 
         .modal-card {
-            background: linear-gradient(180deg, #111827 0%, #0b0f19 100%);
-            border: 1.5px solid #334155;
-            border-radius: 14px;
-            width: 100%;
-            max-width: 840px;
-            max-height: 90vh;
+            background: #0f172a;
+            border: 2px solid #38bdf8;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 750px;
+            max-height: 85vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.2);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
             overflow: hidden;
-            animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes modalPop {
-            0% { transform: scale(0.92); opacity: 0; }
+            0% { transform: scale(0.95); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
 
         .modal-header {
+            padding: 16px 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 20px;
-            border-bottom: 1px solid #1e293b;
-            background: rgba(15, 23, 42, 0.85);
         }
 
         .modal-header h2 {
             font-size: 1.15rem;
+            font-weight: 700;
             color: #38bdf8;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
+            gap: 8px;
         }
 
         .modal-close-btn {
-            background: #1e293b;
-            border: 1px solid #475569;
+            background: transparent;
+            border: none;
             color: #94a3b8;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 1.4rem;
             cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: bold;
-            transition: all 0.15s;
+            line-height: 1;
+            padding: 4px;
         }
 
         .modal-close-btn:hover {
-            background: #ef4444;
-            color: #fff;
-            border-color: #f87171;
+            color: #f1f5f9;
         }
 
         .modal-body {
@@ -329,7 +272,7 @@
             gap: 16px;
         }
 
-        /* Form Inputs */
+        /* Form elements */
         .form-group {
             display: flex;
             flex-direction: column;
@@ -338,82 +281,81 @@
 
         .form-label {
             font-size: 0.85rem;
-            font-weight: 600;
             color: #94a3b8;
+            font-weight: 600;
         }
 
         .form-input {
-            background: #0f172a;
+            background: #1e293b;
             border: 1px solid #334155;
-            color: #f8fafc;
             padding: 8px 12px;
             border-radius: 6px;
+            color: #fff;
             font-size: 0.95rem;
         }
 
         .form-input:focus {
             outline: none;
             border-color: #38bdf8;
-            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
         }
 
         .avatar-picker {
             display: flex;
-            gap: 12px;
-            margin-top: 6px;
+            gap: 10px;
         }
 
         .avatar-option {
+            font-size: 1.5rem;
+            padding: 8px;
             border: 2px solid #334155;
             border-radius: 8px;
-            padding: 6px 12px;
             cursor: pointer;
-            background: #1e293b;
-            transition: all 0.15s;
-            font-size: 1.2rem;
+            transition: all 0.2s;
         }
 
-        .avatar-option.selected, .avatar-option:hover {
+        .avatar-option:hover, .avatar-option.selected {
             border-color: #38bdf8;
-            background: #0284c7;
+            background: #1e293b;
+            transform: scale(1.1);
         }
 
-        /* Table */
+        /* Table styles */
         .styled-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.88rem;
+            font-size: 0.9rem;
         }
 
         .styled-table th {
             background: #1e293b;
-            color: #94a3b8;
-            padding: 10px 14px;
+            color: #38bdf8;
             text-align: left;
+            padding: 10px 12px;
             border-bottom: 2px solid #334155;
         }
 
         .styled-table td {
-            padding: 10px 14px;
+            padding: 10px 12px;
             border-bottom: 1px solid #1e293b;
-            color: #e2e8f0;
+            color: #cbd5e1;
         }
 
         .styled-table tr:hover td {
-            background: rgba(30, 41, 59, 0.5);
+            background: #1e293b;
         }
 
+        /* Guide contents */
         .guide-section {
-            background: rgba(15, 23, 42, 0.6);
+            background: #131c31;
             border: 1px solid #1e293b;
-            border-radius: 10px;
-            padding: 14px 18px;
+            border-radius: 8px;
+            padding: 14px 16px;
         }
 
         .guide-section-title {
-            color: #facc15;
+            font-size: 0.95rem;
             font-weight: 700;
-            font-size: 0.98rem;
+            color: #facc15;
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -422,53 +364,61 @@
 
         .hotkey-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 8px;
         }
 
         .hotkey-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            background: #1e293b;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.86rem;
-            border: 1px solid #334155;
+            font-size: 0.85rem;
+            color: #cbd5e1;
         }
 
         .key-badge {
-            background: #0f172a;
-            border: 1.5px solid #64748b;
+            background: #334155;
             color: #38bdf8;
-            font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 4px;
             font-family: monospace;
-            font-size: 0.95rem;
-            box-shadow: 0 2px 0 #334155;
-            flex-shrink: 0;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #475569;
+            box-shadow: 0 2px 0 #1e293b;
+            min-width: 28px;
+            text-align: center;
         }
 
-        .synergy-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 10px;
+        /* Loading Spinner */
+        #loading-screen {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0b0f19;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            transition: opacity 0.4s ease;
         }
 
-        .synergy-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            line-height: 1.4;
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #1e293b;
+            border-top: 4px solid #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
         }
 
-        .synergy-card strong {
-            color: #38bdf8;
-            display: block;
-            margin-bottom: 3px;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
     <script>
@@ -488,14 +438,11 @@
             }
         });
 
-        // Global callbacks required by WebAssembly
+        // Global callback required by WebAssembly
         window.rust_to_js_pvp = function(msg) {
             console.log('[RUST -> JS]', msg);
             if (typeof window._handle_rust_pvp === 'function') {
                 window._handle_rust_pvp(msg);
-            }
-            if (window._pvp_ws && window._pvp_ws.readyState === WebSocket.OPEN) {
-                window._pvp_ws.send(msg);
             }
         };
 
@@ -512,7 +459,7 @@
     <div id="top-bar">
         <div class="title-badge">
             <span>⚔️</span>
-            <span>3v3 Arena</span>
+            <span>3v3 Tactical Arena</span>
             <span id="room-badge" style="display:none; color: #facc15; font-size: 0.9rem; margin-left: 6px;"></span>
         </div>
 
@@ -598,7 +545,7 @@
     <div id="leaderboard-modal" class="modal-overlay">
         <div class="modal-card" style="max-width: 680px;">
             <div class="modal-header">
-                <h2>🏆 BẢNG VÀNG CAO THỦ (OCI DATABASE)</h2>
+                <h2>🏆 BẢNG VÀNG CAO THỦ (RUST SERVER)</h2>
                 <button class="modal-close-btn" id="btn-close-leaderboard">✕</button>
             </div>
             <div class="modal-body">
@@ -614,7 +561,7 @@
                         </tr>
                     </thead>
                     <tbody id="leaderboard-tbody">
-                        <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng xếp hạng từ OCI...</td></tr>
+                        <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng xếp hạng từ Rust Server...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -625,11 +572,11 @@
     <div id="rooms-modal" class="modal-overlay">
         <div class="modal-card" style="max-width: 680px;">
             <div class="modal-header">
-                <h2>📋 PHÒNG CHỜ REALTIME (FIREBASE)</h2>
+                <h2>📋 PHÒNG CHỜ REALTIME (RUST WEBSOCKET)</h2>
                 <button class="modal-close-btn" id="btn-close-rooms">✕</button>
             </div>
             <div class="modal-body">
-                <p style="color: #94a3b8; font-size: 0.85rem;">Danh sách các phòng đang chờ người tham gia trên Firebase Realtime Database:</p>
+                <p style="color: #94a3b8; font-size: 0.85rem;">Danh sách các phòng đang mở đợi đối thủ trên Rust Server:</p>
                 <div id="rooms-list-container" style="display: flex; flex-direction: column; gap: 8px;">
                     <p style="color: #64748b; font-style: italic;">Chưa có phòng nào đang mở. Hãy bấm "Tạo Phòng" để mời bạn bè!</p>
                 </div>
@@ -677,10 +624,10 @@
                 </div>
 
                 <div class="guide-section">
-                    <div class="guide-section-title">🌐 LƯU TRỮ OCI DATABASE & REALTIME FIREBASE</div>
+                    <div class="guide-section-title">🌐 HẠ TẦNG RUST SERVER & WEBSOCKET</div>
                     <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
-                        • <strong>Tài khoản & Bảng xếp hạng:</strong> Lưu trữ bền vững trên máy chủ <strong>OCI Free Tier</strong>.<br>
-                        • <strong>Tạo phòng & Ghép trận:</strong> Xử lý tức thời thời gian thực qua <strong>Firebase Realtime Database</strong>.<br>
+                        • <strong>Rust WebSocket Backend:</strong> Đồng bộ trạng thái trận đấu độ trễ cực thấp (&lt;10ms).<br>
+                        • <strong>OCI Free Tier Database:</strong> Lưu trữ tài khoản và bảng xếp hạng ELO vĩnh viễn.<br>
                         • Mỗi trận thắng được cộng <strong>+25 ELO</strong>, thua bị trừ <strong>-20 ELO</strong>.
                     </p>
                 </div>
@@ -702,20 +649,9 @@
 
     <script type="module">
         import init, { js_to_rust_pvp } from './game-free.js';
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { 
-            getDatabase, 
-            ref, 
-            set, 
-            get, 
-            onValue, 
-            update, 
-            remove, 
-            onDisconnect 
-        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
         // ==========================================
-        // USER PROFILE & OCI DATABASE MANAGER
+        // USER PROFILE & RUST API MANAGER
         // ==========================================
         const AVATAR_ICONS = {
             knight: '🛡️',
@@ -768,7 +704,7 @@
                         renderUserProfile();
                     }
                 } catch(e) {
-                    console.warn('[OCI USER SYNC NOTICE]', e.message);
+                    console.warn('[RUST USER SYNC NOTICE]', e.message);
                 }
             }
         }
@@ -818,7 +754,7 @@
             document.getElementById('tab-login').className = 'btn';
             document.getElementById('register-fields').style.display = 'flex';
             document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản Mới';
-            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản OCI';
+            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản Rust Server';
         };
 
         // Avatar selector
@@ -848,7 +784,7 @@
             try {
                 const endpoint = isRegisterTab ? '/api/auth/register' : '/api/auth/login';
                 const body = isRegisterTab 
-                    ? { username, password, displayName: displayName || username, avatar: selectedAvatar }
+                    ? { username, password, display_name: displayName || username, avatar: selectedAvatar }
                     : { username, password };
 
                 const res = await fetch(endpoint, {
@@ -870,7 +806,7 @@
                 authModal.style.display = 'none';
                 alert(isRegisterTab ? `🎉 Tạo tài khoản "${currentUser.username}" thành công!` : `✅ Đăng nhập thành công! Chào mừng ${currentUser.displayName}!`);
             } catch (err) {
-                errorDiv.textContent = 'Lỗi kết nối tới máy chủ OCI: ' + err.message;
+                errorDiv.textContent = 'Lỗi kết nối tới máy chủ Rust: ' + err.message;
                 errorDiv.style.display = 'block';
             }
         };
@@ -879,7 +815,7 @@
         document.getElementById('btn-leaderboard').onclick = async () => {
             leaderboardModal.style.display = 'flex';
             const tbody = document.getElementById('leaderboard-tbody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải danh sách từ OCI Database...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải danh sách từ Rust Database...</td></tr>';
             try {
                 const res = await fetch('/api/leaderboard');
                 const data = await res.json();
@@ -898,7 +834,7 @@
                             <tr>
                                 <td style="font-weight: 800; color: #facc15;">${rankIcon}</td>
                                 <td style="font-size: 1.2rem;">${icon}</td>
-                                <td><strong>${u.displayName || u.username}</strong></td>
+                                <td><strong>${u.displayName || u.display_name || u.username}</strong></td>
                                 <td style="color: #38bdf8; font-weight: 700;">${u.elo || 1000}</td>
                                 <td>${u.wins || 0}W - ${u.losses || 0}L</td>
                                 <td style="color: #4ade80; font-weight: 600;">${winrate}</td>
@@ -917,8 +853,8 @@
         // Lobby Browser Modal
         document.getElementById('btn-lobby-rooms').onclick = () => {
             roomsModal.style.display = 'flex';
-            if (window._firebase_pvp) {
-                window._firebase_pvp.refreshLobby();
+            if (window._rust_pvp) {
+                window._rust_pvp.refreshLobby();
             }
         };
         document.getElementById('btn-close-rooms').onclick = () => { roomsModal.style.display = 'none'; };
@@ -932,29 +868,15 @@
         });
 
         // ==========================================
-        // FIREBASE REALTIME MULTIPLAYER MANAGER
+        // RUST LIGHTWEIGHT WEBSOCKET CLIENT
         // ==========================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyDo2E0tvgOkFrfNy8b0ECluoaYZ9vwYP7c",
-            authDomain: "game-free-b7d52.firebaseapp.com",
-            databaseURL: "https://game-free-b7d52-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "game-free-b7d52",
-            storageBucket: "game-free-b7d52.firebasestorage.app",
-            messagingSenderId: "748723843196",
-            appId: "1:748723843196:web:5c2bf8d2561261572259f9",
-            measurementId: "G-WKRHGDKGLW"
-        };
-
         let pvpState = {
             active: false,
-            provider: 'none',
             roomCode: null,
             role: null,
             playerHp: 100,
             opponentHp: 100,
-            round: 1,
-            lastBattleRound: 0,
-            matchId: null
+            round: 1
         };
 
         function showRoomBadge(text) {
@@ -977,21 +899,19 @@
             if (oLabel) oLabel.textContent = `${p2Name} (${pvpState.opponentHp} HP)`;
         }
 
-        function updateHp(hostHp, guestHp) {
-            const myHp = pvpState.role === 'host' ? hostHp : guestHp;
-            const oppHp = pvpState.role === 'host' ? guestHp : hostHp;
-            pvpState.playerHp = myHp;
-            pvpState.opponentHp = oppHp;
+        function updateHp(playerHp, opponentHp) {
+            pvpState.playerHp = playerHp;
+            pvpState.opponentHp = opponentHp;
 
             const myBar = document.getElementById('player-hp-bar');
             const oppBar = document.getElementById('opponent-hp-bar');
-            if (myBar) myBar.style.width = `${Math.max(0, myHp)}%`;
-            if (oppBar) oppBar.style.width = `${Math.max(0, oppHp)}%`;
+            if (myBar) myBar.style.width = `${Math.max(0, playerHp)}%`;
+            if (oppBar) oppBar.style.width = `${Math.max(0, opponentHp)}%`;
 
             const pLabel = document.getElementById('player-label');
             const oLabel = document.getElementById('opponent-label');
-            if (pLabel) pLabel.textContent = `Bạn (${myHp} HP)`;
-            if (oLabel) oLabel.textContent = `Đối thủ (${oppHp} HP)`;
+            if (pLabel) pLabel.textContent = `Bạn (${playerHp} HP)`;
+            if (oLabel) oLabel.textContent = `Đối thủ (${opponentHp} HP)`;
         }
 
         function updateStatusChip(text, isConnected) {
@@ -1003,467 +923,241 @@
             }
         }
 
-        class FirebasePvPManager {
+        class RustPvPClient {
             constructor() {
-                this.available = false;
-                this.playerId = currentUser.username || ('p_' + Math.random().toString(36).substring(2, 8));
+                this.ws = null;
+                this.reconnectTimer = null;
+                this.connect();
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                console.log('[RUST WS] Connecting to:', wsUrl);
+
                 try {
-                    this.app = initializeApp(firebaseConfig);
-                    this.db = getDatabase(this.app);
-                    this.roomRef = null;
-                    this.myQueueRef = null;
-                    this.available = true;
+                    this.ws = new WebSocket(wsUrl);
+                    window._pvp_ws = this.ws;
 
-                    const connectedRef = ref(this.db, '.info/connected');
-                    onValue(connectedRef, (snap) => {
-                        if (snap.val() === true) {
-                            pvpState.provider = 'firebase';
-                            updateStatusChip('🔥 Firebase Realtime', true);
-                            console.log('[FIREBASE] Realtime Database Online!');
-                        }
-                    });
+                    this.ws.onopen = () => {
+                        console.log('[RUST WS] Connected successfully!');
+                        updateStatusChip('⚡ Rust WebSocket', true);
+                        clearTimeout(this.reconnectTimer);
+                        this.refreshLobby();
+                    };
 
-                    this.initLobbyWatcher();
+                    this.ws.onclose = () => {
+                        console.warn('[RUST WS] Disconnected. Reconnecting in 2s...');
+                        updateStatusChip('⚠️ Đứt kết nối', false);
+                        this.reconnectTimer = setTimeout(() => this.connect(), 2000);
+                    };
+
+                    this.ws.onerror = (err) => {
+                        console.error('[RUST WS] Error:', err);
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        this.handleMessage(event.data);
+                    };
                 } catch (e) {
-                    console.warn('[FIREBASE NOTICE] Falling back to WebSocket:', e.message);
-                    this.available = false;
+                    console.error('[RUST WS] Connection failed:', e);
+                    this.reconnectTimer = setTimeout(() => this.connect(), 3000);
                 }
             }
 
-            initLobbyWatcher() {
-                if (!this.available) return;
-                const roomsRef = ref(this.db, 'rooms');
-                onValue(roomsRef, (snapshot) => {
-                    this.renderLobbyList(snapshot.val());
-                });
+            send(obj) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(obj));
+                } else {
+                    console.warn('[RUST WS] Cannot send, socket not open.');
+                }
             }
 
             refreshLobby() {
-                if (!this.available) return;
-                get(ref(this.db, 'rooms')).then(snap => this.renderLobbyList(snap.val()));
+                this.send({ type: 'LOBBY_ROOMS' });
             }
 
-            renderLobbyList(roomsData) {
-                const container = document.getElementById('rooms-list-container');
-                if (!container) return;
-                if (!roomsData) {
-                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">Chưa có phòng nào đang mở. Hãy bấm "Tạo Phòng" để mời bạn bè!</p>';
-                    return;
-                }
-
-                const waitingRooms = Object.values(roomsData).filter(r => r && r.state === 'waiting' && r.host);
-                if (waitingRooms.length === 0) {
-                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">Hiện không có phòng chờ nào rảnh. Hãy bấm "Tạo Phòng" hoặc "Ghép Nhanh"!</p>';
-                    return;
-                }
-
-                container.innerHTML = waitingRooms.map(r => {
-                    const hostAvatar = AVATAR_ICONS[r.host.avatar] || '🛡️';
-                    return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid #334155;">
-                            <div>
-                                <span style="font-size:1.1rem; margin-right:6px;">${hostAvatar}</span>
-                                <strong style="color:#f8fafc;">${r.host.displayName || r.host.name}</strong>
-                                <span style="color:#facc15; font-size:0.8rem; margin-left:6px;">(${r.host.elo || 1000} ELO)</span>
-                                <span style="background:#0f172a; color:#38bdf8; padding:2px 8px; border-radius:4px; margin-left:10px; font-family:monospace; font-weight:700;">Phòng: ${r.code}</span>
-                            </div>
-                            <button class="btn btn-primary" onclick="window._firebase_pvp.joinRoom('${r.code}')">Vào Trận Ngay</button>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            async createRoom() {
-                if (!this.available) return false;
-                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                let code = '';
-                for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
-
-                pvpState.active = true;
-                pvpState.provider = 'firebase';
-                pvpState.roomCode = code;
-                pvpState.role = 'host';
-                pvpState.playerHp = 100;
-                pvpState.opponentHp = 100;
-                pvpState.round = 1;
-                pvpState.lastBattleRound = 0;
-                pvpState.matchId = 'm_' + code + '_' + Date.now();
-
-                this.roomRef = ref(this.db, `rooms/${code}`);
-                await set(this.roomRef, {
-                    code: code,
-                    round: 1,
-                    state: 'waiting',
-                    matchId: pvpState.matchId,
-                    host: {
-                        id: currentUser.username,
-                        name: currentUser.displayName || currentUser.username,
-                        displayName: currentUser.displayName || currentUser.username,
-                        avatar: currentUser.avatar || 'knight',
-                        elo: currentUser.elo || 1000,
-                        hp: 100,
-                        ready: false,
-                        lineup: []
-                    },
-                    guest: null
-                });
-
-                onDisconnect(this.roomRef).remove();
-
-                showRoomBadge(`Phòng: ${code} (Đang chờ đối thủ...)`);
-                showMatchHud();
-                updateHudLabels(currentUser.displayName || currentUser.username, 'Đang chờ đối thủ...');
-
-                if (typeof js_to_rust_pvp === 'function') {
-                    js_to_rust_pvp(JSON.stringify({
-                        type: 'ROOM_JOINED',
-                        room_code: code,
-                        role: 'host',
-                        player_name: currentUser.displayName || currentUser.username,
-                        opponent_name: 'Đang đợi đối thủ...'
-                    }));
-                }
-
-                closeAllModals();
-                this.listenRoom();
-                return true;
-            }
-
-            async joinRoom(code) {
-                if (!this.available) return false;
-                code = code.trim().toUpperCase();
-                const rRef = ref(this.db, `rooms/${code}`);
-                const snap = await get(rRef);
-
-                if (!snap.exists()) {
-                    alert(`Phòng "${code}" không tồn tại trên hệ thống!`);
-                    return false;
-                }
-
-                const room = snap.val();
-                if (room.guest && room.guest.id !== currentUser.username) {
-                    alert(`Phòng "${code}" đã có 2 người chơi!`);
-                    return false;
-                }
-
-                pvpState.active = true;
-                pvpState.provider = 'firebase';
-                pvpState.roomCode = code;
-                pvpState.role = 'guest';
-                pvpState.playerHp = 100;
-                pvpState.opponentHp = 100;
-                pvpState.round = room.round || 1;
-                pvpState.lastBattleRound = 0;
-                pvpState.matchId = room.matchId || ('m_' + code + '_' + Date.now());
-
-                this.roomRef = rRef;
-                const guestRef = ref(this.db, `rooms/${code}/guest`);
-                await set(guestRef, {
-                    id: currentUser.username,
-                    name: currentUser.displayName || currentUser.username,
-                    displayName: currentUser.displayName || currentUser.username,
+            createRoom() {
+                this.send({
+                    type: 'CREATE_ROOM',
+                    player_id: currentUser.username,
+                    player_name: currentUser.displayName || currentUser.username,
                     avatar: currentUser.avatar || 'knight',
-                    elo: currentUser.elo || 1000,
-                    hp: 100,
-                    ready: false,
-                    lineup: []
+                    elo: currentUser.elo || 1000
                 });
-                await update(rRef, { state: 'placement' });
-                onDisconnect(guestRef).remove();
-
-                showRoomBadge(`Phòng: ${code}`);
-                showMatchHud();
-                updateHudLabels(currentUser.displayName || currentUser.username, room.host.name);
-
-                if (typeof js_to_rust_pvp === 'function') {
-                    js_to_rust_pvp(JSON.stringify({
-                        type: 'ROOM_JOINED',
-                        room_code: code,
-                        role: 'guest',
-                        player_name: currentUser.displayName || currentUser.username,
-                        opponent_name: room.host.name
-                    }));
-                }
-
-                closeAllModals();
-                this.listenRoom();
-                return true;
             }
 
-            async quickMatch() {
-                if (!this.available) return false;
+            joinRoom(code) {
+                this.send({
+                    type: 'JOIN_ROOM',
+                    room_code: code,
+                    player_id: currentUser.username,
+                    player_name: currentUser.displayName || currentUser.username,
+                    avatar: currentUser.avatar || 'knight',
+                    elo: currentUser.elo || 1000
+                });
+            }
+
+            quickMatch() {
                 showRoomBadge('⚡ Đang ghép trận ngẫu nhiên...');
-
-                const qAllRef = ref(this.db, 'matchmaking_queue');
-                this.myQueueRef = ref(this.db, `matchmaking_queue/${currentUser.username}`);
-
-                await set(this.myQueueRef, {
-                    id: currentUser.username,
-                    name: currentUser.displayName || currentUser.username,
+                this.send({
+                    type: 'QUICK_MATCH',
+                    player_id: currentUser.username,
+                    player_name: currentUser.displayName || currentUser.username,
                     avatar: currentUser.avatar || 'knight',
-                    elo: currentUser.elo || 1000,
-                    time: Date.now()
-                });
-                onDisconnect(this.myQueueRef).remove();
-
-                const snap = await get(qAllRef);
-                let matched = false;
-                if (snap.exists()) {
-                    const all = snap.val();
-                    for (const [k, p] of Object.entries(all)) {
-                        if (k !== currentUser.username && p.id !== currentUser.username && !p.matchedRoom) {
-                            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                            let roomCode = '';
-                            for (let i = 0; i < 4; i++) roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
-
-                            const newRoomRef = ref(this.db, `rooms/${roomCode}`);
-                            const matchId = 'm_' + roomCode + '_' + Date.now();
-                            await set(newRoomRef, {
-                                code: roomCode,
-                                round: 1,
-                                state: 'placement',
-                                matchId,
-                                host: {
-                                    id: p.id,
-                                    name: p.name,
-                                    avatar: p.avatar,
-                                    elo: p.elo,
-                                    hp: 100,
-                                    ready: false,
-                                    lineup: []
-                                },
-                                guest: {
-                                    id: currentUser.username,
-                                    name: currentUser.displayName || currentUser.username,
-                                    avatar: currentUser.avatar,
-                                    elo: currentUser.elo,
-                                    hp: 100,
-                                    ready: false,
-                                    lineup: []
-                                }
-                            });
-
-                            await update(ref(this.db, `matchmaking_queue/${p.id}`), { matchedRoom: roomCode });
-                            await remove(this.myQueueRef);
-
-                            pvpState.active = true;
-                            pvpState.provider = 'firebase';
-                            pvpState.roomCode = roomCode;
-                            pvpState.role = 'guest';
-                            pvpState.matchId = matchId;
-                            this.roomRef = newRoomRef;
-
-                            showRoomBadge(`Phòng: ${roomCode} (Ghép thành công!)`);
-                            showMatchHud();
-                            updateHudLabels(currentUser.displayName || currentUser.username, p.name);
-
-                            if (typeof js_to_rust_pvp === 'function') {
-                                js_to_rust_pvp(JSON.stringify({
-                                    type: 'ROOM_JOINED',
-                                    room_code: roomCode,
-                                    role: 'guest',
-                                    player_name: currentUser.displayName || currentUser.username,
-                                    opponent_name: p.name
-                                }));
-                            }
-
-                            this.listenRoom();
-                            matched = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!matched) {
-                    onValue(this.myQueueRef, async (s) => {
-                        if (s.exists()) {
-                            const val = s.val();
-                            if (val.matchedRoom) {
-                                await remove(this.myQueueRef);
-                                const code = val.matchedRoom;
-
-                                pvpState.active = true;
-                                pvpState.provider = 'firebase';
-                                pvpState.roomCode = code;
-                                pvpState.role = 'host';
-                                this.roomRef = ref(this.db, `rooms/${code}`);
-
-                                showRoomBadge(`Phòng: ${code} (Ghép thành công!)`);
-                                showMatchHud();
-
-                                const rSnap = await get(this.roomRef);
-                                const rData = rSnap.val();
-                                updateHudLabels(currentUser.displayName || currentUser.username, (rData && rData.guest && rData.guest.name) || 'Player 2');
-
-                                if (typeof js_to_rust_pvp === 'function') {
-                                    js_to_rust_pvp(JSON.stringify({
-                                        type: 'ROOM_JOINED',
-                                        room_code: code,
-                                        role: 'host',
-                                        player_name: currentUser.displayName || currentUser.username,
-                                        opponent_name: (rData && rData.guest && rData.guest.name) || 'Player 2'
-                                    }));
-                                }
-
-                                this.listenRoom();
-                            }
-                        }
-                    });
-                }
-                return true;
-            }
-
-            listenRoom() {
-                if (!this.roomRef) return;
-                onValue(this.roomRef, (snapshot) => {
-                    if (!snapshot.exists()) return;
-                    const room = snapshot.val();
-
-                    if (room.host && room.guest) {
-                        if (pvpState.role === 'host') {
-                            showRoomBadge(`Phòng: ${room.code} vs ${room.guest.name}`);
-                            updateHudLabels(room.host.name, room.guest.name);
-                        } else {
-                            showRoomBadge(`Phòng: ${room.code} vs ${room.host.name}`);
-                            updateHudLabels(room.guest.name, room.host.name);
-                        }
-                        updateHp(room.host.hp, room.guest.hp);
-                    }
-
-                    // Ready check
-                    if (room.host && room.guest && room.host.ready && room.guest.ready && room.state !== 'battle') {
-                        if (pvpState.role === 'host') {
-                            update(this.roomRef, { state: 'battle' });
-                        }
-                    }
-
-                    // Battle trigger
-                    if (room.state === 'battle' && pvpState.lastBattleRound !== room.round) {
-                        pvpState.lastBattleRound = room.round;
-                        console.log(`[FIREBASE] BATTLE PHASE ACTIVATED FOR ROUND ${room.round}!`);
-
-                        const oppLineup = pvpState.role === 'host' ? (room.guest.lineup || []) : (room.host.lineup || []);
-                        const myHp = pvpState.role === 'host' ? room.host.hp : room.guest.hp;
-                        const oppHp = pvpState.role === 'host' ? room.guest.hp : room.host.hp;
-
-                        const startRoundMsg = JSON.stringify({
-                            type: 'START_ROUND',
-                            round: room.round,
-                            opponent_lineup: oppLineup,
-                            player_hp: myHp,
-                            opponent_hp: oppHp
-                        });
-
-                        console.log('[FIREBASE -> RUST] Dispatching START_ROUND:', startRoundMsg);
-                        if (typeof js_to_rust_pvp === 'function') {
-                            js_to_rust_pvp(startRoundMsg);
-                        }
-                    }
+                    elo: currentUser.elo || 1000
                 });
             }
 
-            async setReady(lineup) {
-                if (!this.roomRef || !pvpState.role) return;
-                console.log(`[FIREBASE] Player ${pvpState.role} ready with ${lineup.length} units.`);
-                await update(ref(this.db, `rooms/${pvpState.roomCode}/${pvpState.role}`), {
-                    ready: true,
+            setReady(lineup) {
+                this.send({
+                    type: 'PLAYER_READY',
                     lineup: lineup
                 });
             }
 
-            async onBattleFinished(winnerRole, survivors) {
-                if (!this.roomRef || !pvpState.role) return;
-                if (pvpState.role !== 'host') return; // Host acts as authoritative referee
+            onBattleFinished(winnerRole, survivors) {
+                this.send({
+                    type: 'BATTLE_FINISHED',
+                    winner_role: winnerRole,
+                    player_survivors: survivors
+                });
+            }
 
-                const snap = await get(this.roomRef);
-                if (!snap.exists()) return;
-                const room = snap.val();
+            handleMessage(raw) {
+                try {
+                    const msg = JSON.parse(raw);
+                    console.log('[RUST WS -> CLIENT]', msg);
 
-                const damage = 10 + (survivors || 1) * 3;
-                let hostHp = room.host.hp;
-                let guestHp = room.guest.hp;
+                    switch (msg.type) {
+                        case 'LOBBY_ROOMS_RESPONSE':
+                            this.renderLobbyList(msg.rooms || []);
+                            break;
 
-                if (winnerRole === 'host') {
-                    guestHp = Math.max(0, guestHp - damage);
-                } else if (winnerRole === 'guest') {
-                    hostHp = Math.max(0, hostHp - damage);
+                        case 'ROOM_CREATED':
+                            pvpState.active = true;
+                            pvpState.roomCode = msg.room_code;
+                            pvpState.role = 'host';
+                            pvpState.playerHp = 100;
+                            pvpState.opponentHp = 100;
+                            pvpState.round = 1;
+
+                            showRoomBadge(`Phòng: ${msg.room_code} (Đang chờ đối thủ...)`);
+                            showMatchHud();
+                            updateHudLabels(msg.player_name, 'Đang chờ đối thủ...');
+
+                            if (typeof js_to_rust_pvp === 'function') {
+                                js_to_rust_pvp(JSON.stringify({
+                                    type: 'ROOM_JOINED',
+                                    room_code: msg.room_code,
+                                    role: 'host',
+                                    player_name: msg.player_name,
+                                    opponent_name: 'Đang đợi đối thủ...'
+                                }));
+                            }
+                            closeAllModals();
+                            break;
+
+                        case 'ROOM_JOINED':
+                        case 'OPPONENT_JOINED':
+                            pvpState.active = true;
+                            pvpState.roomCode = msg.room_code;
+                            pvpState.role = msg.role;
+                            pvpState.round = msg.round || 1;
+
+                            showRoomBadge(`Phòng: ${msg.room_code} vs ${msg.opponent_name}`);
+                            showMatchHud();
+                            updateHudLabels(msg.player_name, msg.opponent_name);
+
+                            if (typeof js_to_rust_pvp === 'function') {
+                                js_to_rust_pvp(JSON.stringify({
+                                    type: 'ROOM_JOINED',
+                                    room_code: msg.room_code,
+                                    role: msg.role,
+                                    player_name: msg.player_name,
+                                    opponent_name: msg.opponent_name
+                                }));
+                            }
+                            closeAllModals();
+                            break;
+
+                        case 'WAITING_FOR_MATCH':
+                            showRoomBadge('⚡ Đang tìm đối thủ...');
+                            break;
+
+                        case 'START_ROUND':
+                            console.log('[RUST WS] ROUND START:', msg);
+                            updateHp(msg.player_hp, msg.opponent_hp);
+                            if (typeof js_to_rust_pvp === 'function') {
+                                js_to_rust_pvp(JSON.stringify(msg));
+                            }
+                            break;
+
+                        case 'UPDATE_MATCH_HP':
+                            updateHp(msg.player_hp, msg.opponent_hp);
+                            if (typeof js_to_rust_pvp === 'function') {
+                                js_to_rust_pvp(JSON.stringify(msg));
+                            }
+                            break;
+
+                        case 'MATCH_END':
+                            alert(`Trận đấu kết thúc! Người chiến thắng: ${msg.winner}`);
+                            if (typeof js_to_rust_pvp === 'function') {
+                                js_to_rust_pvp(JSON.stringify(msg));
+                            }
+                            syncUserProfileFromOci();
+                            break;
+
+                        case 'ERROR':
+                            alert(msg.message || 'Lỗi từ máy chủ!');
+                            break;
+                    }
+                } catch (e) {
+                    console.error('[RUST WS DISPATCH ERROR]', e);
+                }
+            }
+
+            renderLobbyList(rooms) {
+                const container = document.getElementById('rooms-list-container');
+                if (!container) return;
+
+                if (!rooms || rooms.length === 0) {
+                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">Hiện không có phòng chờ nào rảnh. Hãy bấm "Tạo Phòng" hoặc "Ghép Nhanh"!</p>';
+                    return;
                 }
 
-                if (hostHp <= 0 || guestHp <= 0) {
-                    const winnerUser = hostHp > 0 ? room.host.id : room.guest.id;
-                    const loserUser = hostHp > 0 ? room.guest.id : room.host.id;
-                    const winnerName = hostHp > 0 ? room.host.name : room.guest.name;
-
-                    await update(this.roomRef, {
-                        state: 'ended',
-                        'host/hp': hostHp,
-                        'guest/hp': guestHp,
-                        winner: winnerName
-                    });
-
-                    // Record match in OCI SQLite/JSON Database
-                    try {
-                        await fetch('/api/match/record', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                matchId: room.matchId || pvpState.matchId,
-                                host: room.host.id,
-                                guest: room.guest.id,
-                                winner: winnerUser,
-                                loser: loserUser,
-                                rounds: room.round
-                            })
-                        });
-                        console.log('[OCI DATABASE] Match successfully recorded on OCI Free Tier database!');
-                        syncUserProfileFromOci();
-                    } catch(e) {
-                        console.error('[OCI MATCH RECORD ERROR]', e);
-                    }
-
-                    if (typeof js_to_rust_pvp === 'function') {
-                        js_to_rust_pvp(JSON.stringify({ type: 'MATCH_END', winner: winnerName }));
-                    }
-                } else {
-                    await update(this.roomRef, {
-                        round: room.round + 1,
-                        state: 'placement',
-                        'host/hp': hostHp,
-                        'guest/hp': guestHp,
-                        'host/ready': false,
-                        'guest/ready': false
-                    });
-                    if (typeof js_to_rust_pvp === 'function') {
-                        js_to_rust_pvp(JSON.stringify({
-                            type: 'UPDATE_MATCH_HP',
-                            player_hp: pvpState.role === 'host' ? hostHp : guestHp,
-                            opponent_hp: pvpState.role === 'host' ? guestHp : hostHp,
-                            damage_dealt: damage
-                        }));
-                    }
-                }
+                container.innerHTML = rooms.map(r => {
+                    const hostAvatar = AVATAR_ICONS[r.host_avatar] || '🛡️';
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid #334155;">
+                            <div>
+                                <span style="font-size:1.1rem; margin-right:6px;">${hostAvatar}</span>
+                                <strong style="color:#f8fafc;">${r.host_name}</strong>
+                                <span style="color:#facc15; font-size:0.8rem; margin-left:6px;">(${r.host_elo || 1000} ELO)</span>
+                                <span style="background:#0f172a; color:#38bdf8; padding:2px 8px; border-radius:4px; margin-left:10px; font-family:monospace; font-weight:700;">Phòng: ${r.code}</span>
+                            </div>
+                            <button class="btn btn-primary" onclick="window._rust_pvp.joinRoom('${r.code}')">Vào Trận Ngay</button>
+                        </div>
+                    `;
+                }).join('');
             }
         }
 
-        const fbPvP = new FirebasePvPManager();
-        window._firebase_pvp = fbPvP;
+        const rustPvP = new RustPvPClient();
+        window._rust_pvp = rustPvP;
 
-        // Bridge from Rust to JavaScript
+        // Bridge from Rust Bevy to JavaScript
         window._handle_rust_pvp = function(raw) {
             try {
                 const msg = JSON.parse(raw);
                 const type = (msg.type || msg.action || '').toUpperCase();
                 if (type === 'PLAYER_READY') {
                     const lineup = msg.lineup || (msg.data && msg.data.lineup) || [];
-                    if (pvpState.provider === 'firebase') {
-                        fbPvP.setReady(lineup);
-                    }
+                    rustPvP.setReady(lineup);
                 } else if (type === 'BATTLE_FINISHED') {
                     const winnerRole = msg.winner_role || (msg.data && msg.data.winner_role);
                     const survivors = msg.player_survivors || (msg.data && msg.data.player_survivors) || 1;
-                    if (pvpState.provider === 'firebase') {
-                        fbPvP.onBattleFinished(winnerRole, survivors);
-                    }
+                    rustPvP.onBattleFinished(winnerRole, survivors);
                 }
             } catch (e) {
                 console.error('[HANDLE RUST PVP ERROR]', e);
@@ -1471,27 +1165,21 @@
         };
 
         // UI Controls
-        document.getElementById('btn-create-room').onclick = async () => {
-            if (fbPvP && fbPvP.available) {
-                await fbPvP.createRoom();
-            }
+        document.getElementById('btn-create-room').onclick = () => {
+            rustPvP.createRoom();
         };
 
-        document.getElementById('btn-join-room').onclick = async () => {
+        document.getElementById('btn-join-room').onclick = () => {
             const code = document.getElementById('room-code-input').value.trim();
             if (!code) {
                 alert('Vui lòng nhập mã phòng (4 ký tự)!');
                 return;
             }
-            if (fbPvP && fbPvP.available) {
-                await fbPvP.joinRoom(code);
-            }
+            rustPvP.joinRoom(code);
         };
 
-        document.getElementById('btn-quick-match').onclick = async () => {
-            if (fbPvP && fbPvP.available) {
-                await fbPvP.quickMatch();
-            }
+        document.getElementById('btn-quick-match').onclick = () => {
+            rustPvP.quickMatch();
         };
 
         // Engine Start

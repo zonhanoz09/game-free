@@ -2,7 +2,7 @@
 set -e
 
 # ==============================================================================
-# SCRIPT DEPLOY 3V3 TACTICAL ARENA LÊN OCI ALWAYS FREE TIER (QUA BASTION TUNNEL)
+# SCRIPT DEPLOY 3V3 TACTICAL ARENA (RUST WEBSOCKET SERVER) LÊN OCI
 # ==============================================================================
 
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -10,7 +10,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 echo "======================================================="
-echo " 🚀 BẮT ĐẦU TRIỂN KHAI 3V3 TACTICAL ARENA LÊN OCI"
+echo " 🚀 BẮT ĐẦU TRIỂN KHAI RUST WEBSOCKET SERVER LÊN OCI"
 echo "======================================================="
 
 # 1. Build WASM
@@ -55,18 +55,37 @@ echo "📤 Đang đồng bộ files lên OCI Private Instance (10.0.1.60)..."
 rsync -avz -e "ssh -i $HOME/.ssh/id_ed25519 -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_PORT}" \
     --exclude ".git" \
     --exclude "target" \
+    --exclude "server/target" \
     --exclude "node_modules" \
     --exclude ".terraform" \
     --exclude "*.tfstate*" \
-    wasm_dist server.js db.js package.json \
+    wasm_dist server/ \
     ubuntu@127.0.0.1:/opt/game-free/app/
 
-# 4. Khởi động lại Docker container
-echo "🔄 Khởi động lại dịch vụ game trên OCI..."
+# 4. Build và khởi động Rust WebSocket Server trên OCI
+echo "🦀 Đang biên dịch và khởi động Rust WebSocket Server trên OCI..."
 ssh -i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p ${LOCAL_TUNNEL_PORT} \
-    ubuntu@127.0.0.1 "sudo docker restart tactical-arena-pvp && sudo docker ps"
+    ubuntu@127.0.0.1 "
+        cd /opt/game-free/app && \
+        echo '📦 Đang build Rust Server Docker image...' && \
+        sudo docker build -t tactical-arena-rust:latest -f Dockerfile . && \
+        sudo docker stop tactical-arena-pvp 2>/dev/null || true && \
+        sudo docker rm tactical-arena-pvp 2>/dev/null || true && \
+        sudo docker run -d \
+            --name tactical-arena-pvp \
+            --restart always \
+            --network game-free_default \
+            --network-alias game-server \
+            -p 8080:8080 \
+            -v /opt/game-free/app/wasm_dist:/app/wasm_dist \
+            -v /opt/game-free/app/data:/app/data \
+            -w /app \
+            tactical-arena-rust:latest && \
+        sudo docker ps
+    "
 
 echo "======================================================="
 echo " 🎉 DEPLOY THÀNH CÔNG!"
 echo " 🌐 Game đang chạy trực tiếp tại: https://game.annhan.me/"
+echo " ⚡ Backend: 100% Rust WebSocket Server (Không Firebase)"
 echo "======================================================="
