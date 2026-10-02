@@ -15,7 +15,7 @@ echo "======================================================="
 
 # 1. Build WASM
 echo "📦 Đang biên dịch bản WebAssembly mới nhất (Release)..."
-cargo build --target wasm32-unknown-unknown --release
+cargo build -p game-free --target wasm32-unknown-unknown --release
 wasm-bindgen --out-dir wasm_dist --target web target/wasm32-unknown-unknown/release/game-free.wasm
 mkdir -p wasm_dist/assets
 cp -r assets/* wasm_dist/assets/ 2>/dev/null || true

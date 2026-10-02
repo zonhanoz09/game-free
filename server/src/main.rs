@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::{RwLock, mpsc};
+use base64::prelude::*;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
@@ -115,9 +116,177 @@ pub fn create_starter_card(username: &str, avatar: &str) -> UserCard {
     }
 }
 
+
+// ==========================================
+// ORACLE AUTONOMOUS DATABASE (ALWAYS FREE) CLIENT
+// ==========================================
+#[derive(Clone, Debug)]
+pub struct OracleAdbClient {
+    pub client: reqwest::Client,
+    pub sql_url: String,
+    pub auth_header: String,
+}
+
+impl OracleAdbClient {
+    pub fn new_from_env() -> Option<Self> {
+        let sql_url = std::env::var("ORACLE_ADB_URL").unwrap_or_else(|_| {
+            "https://G7262C948FBC089-GAMEDB.adb.ap-singapore-1.oraclecloudapps.com/ords/admin/_/sql".to_string()
+        });
+        let user = std::env::var("ORACLE_ADB_USER").unwrap_or_else(|_| "ADMIN".to_string());
+        let pass = std::env::var("ORACLE_ADB_PASSWORD").unwrap_or_else(|_| "TacticalArenaDb2026#".to_string());
+
+        let creds = format!("{}:{}", user, pass);
+        let b64 = BASE64_STANDARD.encode(creds.as_bytes());
+        let auth_header = format!("Basic {}", b64);
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .ok()?;
+
+        Some(Self {
+            client,
+            sql_url,
+            auth_header,
+        })
+    }
+
+    pub async fn execute_sql(&self, sql: &str) -> Result<serde_json::Value, String> {
+        let resp = self
+            .client
+            .post(&self.sql_url)
+            .header("Authorization", &self.auth_header)
+            .header("Content-Type", "application/sql")
+            .body(sql.to_string())
+            .send()
+            .await
+            .map_err(|e| format!("HTTP request error: {}", e))?;
+
+        let status = resp.status();
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| format!("Read body error: {}", e))?;
+        if !status.is_success() {
+            return Err(format!("ADB error status {}: {}", status, body));
+        }
+
+        let json: serde_json::Value =
+            serde_json::from_str(&body).map_err(|e| format!("JSON parse error: {}", e))?;
+        Ok(json)
+    }
+
+    pub async fn load_all_users(&self) -> Result<Vec<User>, String> {
+        let sql = "SELECT username, display_name, avatar, password_hash, elo, wins, losses, matches, gold, cards_json, items_json, created_at, last_login FROM USERS";
+        let val = self.execute_sql(sql).await?;
+        let mut users = Vec::new();
+        if let Some(items) = val["items"][0]["resultSet"]["items"].as_array() {
+            for row in items {
+                let username = row["username"].as_str().unwrap_or("").to_string();
+                if username.is_empty() {
+                    continue;
+                }
+                let display_name = row["display_name"].as_str().unwrap_or(&username).to_string();
+                let avatar = row["avatar"].as_str().unwrap_or("knight").to_string();
+                let password_hash = row["password_hash"].as_str().unwrap_or("").to_string();
+                let elo = row["elo"].as_i64().unwrap_or(1000) as i32;
+                let wins = row["wins"].as_u64().unwrap_or(0) as u32;
+                let losses = row["losses"].as_u64().unwrap_or(0) as u32;
+                let matches = row["matches"].as_u64().unwrap_or(0) as u32;
+                let gold = row["gold"].as_u64().unwrap_or(100) as u32;
+
+                let cards: Vec<UserCard> = row["cards_json"]
+                    .as_str()
+                    .and_then(|s| serde_json::from_str(s).ok())
+                    .unwrap_or_default();
+
+                let items: Vec<UserItem> = row["items_json"]
+                    .as_str()
+                    .and_then(|s| serde_json::from_str(s).ok())
+                    .unwrap_or_default();
+
+                let created_at = row["created_at"].as_str().unwrap_or("").to_string();
+                let last_login = row["last_login"].as_str().unwrap_or("").to_string();
+
+                users.push(User {
+                    username,
+                    display_name,
+                    avatar,
+                    password_hash,
+                    elo,
+                    wins,
+                    losses,
+                    matches,
+                    gold,
+                    cards,
+                    items,
+                    created_at,
+                    last_login,
+                });
+            }
+        }
+        Ok(users)
+    }
+
+    pub async fn save_user(&self, user: &User) -> Result<(), String> {
+        let cards_json = serde_json::to_string(&user.cards)
+            .unwrap_or_else(|_| "[]".to_string())
+            .replace('\'', "''");
+        let items_json = serde_json::to_string(&user.items)
+            .unwrap_or_else(|_| "[]".to_string())
+            .replace('\'', "''");
+        let username = user.username.replace('\'', "''");
+        let display_name = user.display_name.replace('\'', "''");
+        let avatar = user.avatar.replace('\'', "''");
+        let pwd = user.password_hash.replace('\'', "''");
+        let created_at = user.created_at.replace('\'', "''");
+        let last_login = user.last_login.replace('\'', "''");
+
+        let sql = format!(
+            "MERGE INTO USERS u             USING (                 SELECT                     '{username}' AS username,                     '{display_name}' AS display_name,                     '{avatar}' AS avatar,                     '{pwd}' AS password_hash,                     {elo} AS elo,                     {wins} AS wins,                     {losses} AS losses,                     {matches} AS matches,                     {gold} AS gold,                     '{cards_json}' AS cards_json,                     '{items_json}' AS items_json,                     '{created_at}' AS created_at,                     '{last_login}' AS last_login                 FROM DUAL             ) s             ON (u.username = s.username)             WHEN MATCHED THEN                 UPDATE SET                     u.display_name = s.display_name,                     u.avatar = s.avatar,                     u.password_hash = s.password_hash,                     u.elo = s.elo,                     u.wins = s.wins,                     u.losses = s.losses,                     u.matches = s.matches,                     u.gold = s.gold,                     u.cards_json = s.cards_json,                     u.items_json = s.items_json,                     u.last_login = s.last_login             WHEN NOT MATCHED THEN                 INSERT (username, display_name, avatar, password_hash, elo, wins, losses, matches, gold, cards_json, items_json, created_at, last_login)                 VALUES (s.username, s.display_name, s.avatar, s.password_hash, s.elo, s.wins, s.losses, s.matches, s.gold, s.cards_json, s.items_json, s.created_at, s.last_login)",
+            username = username,
+            display_name = display_name,
+            avatar = avatar,
+            pwd = pwd,
+            elo = user.elo,
+            wins = user.wins,
+            losses = user.losses,
+            matches = user.matches,
+            gold = user.gold,
+            cards_json = cards_json,
+            items_json = items_json,
+            created_at = created_at,
+            last_login = last_login,
+        );
+
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+
+    pub async fn record_match(&self, m: &MatchRecord) -> Result<(), String> {
+        let match_id = m.match_id.replace('\'', "''");
+        let host = m.host.replace('\'', "''");
+        let guest = m.guest.replace('\'', "''");
+        let winner = m.winner.as_deref().unwrap_or("").replace('\'', "''");
+        let timestamp = m.timestamp.replace('\'', "''");
+
+        let sql = format!(
+            "INSERT INTO MATCH_HISTORY (match_id, room_id, player_red, player_blue, winner, duration_sec, timestamp)             VALUES ('{match_id}', '{match_id}', '{host}', '{guest}', '{winner}', {rounds}, '{timestamp}')",
+            match_id = match_id,
+            host = host,
+            guest = guest,
+            winner = winner,
+            rounds = m.rounds,
+            timestamp = timestamp
+        );
+
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+}
+
 pub struct Database {
     file_path: PathBuf,
     data: DatabaseData,
+    adb: Option<OracleAdbClient>,
 }
 
 impl Database {
@@ -136,31 +305,88 @@ impl Database {
             DatabaseData::default()
         };
 
-        // Ensure all loaded users have a starter card and starting gold
-        let mut modified = false;
         for user in data.users.values_mut() {
             if user.gold == 0 {
                 user.gold = 100;
-                modified = true;
             }
             if user.cards.is_empty() {
                 user.cards
                     .push(create_starter_card(&user.username, &user.avatar));
-                modified = true;
             }
         }
 
-        println!(
-            "[RUST DATABASE] Loaded {} users and {} matches from disk.",
-            data.users.len(),
-            data.matches.len()
-        );
+        Self { file_path, data, adb: None }
+    }
 
-        let db = Self { file_path, data };
-        if modified {
-            db.save();
+    pub async fn new_with_adb(path: impl AsRef<Path>) -> Self {
+        let file_path = path.as_ref().to_path_buf();
+        if let Some(parent) = file_path.parent() {
+            let _ = fs::create_dir_all(parent);
         }
-        db
+
+        let adb = OracleAdbClient::new_from_env();
+        let mut data = DatabaseData::default();
+        let mut loaded_from_adb = false;
+
+        if let Some(ref client) = adb {
+            match client.load_all_users().await {
+                Ok(users) => {
+                    println!("[ORACLE AUTONOMOUS DB] Loaded {} users from Oracle Cloud ADB.", users.len());
+                    for u in users {
+                        data.users.insert(u.username.clone(), u);
+                    }
+                    loaded_from_adb = true;
+                }
+                Err(e) => {
+                    eprintln!("[ORACLE ADB WARNING] Could not load from ADB ({}). Falling back to local disk.", e);
+                }
+            }
+        }
+
+        if !loaded_from_adb && file_path.exists() {
+            if let Ok(content) = fs::read_to_string(&file_path) {
+                if let Ok(local_data) = serde_json::from_str::<DatabaseData>(&content) {
+                    data = local_data;
+                    println!("[LOCAL DB] Loaded {} users and {} matches from local file.", data.users.len(), data.matches.len());
+                }
+            }
+        }
+
+        for user in data.users.values_mut() {
+            if user.gold == 0 {
+                user.gold = 100;
+            }
+            if user.cards.is_empty() {
+                user.cards
+                    .push(create_starter_card(&user.username, &user.avatar));
+            }
+        }
+
+        Self { file_path, data, adb }
+    }
+
+    fn persist_user_adb(&self, user: &User) {
+        if let Some(ref client) = self.adb {
+            let client = client.clone();
+            let user = user.clone();
+            tokio::spawn(async move {
+                if let Err(e) = client.save_user(&user).await {
+                    eprintln!("[ORACLE ADB ERROR] Failed to save user {}: {}", user.username, e);
+                }
+            });
+        }
+    }
+
+    fn persist_match_adb(&self, m: &MatchRecord) {
+        if let Some(ref client) = self.adb {
+            let client = client.clone();
+            let m = m.clone();
+            tokio::spawn(async move {
+                if let Err(e) = client.record_match(&m).await {
+                    eprintln!("[ORACLE ADB ERROR] Failed to save match {}: {}", m.match_id, e);
+                }
+            });
+        }
     }
 
     fn save(&self) {
@@ -228,6 +454,7 @@ impl Database {
 
         self.data.users.insert(clean, user.clone());
         self.save();
+        self.persist_user_adb(&user);
         Ok(user)
     }
 
@@ -255,6 +482,7 @@ impl Database {
 
         let res = user.clone();
         self.save();
+        self.persist_user_adb(&res);
         Ok(res)
     }
 
@@ -315,6 +543,7 @@ impl Database {
         user.cards.push(new_card.clone());
         let res_user = user.clone();
         self.save();
+        self.persist_user_adb(&res_user);
         Ok((res_user, new_card))
     }
 
@@ -383,6 +612,7 @@ impl Database {
 
         let res_user = user.clone();
         self.save();
+        self.persist_user_adb(&res_user);
         Ok((res_user, msg))
     }
 
@@ -418,6 +648,7 @@ impl Database {
         user.gold += refund;
         let res_user = user.clone();
         self.save();
+        self.persist_user_adb(&res_user);
         Ok((res_user, refund))
     }
 
@@ -443,6 +674,7 @@ impl Database {
         user.gold += gold_earned;
         let res_user = user.clone();
         self.save();
+        self.persist_user_adb(&res_user);
         Ok((res_user, gold_earned))
     }
 
@@ -476,6 +708,8 @@ impl Database {
                     h.elo = (h.elo - 20).max(500);
                     h.gold += 15;
                 }
+                let h_clone = h.clone();
+                self.persist_user_adb(&h_clone);
             }
             if let Some(g) = self.data.users.get_mut(&guest_user.to_lowercase()) {
                 g.matches += 1;
@@ -488,9 +722,12 @@ impl Database {
                     g.elo = (g.elo - 20).max(500);
                     g.gold += 15;
                 }
+                let g_clone = g.clone();
+                self.persist_user_adb(&g_clone);
             }
         }
 
+        self.persist_match_adb(&rec);
         self.data.matches.insert(0, rec);
         if self.data.matches.len() > 200 {
             self.data.matches.truncate(200);
@@ -1280,7 +1517,7 @@ async fn main() {
 
     let data_dir = PathBuf::from("data");
     let db_path = data_dir.join("game_db.json");
-    let db = Database::new(db_path);
+    let db = Database::new_with_adb(db_path).await;
 
     let state = Arc::new(AppState {
         db: Arc::new(RwLock::new(db)),

@@ -89,3 +89,14 @@ variable "enable_cloudflare_proxy" {
   default     = true
   description = "Bật Cloudflare CDN/Proxy (Hỗ trợ SSL miễn phí, CDN & chống DDoS)"
 }
+
+# ==========================================
+# Oracle Autonomous Database (Always Free)
+# ==========================================
+
+variable "adb_admin_password" {
+  type        = string
+  default     = "TacticalArenaDb2026#"
+  description = "Mật khẩu quản trị viên ADMIN cho Oracle Autonomous Database Always Free"
+  sensitive   = true
+}
