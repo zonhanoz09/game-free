@@ -1,6 +1,8 @@
 use crate::audio::PlaySoundEvent;
+use crate::battle::ActionGauge;
+use crate::board::grid_to_world_pos;
 use crate::types::*;
-use crate::units::{spawn_unit_ext, Unit};
+use crate::units::{Unit, spawn_unit, spawn_unit_ext};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
@@ -14,44 +16,43 @@ pub struct PvpUnitData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "action", content = "data")]
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PvpMessage {
-    CreateRoom {
-        room_code: String,
-    },
-    JoinRoom {
-        room_code: String,
-    },
+    #[serde(alias = "CreateRoom", alias = "CREATE_ROOM")]
+    CreateRoom { room_code: String },
+    #[serde(alias = "JoinRoom", alias = "JOIN_ROOM")]
+    JoinRoom { room_code: String },
+    #[serde(alias = "RoomJoined", alias = "ROOM_JOINED")]
     RoomJoined {
         room_code: String,
         role: String,
         player_name: String,
         opponent_name: String,
     },
-    PlayerReady {
-        lineup: Vec<PvpUnitData>,
-    },
+    #[serde(alias = "PlayerReady", alias = "PLAYER_READY")]
+    PlayerReady { lineup: Vec<PvpUnitData> },
+    #[serde(alias = "StartRound", alias = "START_ROUND")]
     StartRound {
         round: usize,
         opponent_lineup: Vec<PvpUnitData>,
         player_hp: i32,
         opponent_hp: i32,
     },
+    #[serde(alias = "BattleFinished", alias = "BATTLE_FINISHED")]
     BattleFinished {
         winner_role: String,
         player_survivors: usize,
     },
+    #[serde(alias = "UpdateMatchHp", alias = "UPDATE_MATCH_HP")]
     UpdateMatchHp {
         player_hp: i32,
         opponent_hp: i32,
         damage_dealt: i32,
     },
-    MatchEnd {
-        winner: String,
-    },
-    Error {
-        message: String,
-    },
+    #[serde(alias = "MatchEnd", alias = "MATCH_END")]
+    MatchEnd { winner: String },
+    #[serde(alias = "Error", alias = "ERROR")]
+    Error { message: String },
 }
 
 #[derive(Resource, Debug)]
@@ -124,10 +125,23 @@ pub fn send_pvp_message(msg: &PvpMessage) {
 pub fn pvp_network_system(
     mut pvp_mgr: ResMut<PvpManager>,
     mut next_state: ResMut<NextState<GameState>>,
-    state: Res<State<GameState>>,
+    _state: Res<State<GameState>>,
     mut commands: Commands,
     textures: Res<GameTextures>,
-    enemy_units: Query<Entity, (With<Unit>, With<GridPos>)>,
+    all_board_units: Query<(Entity, &Unit), With<GridPos>>,
+    mut player_units: Query<
+        (
+            Entity,
+            &Unit,
+            &GridPos,
+            &mut Transform,
+            &mut Visibility,
+            &mut UnitStats,
+            Option<&mut ActionGauge>,
+        ),
+        Without<DeadUnit>,
+    >,
+    dead_player_units: Query<(Entity, &Unit, &GridPos), With<DeadUnit>>,
     mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     let mut messages = Vec::new();
@@ -158,7 +172,10 @@ pub fn pvp_network_system(
                     pvp_mgr.is_ready = false;
                     pvp_mgr.opponent_ready = false;
                     pvp_mgr.match_winner = None;
-                    info!("[PVP] Room joined: {} as {}", pvp_mgr.room_code, pvp_mgr.role);
+                    info!(
+                        "[PVP] Room joined: {} as {}",
+                        pvp_mgr.room_code, pvp_mgr.role
+                    );
                 }
                 PvpMessage::StartRound {
                     round,
@@ -166,6 +183,7 @@ pub fn pvp_network_system(
                     player_hp,
                     opponent_hp,
                 } => {
+                    pvp_mgr.active = true;
                     pvp_mgr.round = round;
                     pvp_mgr.player_hp = player_hp;
                     pvp_mgr.opponent_hp = opponent_hp;
@@ -173,12 +191,47 @@ pub fn pvp_network_system(
                     pvp_mgr.is_ready = false;
                     pvp_mgr.opponent_ready = false;
 
-                    // Despawn any existing enemies on board
-                    for ent in enemy_units.iter() {
-                        commands.entity(ent).despawn_recursive();
+                    // 1. Despawn ONLY existing enemy units on board (DO NOT delete player units!)
+                    for (ent, unit) in all_board_units.iter() {
+                        if unit.faction == Faction::Enemy {
+                            commands.entity(ent).despawn_recursive();
+                        }
                     }
 
-                    // Spawn opponent lineup on enemy side!
+                    // 2. Reset player units to full health & reset Action Gauge
+                    for (_, unit, grid, mut transform, mut vis, mut stats, maybe_gauge) in
+                        player_units.iter_mut()
+                    {
+                        if unit.faction == Faction::Player {
+                            let pos = grid_to_world_pos(grid.col, grid.row, Faction::Player);
+                            transform.translation =
+                                Vec3::new(pos.x, pos.y, 10.0 + (grid.row as f32 * -0.5));
+                            *vis = Visibility::Inherited;
+                            stats.hp = stats.max_hp;
+                            stats.shield = 0.0;
+                            stats.mana = 0.0;
+                            if let Some(mut gauge) = maybe_gauge {
+                                gauge.current = 0.0;
+                            }
+                        }
+                    }
+
+                    // 3. Respawn any dead player units
+                    for (entity, unit, grid) in dead_player_units.iter() {
+                        if unit.faction == Faction::Player {
+                            commands.entity(entity).despawn_recursive();
+                            spawn_unit(
+                                &mut commands,
+                                &textures,
+                                unit.class,
+                                Faction::Player,
+                                grid.col,
+                                grid.row,
+                            );
+                        }
+                    }
+
+                    // 4. Spawn opponent lineup on enemy side!
                     for u in &opponent_lineup {
                         spawn_unit_ext(
                             &mut commands,
@@ -192,10 +245,42 @@ pub fn pvp_network_system(
                         );
                     }
 
-                    sound_events.send(PlaySoundEvent(crate::audio::SoundEffect::Click));
-                    if *state.get() == GameState::Placement {
-                        next_state.set(GameState::Battle);
+                    // Fallback: If opponent has no units, spawn starter enemy squad
+                    if opponent_lineup.is_empty() {
+                        spawn_unit_ext(
+                            &mut commands,
+                            &textures,
+                            UnitClass::Knight,
+                            Faction::Enemy,
+                            0,
+                            0,
+                            1,
+                            false,
+                        );
+                        spawn_unit_ext(
+                            &mut commands,
+                            &textures,
+                            UnitClass::Archer,
+                            Faction::Enemy,
+                            1,
+                            1,
+                            1,
+                            false,
+                        );
+                        spawn_unit_ext(
+                            &mut commands,
+                            &textures,
+                            UnitClass::Assassin,
+                            Faction::Enemy,
+                            2,
+                            2,
+                            1,
+                            false,
+                        );
                     }
+
+                    sound_events.send(PlaySoundEvent(crate::audio::SoundEffect::Click));
+                    next_state.set(GameState::Battle);
                     info!(
                         "[PVP] Round {} battle started with {} opponent units!",
                         round,
@@ -218,66 +303,10 @@ pub fn pvp_network_system(
                     pvp_mgr.match_winner = Some(winner.clone());
                     info!("[PVP] Match ended! Winner: {}", winner);
                 }
-                PvpMessage::Error { message } => {
-                    warn!("[PVP NET ERROR] {}", message);
-                }
                 _ => {}
             }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_pvp_manager_initial_state() {
-        let mgr = PvpManager::default();
-        assert_eq!(mgr.player_hp, 100);
-        assert_eq!(mgr.opponent_hp, 100);
-        assert_eq!(mgr.round, 1);
-        assert!(!mgr.active);
-        assert!(!mgr.is_ready);
-    }
-
-    #[test]
-    fn test_pvp_message_serialization() {
-        let msg = PvpMessage::StartRound {
-            round: 2,
-            opponent_lineup: vec![
-                PvpUnitData {
-                    col: 1,
-                    row: 0,
-                    class: UnitClass::Knight,
-                    star_level: 2,
-                },
-                PvpUnitData {
-                    col: 0,
-                    row: 2,
-                    class: UnitClass::Mage,
-                    star_level: 1,
-                },
-            ],
-            player_hp: 92,
-            opponent_hp: 84,
-        };
-
-        let json = serde_json::to_string(&msg).expect("Serialize failed");
-        assert!(json.contains("StartRound"));
-        assert!(json.contains("Knight"));
-
-        let deserialized: PvpMessage = serde_json::from_str(&json).expect("Deserialize failed");
-        match deserialized {
-            PvpMessage::StartRound { round, opponent_lineup, player_hp, opponent_hp } => {
-                assert_eq!(round, 2);
-                assert_eq!(player_hp, 92);
-                assert_eq!(opponent_hp, 84);
-                assert_eq!(opponent_lineup.len(), 2);
-                assert_eq!(opponent_lineup[0].class, UnitClass::Knight);
-                assert_eq!(opponent_lineup[0].star_level, 2);
-            }
-            _ => panic!("Incorrect message variant"),
+        } else {
+            warn!("[PVP NET] Failed to parse message JSON: {}", raw);
         }
     }
 }

@@ -73,6 +73,11 @@ function generateRoomCode() {
     return code;
 }
 
+function normalizeType(t) {
+    if (!t) return '';
+    return t.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
+}
+
 function broadcastToRoom(room, msgObj) {
     const str = JSON.stringify(msgObj);
     if (room.host && room.host.ws.readyState === 1) {
@@ -90,7 +95,8 @@ wss.on('connection', (ws) => {
     ws.on('message', (raw) => {
         try {
             const data = JSON.parse(raw.toString());
-            const type = data.type || data.action;
+            const rawType = data.type || data.action;
+            const type = normalizeType(rawType);
             const payload = data.data || data.payload || data;
 
             switch (type) {
@@ -168,7 +174,7 @@ wss.on('connection', (ws) => {
                 }
 
                 case 'QUICK_MATCH': {
-                    if (quickMatchQueue && quickMatchQueue.readyState === 1) {
+                    if (quickMatchQueue && quickMatchQueue.readyState === 1 && quickMatchQueue !== ws) {
                         const hostWs = quickMatchQueue;
                         quickMatchQueue = null;
                         const code = generateRoomCode();
@@ -260,63 +266,45 @@ wss.on('connection', (ws) => {
                     const room = rooms.get(currentRoomCode);
                     if (!room) return;
 
-                    const winnerRole = payload.winner_role || 'host';
+                    const winnerRole = payload.winner_role;
                     const survivors = payload.player_survivors || 1;
-                    const dmg = 5 + (survivors * 2);
 
-                    room.results.set(currentRole, { winnerRole, dmg });
+                    room.results.set(currentRole, { winnerRole, survivors });
 
+                    // When both report (or if host reports), calculate damage
                     if (room.results.size >= 1) {
-                        // Apply damage to loser
+                        const damage = 10 + survivors * 3;
                         if (winnerRole === 'host') {
-                            room.guest.hp = Math.max(0, room.guest.hp - dmg);
-                        } else {
-                            room.host.hp = Math.max(0, room.host.hp - dmg);
+                            room.guest.hp = Math.max(0, room.guest.hp - damage);
+                        } else if (winnerRole === 'guest') {
+                            room.host.hp = Math.max(0, room.host.hp - damage);
                         }
 
-                        // Broadcast updated HP
+                        // Broadcast HP update
                         broadcastToRoom(room, {
                             type: 'UPDATE_MATCH_HP',
                             host_hp: room.host.hp,
                             guest_hp: room.guest.hp,
-                            damage_dealt: dmg,
-                            winner_role: winnerRole,
+                            damage_dealt: damage,
                         });
 
-                        // Check Match Over
+                        // Check match end
                         if (room.host.hp <= 0 || room.guest.hp <= 0) {
-                            const champion = room.host.hp > 0 ? room.host.name : room.guest.name;
+                            const winner = room.host.hp > 0 ? room.host.name : room.guest.name;
                             broadcastToRoom(room, {
                                 type: 'MATCH_END',
-                                winner: champion,
+                                winner,
                             });
-                            console.log(`[PVP SERVER] Match OVER in room ${room.code}! Winner: ${champion}`);
+                            rooms.delete(room.code);
                         } else {
                             room.round += 1;
-                            setTimeout(() => {
-                                broadcastToRoom(room, {
-                                    type: 'NEXT_PREP_PHASE',
-                                    round: room.round,
-                                });
-                            }, 4000);
                         }
                     }
                     break;
                 }
-
-                case 'CHAT_MESSAGE': {
-                    const room = rooms.get(currentRoomCode);
-                    if (!room) return;
-                    broadcastToRoom(room, {
-                        type: 'CHAT_MESSAGE',
-                        sender: currentRole === 'host' ? room.host.name : room.guest.name,
-                        text: payload.text,
-                    });
-                    break;
-                }
             }
-        } catch (e) {
-            console.error('[PVP SERVER ERROR]', e);
+        } catch (err) {
+            console.error('[PVP SERVER ERROR] Failed to process message:', err);
         }
     });
 
@@ -328,13 +316,13 @@ wss.on('connection', (ws) => {
             const room = rooms.get(currentRoomCode);
             if (room) {
                 if (currentRole === 'host') {
-                    if (room.guest && room.guest.ws.readyState === 1) {
-                        room.guest.ws.send(JSON.stringify({ type: 'OPPONENT_LEFT', message: 'Chủ phòng đã rời trận!' }));
+                    if (room.guest) {
+                        room.guest.ws.send(JSON.stringify({ type: 'ERROR', message: 'Chủ phòng đã thoát trận.' }));
                     }
                     rooms.delete(currentRoomCode);
                 } else if (currentRole === 'guest') {
-                    if (room.host && room.host.ws.readyState === 1) {
-                        room.host.ws.send(JSON.stringify({ type: 'OPPONENT_LEFT', message: 'Đối thủ đã rời trận!' }));
+                    if (room.host) {
+                        room.host.ws.send(JSON.stringify({ type: 'ERROR', message: 'Đối thủ đã thoát phòng.' }));
                     }
                     room.guest = null;
                 }
@@ -344,9 +332,9 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`=======================================================`);
-    console.log(` ⚔️ 3v3 TACTICAL ARENA - ONLINE PVP SERVER RUNNING`);
+    console.log('=======================================================');
+    console.log(' ⚔️ 3v3 TACTICAL ARENA - ONLINE PVP SERVER RUNNING');
     console.log(` 🌐 Web Client & WebSocket URL: http://localhost:${PORT}`);
     console.log(` 📦 Serving assets from: ${PUBLIC_DIR}`);
-    console.log(`=======================================================`);
+    console.log('=======================================================');
 });
