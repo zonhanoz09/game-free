@@ -49,8 +49,7 @@ const server = http.createServer((req, res) => {
 
         res.writeHead(200, {
             'Content-Type': contentType,
-            'Cross-Origin-Opener-Policy': 'same-origin',
-            'Cross-Origin-Embedder-Policy': 'require-corp',
+            'Access-Control-Allow-Origin': '*',
             'Cache-Control': ext === '.wasm' ? 'public, max-age=3600' : 'no-cache',
         });
 

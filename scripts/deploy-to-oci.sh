@@ -12,7 +12,7 @@ echo "======================================================="
 echo " 🚀 BẮT ĐẦU TRIỂN KHAI 3V3 TACTICAL ARENA LÊN OCI"
 echo "======================================================="
 
-# 1. Biên dịch WASM mới nhất
+# 1. Biên dịch WASM mới nhất (nếu có thay đổi)
 echo "📦 Đang biên dịch bản WebAssembly mới nhất (Release)..."
 cargo build --target wasm32-unknown-unknown --release
 wasm-bindgen --out-dir wasm_dist --target web target/wasm32-unknown-unknown/release/game-free.wasm
@@ -30,7 +30,6 @@ BASTION_CMD=$(cat /tmp/bastion_tunnel_cmd.txt)
 echo "🔗 Đang mở SSH Tunnel qua OCI Bastion..."
 eval "$BASTION_CMD &"
 TUNNEL_PID=$!
-sleep 2
 
 cleanup() {
     echo "🧹 Dọn dẹp kết nối Bastion Tunnel..."
@@ -38,6 +37,16 @@ cleanup() {
     fuser -k ${LOCAL_TUNNEL_PORT}/tcp 2>/dev/null || true
 }
 trap cleanup EXIT
+
+# Đợi port tunnel sẵn sàng
+echo "⏳ Đợi SSH Tunnel sẵn sàng..."
+for i in {1..15}; do
+    if nc -z 127.0.0.1 ${LOCAL_TUNNEL_PORT} 2>/dev/null; then
+        echo "✅ Bastion SSH Tunnel đã kết nối thành công (port ${LOCAL_TUNNEL_PORT})!"
+        break
+    fi
+    sleep 1
+done
 
 # 3. Đồng bộ files lên máy chủ
 echo "📤 Đang đồng bộ files lên OCI Private Instance (10.0.1.60)..."

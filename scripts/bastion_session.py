@@ -1,84 +1,108 @@
 #!/usr/bin/env python3
-"""
-OCI Bastion Helper: Creates a temporary Port-Forwarding SSH tunnel to private VM 10.0.1.60.
-"""
-import subprocess, os, sys, time, base64, urllib.request, ssl, json, hashlib, re
+import json
+import os
+import sys
+import time
+import base64
+import hashlib
+import re
+from urllib.request import Request, urlopen
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from email.utils import formatdate
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TFVARS_FILE = os.path.join(PROJECT_DIR, "terraform", "terraform.tfvars")
 
 tfvars = {}
-with open(TFVARS_FILE, "r") as f:
-    for line in f:
-        m = re.match(r'^\s*([a-zA-Z0-9_]+)\s*=\s*"([^"]+)"', line)
-        if m:
-            tfvars[m.group(1)] = m.group(2)
+if os.path.exists(TFVARS_FILE):
+    with open(TFVARS_FILE, "r") as f:
+        for line in f:
+            m = re.match(r'^\s*([a-zA-Z0-9_]+)\s*=\s*"([^"]+)"', line)
+            if m:
+                tfvars[m.group(1)] = m.group(2)
 
-tenancy_id = tfvars.get("tenancy_ocid")
-user_id = tfvars.get("user_ocid")
-fingerprint = tfvars.get("fingerprint")
-key_path = os.path.expanduser(tfvars.get("private_key_path", ""))
-region = tfvars.get("region", "ap-singapore-1")
+TENANCY_OCID = tfvars.get("tenancy_ocid")
+USER_OCID = tfvars.get("user_ocid")
+FINGERPRINT = tfvars.get("fingerprint")
+OCI_KEY_FILE = os.path.expanduser(tfvars.get("private_key_path", "~/.ssh/huynhvannhancntt_private_key_pair.pem"))
+REGION = tfvars.get("region", "ap-singapore-1")
+SSH_PUB_KEY_FILE = os.path.expanduser(tfvars.get("ssh_public_key_path", "~/.ssh/id_ed25519.pub"))
+SSH_PRIV_KEY_FILE = os.path.expanduser("~/.ssh/id_ed25519")
+BASTION_ID = "ocid1.bastion.oc1.ap-singapore-1.amaaaaaasyx6r3qahivs4paq6b5hjwjljfutx4ompjrxybtvsulokjhbv6qa"
+TARGET_IP = "10.0.1.60"
 
-bastion_id = "ocid1.bastion.oc1.ap-singapore-1.amaaaaaasyx6r3qahivs4paq6b5hjwjljfutx4ompjrxybtvsulokjhbv6qa"
-instance_id = "ocid1.instance.oc1.ap-singapore-1.anzwsljrsyx6r3qcpglovknffch5gg56fq5mr5gyaa6wqmdx5wvfvr75zwaq"
+def get_auth_headers(method, path, body=""):
+    with open(OCI_KEY_FILE, "rb") as f:
+        private_key = serialization.load_pem_private_key(f.read(), password=None)
 
-def oci_request(method, path, body=None):
-    host = f"bastion.{region}.oci.oraclecloud.com"
-    date_str = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime())
-    headers_list = "(request-target) host date"
-    signing_string = f"(request-target): {method.lower()} {path}\nhost: {host}\ndate: {date_str}"
-    
-    body_bytes = None
-    sha_b64 = None
-    if body is not None:
-        body_bytes = json.dumps(body).encode("utf-8")
-        sha = hashlib.sha256(body_bytes).digest()
-        sha_b64 = base64.b64encode(sha).decode("utf-8")
-        headers_list += " x-content-sha256 content-type content-length"
-        signing_string += f"\nx-content-sha256: {sha_b64}\ncontent-type: application/json\ncontent-length: {len(body_bytes)}"
+    key_id = f"{TENANCY_OCID}/{USER_OCID}/{FINGERPRINT}"
+    host = f"bastion.{REGION}.oci.oraclecloud.com"
+    date = formatdate(timeval=None, localtime=False, usegmt=True)
 
-    proc = subprocess.Popen(["openssl", "dgst", "-sha256", "-sign", key_path],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    sig_bytes, _ = proc.communicate(signing_string.encode("utf-8"))
-    sig_b64 = base64.b64encode(sig_bytes).decode("utf-8")
-    
-    key_id = f"{tenancy_id}/{user_id}/{fingerprint}"
-    auth_header = (f'Signature version="1",keyId="{key_id}",algorithm="rsa-sha256",'
-                   f'headers="{headers_list}",signature="{sig_b64}"')
-    
-    url = f"https://{host}{path}"
-    req = urllib.request.Request(url, data=body_bytes, method=method)
-    req.add_header("host", host)
-    req.add_header("date", date_str)
-    req.add_header("authorization", auth_header)
-    if body_bytes is not None:
-        req.add_header("content-type", "application/json")
-        req.add_header("x-content-sha256", sha_b64)
-    
-    ctx = ssl.create_default_context()
-    with urllib.request.urlopen(req, context=ctx) as resp:
-        return resp.read().decode("utf-8")
+    headers_to_sign = ["(request-target)", "date", "host"]
+    signing_string = f"(request-target): {method.lower()} {path}\ndate: {date}\nhost: {host}"
 
-if __name__ == "__main__":
-    with open(os.path.expanduser("~/.ssh/id_ed25519.pub")) as f:
+    if body:
+        digest = base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode('utf-8')
+        signing_string += f"\nx-content-sha256: {digest}\ncontent-type: application/json\ncontent-length: {len(body)}"
+        headers_to_sign.extend(["x-content-sha256", "content-type", "content-length"])
+
+    signature = private_key.sign(
+        signing_string.encode('utf-8'),
+        padding.PKCS1v15(),
+        hashes.SHA256()
+    )
+    sig_b64 = base64.b64encode(signature).decode('utf-8')
+
+    auth_header = (
+        f'Signature version="1",keyId="{key_id}",algorithm="rsa-sha256",'
+        f'headers="{" ".join(headers_to_sign)}",signature="{sig_b64}"'
+    )
+
+    req_headers = {
+        "Date": date,
+        "Host": host,
+        "Authorization": auth_header,
+    }
+    if body:
+        req_headers["x-content-sha256"] = digest
+        req_headers["Content-Type"] = "application/json"
+        req_headers["Content-Length"] = str(len(body))
+
+    return req_headers
+
+def oci_request(method, path, body=""):
+    headers = get_auth_headers(method, path, body)
+    url = f"https://bastion.{REGION}.oci.oraclecloud.com{path}"
+    data = body.encode('utf-8') if body else None
+    req = Request(url, data=data, headers=headers, method=method)
+    try:
+        with urlopen(req) as resp:
+            return resp.read().decode('utf-8')
+    except Exception as e:
+        if hasattr(e, 'read'):
+            print(f"Error response: {e.read().decode('utf-8')}")
+        raise e
+
+def create_bastion_session():
+    with open(SSH_PUB_KEY_FILE, "r") as f:
         pub_key = f.read().strip()
 
-    body = {
-        "bastionId": bastion_id,
-        "displayName": f"deploy-{int(time.time())}",
-        "keyType": "PUB",
-        "targetResourceDetails": {
-            "sessionType": "PORT_FORWARDING",
-            "targetResourceId": instance_id,
-            "targetResourcePrivateIpAddress": "10.0.1.60",
-            "targetResourcePort": 22
-        },
+    body = json.dumps({
+        "bastionId": BASTION_ID,
+        "displayName": f"deploy-session-{int(time.time())}",
         "keyDetails": {
             "publicKeyContent": pub_key
         },
+        "targetResourceDetails": {
+            "sessionType": "PORT_FORWARDING",
+            "targetResourceId": None,
+            "targetResourcePrivateIpAddress": TARGET_IP,
+            "targetResourcePort": 22
+        },
         "sessionTtlInSeconds": 3600
-    }
+    })
 
     print("🚀 Đang yêu cầu tạo OCI Bastion Port-Forwarding Session...")
     res = oci_request("POST", "/20210331/sessions", body)
@@ -87,22 +111,27 @@ if __name__ == "__main__":
     print(f"✅ Session ID: {session_id}")
     
     # Wait for session to be ACTIVE
-    for _ in range(15):
+    for _ in range(20):
         time.sleep(3)
         check_res = oci_request("GET", f"/20210331/sessions/{session_id}")
         s_data = json.loads(check_res)
         state = s_data.get("lifecycleState")
         print(f"Trạng thái session: {state}")
         if state == "ACTIVE":
+            print("⏳ Đợi 8 giây để OCI Bastion phân bổ SSH Key vào daemon...")
+            time.sleep(8)
             ssh_cmd = s_data.get("sshMetadata", {}).get("command", "")
             print("\n================== COMMAND TUNNEL ==================")
             print(ssh_cmd)
             print("====================================================")
-            # Replace placeholder <localPort> with 2222
-            tunnel_cmd = ssh_cmd.replace("<localPort>", "2222").replace("<privateKey>", "~/.ssh/id_ed25519")
+            # Replace placeholder <localPort> with 2222 and absolute private key path
+            tunnel_cmd = ssh_cmd.replace("<localPort>", "2222").replace("<privateKey>", SSH_PRIV_KEY_FILE)
             with open("/tmp/bastion_tunnel_cmd.txt", "w") as f_out:
                 f_out.write(tunnel_cmd)
             sys.exit(0)
 
     print("⚠️ Timeout waiting for Bastion session")
     sys.exit(1)
+
+if __name__ == "__main__":
+    create_bastion_session()
