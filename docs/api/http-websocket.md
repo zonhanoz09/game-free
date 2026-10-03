@@ -55,7 +55,7 @@ battle ID, turn, actor, target rule, skill policy và timeout, sau đó chạy
 `game_logic` để tạo event/replay. `command_id` được lưu để retry không chạy lại
 lượt; `critical` trong payload bị bỏ qua và không có hiệu lực. Kết quả, damage
 meta-round, reward và `MATCH_END` chỉ phát sinh từ authority server.
-`BATTLE_FINISHED` từ client bị từ chối.
+`BATTLE_FINISHED` mang thông tin kết quả round PvP client với các trường `winner_role` ("host", "guest", hoặc "draw"), `player_survivors`, và metadata chống trùng lặp/mất đồng bộ `room_code`, `round`. Server tự động deduplicate các thông báo cùng round thông qua `settled_round`, áp dụng sát thương tiebreaker 10 HP cho cả hai bên khi hoà ("draw"), và kết thúc trận đấu ở mốc tối đa 20 round.
 
 Bridge WASM dùng `js_to_rust_pvp` để gửi message vào Bevy và
 `window._handle_rust_pvp` để nhận event từ Bevy. Dữ liệu card cũ không có

@@ -146,10 +146,29 @@ impl AuthoritativeBattle {
     }
 
     pub fn result(&self) -> BattleResult {
-        let winner = self.state.winner().flatten().map(|side| match side {
-            TeamSide::Attacker => "ATTACKER",
-            TeamSide::Defender => "DEFENDER",
-        });
+        let winner = self
+            .state
+            .winner()
+            .flatten()
+            .map(|side| match side {
+                TeamSide::Attacker => "ATTACKER",
+                TeamSide::Defender => "DEFENDER",
+            })
+            .or_else(|| {
+                if self.is_timed_out() {
+                    let att = self.surviving_count(TeamSide::Attacker);
+                    let def = self.surviving_count(TeamSide::Defender);
+                    if att > def {
+                        Some("ATTACKER")
+                    } else if def > att {
+                        Some("DEFENDER")
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            });
         let events = self
             .state
             .events

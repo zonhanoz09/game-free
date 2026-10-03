@@ -607,7 +607,7 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                                                 .as_ref()
                                                 .map(|guest| guest.hp)
                                                 .unwrap_or(0);
-                                            let hp_message = serde_json::json!({
+                                            let host_hp_message = serde_json::json!({
                                                 "type": "UPDATE_MATCH_HP",
                                                 "player_hp": host_hp,
                                                 "opponent_hp": guest_hp,
@@ -617,10 +617,17 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                                             let _ = room
                                                 .host
                                                 .tx
-                                                .send(Message::Text(hp_message.clone().into()));
+                                                .send(Message::Text(host_hp_message.into()));
                                             if let Some(guest) = &room.guest {
+                                                let guest_hp_message = serde_json::json!({
+                                                    "type": "UPDATE_MATCH_HP",
+                                                    "player_hp": guest_hp,
+                                                    "opponent_hp": host_hp,
+                                                    "damage_dealt": damage
+                                                })
+                                                .to_string();
                                                 let _ =
-                                                    guest.tx.send(Message::Text(hp_message.into()));
+                                                    guest.tx.send(Message::Text(guest_hp_message.into()));
                                             }
                                             if host_hp <= 0 || guest_hp <= 0 {
                                                 let winner_id = if host_hp > 0 {
@@ -714,8 +721,18 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                         current_role = Some(role.clone());
 
                         if let Some(room) = rooms_guard.get_mut(&code) {
-                            if room.settled_round >= room.round {
+                            let msg_round = parsed
+                                .get("round")
+                                .and_then(|v| v.as_u64())
+                                .map(|v| v as usize)
+                                .unwrap_or(room.round);
+
+                            if room.settled_round >= msg_round {
                                 // Already settled this round, send back current HP
+                                println!(
+                                    "[RUST WS] [PVP DEDUP] Round {} in room {} already settled (settled_round={}), deduplicating BATTLE_FINISHED from {}",
+                                    msg_round, code, room.settled_round, role
+                                );
                                 let host_hp = room.host.hp;
                                 let guest_hp = room.guest.as_ref().map(|g| g.hp).unwrap_or(0);
                                 let sync_msg = serde_json::json!({
@@ -728,7 +745,7 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                                 continue;
                             }
 
-                            room.settled_round = room.round;
+                            room.settled_round = msg_round.max(room.round);
                             let survivors = parsed
                                 .get("player_survivors")
                                 .and_then(|v| v.as_u64())
@@ -745,6 +762,17 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                                 }
                             } else if winner_role == "guest" {
                                 room.host.hp = (room.host.hp - damage).max(0);
+                            } else if winner_role == "draw" {
+                                // Both players take tiebreaker damage on draw to prevent infinite matches
+                                let draw_damage = 10;
+                                room.host.hp = (room.host.hp - draw_damage).max(0);
+                                if let Some(ref mut g) = room.guest {
+                                    g.hp = (g.hp - draw_damage).max(0);
+                                }
+                                println!(
+                                    "[RUST WS] Round {} in room {} was a DRAW. Both players take {} tiebreaker damage.",
+                                    room.round, code, draw_damage
+                                );
                             }
 
                             let host_hp = room.host.hp;
@@ -771,27 +799,29 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             }
 
                             println!(
-                                "[RUST WS] Round {} in room {} settled by {}. Winner: {} | Host HP: {}, Guest HP: {} (Damage: {})",
+                                "[RUST WS] [BATTLE SETTLED] Round {} in room {} settled by {}. Winner: {} | Host HP: {}, Guest HP: {} (Damage: {})",
                                 room.round, code, role, winner_role, host_hp, guest_hp, damage
                             );
 
-                            if host_hp <= 0 || guest_hp <= 0 {
-                                let winner_name = if host_hp > 0 {
-                                    room.host.name.clone()
+                            const MAX_MATCH_ROUNDS: usize = 20;
+                            if host_hp <= 0 || guest_hp <= 0 || room.round >= MAX_MATCH_ROUNDS {
+                                let (winner_name, winner_id) = if host_hp > guest_hp {
+                                    (room.host.name.clone(), room.host.id.clone())
+                                } else if guest_hp > host_hp {
+                                    (
+                                        room.guest.as_ref().map(|g| g.name.clone()).unwrap_or_default(),
+                                        room.guest.as_ref().map(|g| g.id.clone()).unwrap_or_default(),
+                                    )
                                 } else {
-                                    room.guest
-                                        .as_ref()
-                                        .map(|guest| guest.name.clone())
-                                        .unwrap_or_default()
+                                    // Tiebreaker at round limit or mutual elimination: host wins tiebreak
+                                    (room.host.name.clone(), room.host.id.clone())
                                 };
-                                let winner_id = if host_hp > 0 {
-                                    room.host.id.clone()
-                                } else {
-                                    room.guest
-                                        .as_ref()
-                                        .map(|guest| guest.id.clone())
-                                        .unwrap_or_default()
-                                };
+
+                                println!(
+                                    "[RUST WS] [MATCH END] Room {} match ended after round {}. Winner: {} ({}) | Final Host HP: {}, Guest HP: {}",
+                                    code, room.round, winner_name, winner_id, host_hp, guest_hp
+                                );
+
                                 let end_message = serde_json::json!({
                                     "type": "MATCH_END",
                                     "winner": winner_name,

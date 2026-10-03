@@ -42,10 +42,27 @@ pub fn battle_tick_system(
         if !has_active_dash && !has_active_proj {
             // Watchdog auto-recovery: previous animation completed or despawned
             turn_manager.active_attacker = None;
+            turn_manager.animation_stall_timer = 0.0;
             turn_manager.cooldown_timer.reset();
         } else {
-            return;
+            turn_manager.animation_stall_timer += dt;
+            if turn_manager.animation_stall_timer > 3.0 {
+                warn!(
+                    "[BATTLE ANIMATION WATCHDOG] Animation stalled for {:.1}s (attacker: {:?}, dash: {}, proj: {}). Forcing recovery!",
+                    turn_manager.animation_stall_timer,
+                    turn_manager.active_attacker,
+                    has_active_dash,
+                    has_active_proj
+                );
+                turn_manager.active_attacker = None;
+                turn_manager.animation_stall_timer = 0.0;
+                turn_manager.cooldown_timer.reset();
+            } else {
+                return;
+            }
         }
+    } else {
+        turn_manager.animation_stall_timer = 0.0;
     }
 
     turn_manager
@@ -129,61 +146,79 @@ pub fn battle_tick_system(
 
     // Step simulation if no events are pending
     if adapter.pending_events.is_empty() {
+        let mut sim_events = Vec::new();
+        let mut found_winner = None;
         if let Some(ref mut battle) = adapter.battle_state {
             if let Some(winner) = battle.winner() {
-                adapter.settled_winner = Some(winner);
-                adapter
-                    .pending_events
-                    .push_back(CombatEvent::BattleEnded { winner });
+                found_winner = Some(winner);
+                sim_events.push(CombatEvent::BattleEnded { winner });
             } else {
                 let mut advance_limit = 0;
                 while battle.next_ready_unit().is_none() && advance_limit < 1000 {
                     battle.advance_gauges();
                     advance_limit += 1;
-                }
-
-                // Synchronize visual action gauges with simulation gauges
-                for u in &battle.units {
-                    if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == u.id) {
-                        if let Ok((.., mut visual_gauge, _, _)) = units.get_mut(ent) {
-                            visual_gauge.current =
-                                (u.gauge.current as f32 / 100.0).clamp(0.0, 100.0);
-                        }
+                    if battle.winner().is_some() {
+                        break;
                     }
                 }
 
-                if let Some(actor_id) = battle.next_ready_unit() {
-                    let actor_class = unit_ids
-                        .iter()
-                        .find(|(_, id)| *id == actor_id)
-                        .and_then(|(ent, _)| units.get(*ent).ok())
-                        .map(|(_, u, ..)| u.class)
-                        .unwrap_or(UnitClass::Knight);
-
-                    let (normal, ultimate) = skill_specs_for_class(actor_class);
-                    let is_crit = rng.next_f32() < 0.20;
-                    match battle.step(&normal, &ultimate, is_crit) {
-                        Ok(events) => {
-                            adapter.pending_events.extend(events);
+                if let Some(winner) = battle.winner() {
+                    info!("[BATTLE SIM] Battle resolved during gauge advance at turn {}: {:?}", battle.turn, winner);
+                    found_winner = Some(winner);
+                    sim_events.push(CombatEvent::BattleEnded { winner });
+                } else {
+                    // Synchronize visual action gauges with simulation gauges
+                    for u in &battle.units {
+                        if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == u.id) {
+                            if let Ok((.., mut visual_gauge, _, _)) = units.get_mut(ent) {
+                                visual_gauge.current =
+                                    (u.gauge.current as f32 / 100.0).clamp(0.0, 100.0);
+                            }
                         }
-                        Err(e) => {
-                            warn!(
-                                "[BATTLE] Step error with ultimate: {:?}, attempting normal skill fallback",
-                                e
-                            );
-                            match battle.step(&normal, &normal, is_crit) {
-                                Ok(events) => {
-                                    adapter.pending_events.extend(events);
-                                }
-                                Err(e2) => {
-                                    warn!(
-                                        "[BATTLE] Normal skill fallback failed: {:?}, forcing gauge consumption for unit {}",
-                                        e2, actor_id
+                    }
+
+                    if let Some(actor_id) = battle.next_ready_unit() {
+                        let actor_class = unit_ids
+                            .iter()
+                            .find(|(_, id)| *id == actor_id)
+                            .and_then(|(ent, _)| units.get(*ent).ok())
+                            .map(|(_, u, ..)| u.class)
+                            .unwrap_or(UnitClass::Knight);
+
+                        let (normal, ultimate) = skill_specs_for_class(actor_class);
+                        let is_crit = rng.next_f32() < 0.20;
+                        match battle.step(&normal, &ultimate, is_crit) {
+                            Ok(events) => {
+                                if battle.turn % 10 == 0 || battle.turn >= game_logic::BattleState::SUDDEN_DEATH_TURN {
+                                    info!(
+                                        "[BATTLE TICK] Turn {} | Active: Player {}, Enemy {} | Events: {}",
+                                        battle.turn,
+                                        battle.units.iter().filter(|u| u.side == TeamSide::Attacker && u.is_alive()).count(),
+                                        battle.units.iter().filter(|u| u.side == TeamSide::Defender && u.is_alive()).count(),
+                                        events.len()
                                     );
-                                    if let Some(actor_u) =
-                                        battle.units.iter_mut().find(|u| u.id == actor_id)
-                                    {
-                                        actor_u.gauge.consume_turn();
+                                }
+                                sim_events.extend(events);
+                            }
+                            Err(e) => {
+                                warn!(
+                                    "[BATTLE] Step error with ultimate: {:?}, attempting normal skill fallback",
+                                    e
+                                );
+                                match battle.step(&normal, &normal, is_crit) {
+                                    Ok(events) => {
+                                        sim_events.extend(events);
+                                    }
+                                    Err(e2) => {
+                                        warn!(
+                                            "[BATTLE] Normal skill fallback failed: {:?}, forcing gauge consumption for unit {}",
+                                            e2, actor_id
+                                        );
+                                        if let Some(actor_u) =
+                                            battle.units.iter_mut().find(|u| u.id == actor_id)
+                                        {
+                                            actor_u.gauge.consume_turn();
+                                        }
                                     }
                                 }
                             }
@@ -192,6 +227,10 @@ pub fn battle_tick_system(
                 }
             }
         }
+        if let Some(winner) = found_winner {
+            adapter.settled_winner = Some(winner);
+        }
+        adapter.pending_events.extend(sim_events);
     }
 
     // Consume authoritative events and drive visual presentation

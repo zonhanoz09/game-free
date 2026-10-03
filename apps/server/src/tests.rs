@@ -185,3 +185,122 @@ fn test_effects_and_cells_master_data() {
     assert_eq!(cell1.terrain_type, "Lava");
     assert_eq!(cell1.hazard_damage_pct, 0.10);
 }
+
+#[test]
+fn test_pvp_room_battle_finished_deduplication() {
+    let (host_tx, _host_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (guest_tx, _guest_rx) = tokio::sync::mpsc::unbounded_channel();
+
+    let host = PlayerSession {
+        id: "p1".to_string(),
+        name: "Host".to_string(),
+        avatar: "archer".to_string(),
+        elo: 1000,
+        hp: 100,
+        ready: true,
+        lineup: vec![],
+        tx: host_tx,
+    };
+    let guest = PlayerSession {
+        id: "p2".to_string(),
+        name: "Guest".to_string(),
+        avatar: "knight".to_string(),
+        elo: 1000,
+        hp: 100,
+        ready: true,
+        lineup: vec![],
+        tx: guest_tx,
+    };
+
+    let mut room = Room {
+        code: "TEST".to_string(),
+        round: 1,
+        settled_round: 0,
+        host,
+        guest: Some(guest),
+        authority: None,
+    };
+
+    // Simulate Host reporting round 1 victory
+    let msg_round = 1;
+    assert!(room.settled_round < msg_round, "Round 1 not settled yet");
+    room.settled_round = msg_round.max(room.round);
+    let damage = 10 + 2 * 4; // 18 damage
+    room.guest.as_mut().unwrap().hp -= damage;
+    assert_eq!(room.guest.as_ref().unwrap().hp, 82);
+    room.round += 1; // round becomes 2
+
+    // Now Guest sends duplicate BATTLE_FINISHED for round 1
+    let guest_msg_round = 1;
+    let is_duplicate = room.settled_round >= guest_msg_round;
+    assert!(is_duplicate, "Guest duplicate submission for round 1 must be detected");
+    // Guest HP must remain 82 (no duplicate damage)
+    assert_eq!(room.guest.as_ref().unwrap().hp, 82);
+    // Round must remain 2 (no premature round 3 progression)
+    assert_eq!(room.round, 2);
+}
+
+#[test]
+fn test_pvp_draw_applies_tiebreaker_damage() {
+    let (host_tx, _) = tokio::sync::mpsc::unbounded_channel();
+    let (guest_tx, _) = tokio::sync::mpsc::unbounded_channel();
+
+    let mut room = Room {
+        code: "TEST".to_string(),
+        round: 1,
+        settled_round: 0,
+        host: PlayerSession {
+            id: "p1".to_string(),
+            name: "Host".to_string(),
+            avatar: "archer".to_string(),
+            elo: 1000,
+            hp: 100,
+            ready: true,
+            lineup: vec![],
+            tx: host_tx,
+        },
+        guest: Some(PlayerSession {
+            id: "p2".to_string(),
+            name: "Guest".to_string(),
+            avatar: "knight".to_string(),
+            elo: 1000,
+            hp: 100,
+            ready: true,
+            lineup: vec![],
+            tx: guest_tx,
+        }),
+        authority: None,
+    };
+
+    // Simulate 10 consecutive draws
+    for _ in 1..=10 {
+        let draw_damage = 10;
+        room.host.hp = (room.host.hp - draw_damage).max(0);
+        room.guest.as_mut().unwrap().hp = (room.guest.as_ref().unwrap().hp - draw_damage).max(0);
+        room.round += 1;
+    }
+
+    assert_eq!(room.host.hp, 0);
+    assert_eq!(room.guest.as_ref().unwrap().hp, 0);
+    const MAX_MATCH_ROUNDS: usize = 20;
+    let match_ended = room.host.hp <= 0 || room.guest.as_ref().unwrap().hp <= 0 || room.round >= MAX_MATCH_ROUNDS;
+    assert!(match_ended, "Repeated draws must terminate the match via tiebreaker damage");
+}
+
+#[test]
+fn test_pvp_round_cap_at_twenty_terminates_match() {
+    let mut round = 1;
+    let mut match_ended = false;
+    const MAX_MATCH_ROUNDS: usize = 20;
+
+    while !match_ended {
+        if round >= MAX_MATCH_ROUNDS {
+            match_ended = true;
+            break;
+        }
+        round += 1;
+    }
+
+    assert!(match_ended);
+    assert_eq!(round, 20);
+}

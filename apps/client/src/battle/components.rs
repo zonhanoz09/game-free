@@ -108,6 +108,7 @@ pub struct BattleTurnManager {
     pub cooldown_timer: Timer,
     pub acted_this_cycle: std::collections::HashSet<Entity>,
     pub cycle_turn_count: u32,
+    pub animation_stall_timer: f32,
 }
 
 impl Default for BattleTurnManager {
@@ -117,6 +118,7 @@ impl Default for BattleTurnManager {
             cooldown_timer: Timer::from_seconds(0.35, TimerMode::Once),
             acted_this_cycle: std::collections::HashSet::new(),
             cycle_turn_count: 0,
+            animation_stall_timer: 0.0,
         }
     }
 }

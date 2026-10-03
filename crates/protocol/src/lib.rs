@@ -63,6 +63,10 @@ pub enum PvpMessage {
     BattleFinished {
         winner_role: String,
         player_survivors: usize,
+        #[serde(default)]
+        room_code: Option<String>,
+        #[serde(default)]
+        round: Option<usize>,
     },
     #[serde(alias = "UpdateMatchHp", alias = "UPDATE_MATCH_HP")]
     UpdateMatchHp {

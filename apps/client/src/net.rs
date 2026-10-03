@@ -571,7 +571,7 @@ pub fn pvp_network_system(
                                         col,
                                         row,
                                         class: general_unit_class(&card.hero_class).id_str().to_string(),
-                                        star_level: card.star_level.max(1) as u8,
+                                        star_level: card.star_level.max(1),
                                     });
                                 }
                             }

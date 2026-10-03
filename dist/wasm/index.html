@@ -3301,7 +3301,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261003152533-34758cf5';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261003162237-ee2c4aee';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -4983,6 +4983,7 @@
                     type: 'BATTLE_FINISHED',
                     room_code: pvpState.roomCode,
                     role: pvpState.role,
+                    round: pvpState.round,
                     winner_role: winnerRole,
                     player_survivors: survivors
                 });

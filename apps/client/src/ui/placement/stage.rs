@@ -105,7 +105,7 @@ pub fn setup_stage_enemies(
         pool_idx += 1;
     }
 
-    let is_boss_stage = stage.stage_idx % 5 == 0;
+    let is_boss_stage = stage.stage_idx.is_multiple_of(5);
     let base_star = if stage.stage_idx >= 4 { 2 } else { 1 };
 
     let card_names = ai_cards

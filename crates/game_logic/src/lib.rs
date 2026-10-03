@@ -479,6 +479,9 @@ pub enum BattleError {
 }
 
 impl BattleState {
+    pub const MAX_TURNS: u32 = 100;
+    pub const SUDDEN_DEATH_TURN: u32 = 40;
+
     pub fn add_unit(&mut self, unit: UnitState) -> Result<(), BattleError> {
         if self.units.iter().any(|existing| existing.id == unit.id) {
             return Err(BattleError::DuplicateUnitId);
@@ -545,7 +548,8 @@ impl BattleState {
         }
     }
 
-    pub fn advance_gauges(&mut self) {
+    pub fn advance_gauges(&mut self) -> Vec<CombatEvent> {
+        let mut advance_events = Vec::new();
         for i in 0..self.units.len() {
             if self.units[i].is_alive() {
                 // 1. Process DoT: Burn
@@ -556,14 +560,14 @@ impl BattleState {
                         .max(1) as u32;
                     self.units[i].hp = self.units[i].hp.saturating_sub(burn_dmg);
                     self.units[i].burn_turns -= 1;
-                    self.events.push(CombatEvent::Damage {
+                    advance_events.push(CombatEvent::Damage {
                         source_id: self.units[i].id,
                         target_id: self.units[i].id,
                         amount: burn_dmg,
                         target_hp: self.units[i].hp,
                     });
                     if self.units[i].hp == 0 {
-                        self.events.push(CombatEvent::Defeated {
+                        advance_events.push(CombatEvent::Defeated {
                             unit_id: self.units[i].id,
                         });
                     }
@@ -577,14 +581,14 @@ impl BattleState {
                         .max(1) as u32;
                     self.units[i].hp = self.units[i].hp.saturating_sub(poison_dmg);
                     self.units[i].poison_turns -= 1;
-                    self.events.push(CombatEvent::Damage {
+                    advance_events.push(CombatEvent::Damage {
                         source_id: self.units[i].id,
                         target_id: self.units[i].id,
                         amount: poison_dmg,
                         target_hp: self.units[i].hp,
                     });
                     if self.units[i].hp == 0 {
-                        self.events.push(CombatEvent::Defeated {
+                        advance_events.push(CombatEvent::Defeated {
                             unit_id: self.units[i].id,
                         });
                     }
@@ -610,7 +614,7 @@ impl BattleState {
                 // 4. Stun & Freeze vs Action Gauge
                 if self.units[i].frozen_turns > 0 {
                     self.units[i].frozen_turns -= 1;
-                    self.events.push(CombatEvent::StatusApplied {
+                    advance_events.push(CombatEvent::StatusApplied {
                         source_id: self.units[i].id,
                         target_id: self.units[i].id,
                         effect: EffectKind::Freeze {
@@ -619,15 +623,17 @@ impl BattleState {
                     });
                 } else if self.units[i].stunned_turns > 0 {
                     self.units[i].stunned_turns -= 1;
-                    self.events.push(CombatEvent::Stunned {
+                    advance_events.push(CombatEvent::Stunned {
                         unit_id: self.units[i].id,
                     });
                 } else {
-                    let spd = self.units[i].speed;
+                    let spd = self.units[i].speed.max(1);
                     self.units[i].gauge.advance(spd);
                 }
             }
         }
+        self.events.extend(advance_events.iter().copied());
+        advance_events
     }
 
     pub fn next_ready_unit(&self) -> Option<u32> {
@@ -867,12 +873,18 @@ impl BattleState {
                     EffectKind::Heal => {
                         let raw = (actor.attack as u64 * skill.damage_rate_bps as u64 / 1000).max(1)
                             as u32;
-                        let amount = if self.units[target_index].anti_heal_turns > 0 {
+                        let mut amount = if self.units[target_index].anti_heal_turns > 0 {
                             (raw as u64 * (10_000 - self.units[target_index].anti_heal_bps as u64)
                                 / 10_000) as u32
                         } else {
                             raw
                         };
+                        if self.turn >= Self::SUDDEN_DEATH_TURN {
+                            let heal_decay_bps =
+                                ((self.turn - Self::SUDDEN_DEATH_TURN + 1) as u64 * 400).min(10_000);
+                            amount =
+                                (amount as u64 * (10_000 - heal_decay_bps) / 10_000) as u32;
+                        }
                         self.units[target_index].hp = self.units[target_index]
                             .hp
                             .saturating_add(amount)
@@ -1045,6 +1057,30 @@ impl BattleState {
         });
         self.tactics.add_tp(actor.side, 1);
         self.turn = self.turn.saturating_add(1);
+
+        if self.turn >= Self::SUDDEN_DEATH_TURN {
+            let fatigue_turns = (self.turn - Self::SUDDEN_DEATH_TURN + 1) as u64;
+            let fatigue_bps = (fatigue_turns * 250).min(5000);
+            for i in 0..self.units.len() {
+                if self.units[i].is_alive() {
+                    let fatigue_dmg =
+                        ((self.units[i].max_hp as u64 * fatigue_bps) / 10_000).max(1) as u32;
+                    self.units[i].hp = self.units[i].hp.saturating_sub(fatigue_dmg);
+                    emitted.push(CombatEvent::Damage {
+                        source_id: self.units[i].id,
+                        target_id: self.units[i].id,
+                        amount: fatigue_dmg,
+                        target_hp: self.units[i].hp,
+                    });
+                    if self.units[i].hp == 0 {
+                        emitted.push(CombatEvent::Defeated {
+                            unit_id: self.units[i].id,
+                        });
+                    }
+                }
+            }
+        }
+
         if let Some(winner) = self.winner() {
             emitted.push(CombatEvent::BattleEnded { winner });
         }
@@ -1061,8 +1097,20 @@ impl BattleState {
         if self.winner().is_some() {
             return Err(BattleError::BattleOver);
         }
-        if self.next_ready_unit().is_none() {
-            self.advance_gauges();
+        let mut advance_events = Vec::new();
+        let mut advance_limit = 0;
+        while self.next_ready_unit().is_none() && advance_limit < 1000 {
+            advance_events.extend(self.advance_gauges());
+            advance_limit += 1;
+            if self.winner().is_some() {
+                break;
+            }
+        }
+        if let Some(winner) = self.winner() {
+            let mut end_events = advance_events;
+            end_events.push(CombatEvent::BattleEnded { winner });
+            self.events.push(CombatEvent::BattleEnded { winner });
+            return Ok(end_events);
         }
         let actor_id = self.next_ready_unit().ok_or(BattleError::NoReadyUnit)?;
         let actor = self
@@ -1072,7 +1120,9 @@ impl BattleState {
             .copied()
             .ok_or(BattleError::MissingUnit)?;
         let skill = if actor.rage >= 100 { ultimate } else { normal };
-        self.execute_action(actor_id, skill.clone(), critical)
+        let mut action_events = self.execute_action(actor_id, skill.clone(), critical)?;
+        advance_events.append(&mut action_events);
+        Ok(advance_events)
     }
 
     pub fn execute_tactic(
@@ -1097,8 +1147,20 @@ impl BattleState {
         if self.winner().is_some() {
             return Err(BattleError::BattleOver);
         }
-        if self.next_ready_unit().is_none() {
-            self.advance_gauges();
+        let mut advance_events = Vec::new();
+        let mut advance_limit = 0;
+        while self.next_ready_unit().is_none() && advance_limit < 1000 {
+            advance_events.extend(self.advance_gauges());
+            advance_limit += 1;
+            if self.winner().is_some() {
+                break;
+            }
+        }
+        if let Some(winner) = self.winner() {
+            let mut end_events = advance_events;
+            end_events.push(CombatEvent::BattleEnded { winner });
+            self.events.push(CombatEvent::BattleEnded { winner });
+            return Ok(end_events);
         }
         let actor_id = self.next_ready_unit().ok_or(BattleError::NoReadyUnit)?;
         let actor = self
@@ -1127,7 +1189,9 @@ impl BattleState {
             });
 
         let skill = if actor.rage >= 100 { ultimate } else { normal };
-        self.execute_action(actor_id, skill, critical)
+        let mut action_events = self.execute_action(actor_id, skill, critical)?;
+        advance_events.append(&mut action_events);
+        Ok(advance_events)
     }
 
     pub fn winner(&self) -> Option<Option<TeamSide>> {
@@ -1143,7 +1207,45 @@ impl BattleState {
             (true, false) => Some(Some(TeamSide::Attacker)),
             (false, true) => Some(Some(TeamSide::Defender)),
             (false, false) => Some(None),
-            (true, true) => None,
+            (true, true) => {
+                if self.turn >= Self::MAX_TURNS {
+                    let attacker_count = self
+                        .units
+                        .iter()
+                        .filter(|u| u.side == TeamSide::Attacker && u.is_alive())
+                        .count();
+                    let defender_count = self
+                        .units
+                        .iter()
+                        .filter(|u| u.side == TeamSide::Defender && u.is_alive())
+                        .count();
+                    match attacker_count.cmp(&defender_count) {
+                        std::cmp::Ordering::Greater => Some(Some(TeamSide::Attacker)),
+                        std::cmp::Ordering::Less => Some(Some(TeamSide::Defender)),
+                        std::cmp::Ordering::Equal => {
+                            let attacker_hp: u64 = self
+                                .units
+                                .iter()
+                                .filter(|u| u.side == TeamSide::Attacker && u.is_alive())
+                                .map(|u| u.hp as u64)
+                                .sum();
+                            let defender_hp: u64 = self
+                                .units
+                                .iter()
+                                .filter(|u| u.side == TeamSide::Defender && u.is_alive())
+                                .map(|u| u.hp as u64)
+                                .sum();
+                            match attacker_hp.cmp(&defender_hp) {
+                                std::cmp::Ordering::Greater => Some(Some(TeamSide::Attacker)),
+                                std::cmp::Ordering::Less => Some(Some(TeamSide::Defender)),
+                                std::cmp::Ordering::Equal => Some(None),
+                            }
+                        }
+                    }
+                } else {
+                    None
+                }
+            }
         }
     }
 }

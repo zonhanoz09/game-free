@@ -350,3 +350,99 @@ fn test_client_gacha_state_renders_server_response_without_local_math() {
     assert_eq!(gacha_state.pity_counter, 1);
     assert_eq!(gacha_state.currency, 4800);
 }
+
+#[test]
+fn test_animation_stall_watchdog_recovers_active_attacker() {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_event::<PlaySoundEvent>();
+    app.init_resource::<BattleTurnManager>();
+    app.init_resource::<BattleSimulationAdapter>();
+    app.init_resource::<BattleRng>();
+    app.init_resource::<HitStopManager>();
+    app.init_resource::<CameraShake2d>();
+    app.init_resource::<BattleSpeed>();
+
+    let player_ent = app
+        .world_mut()
+        .spawn((
+            Unit {
+                class: UnitClass::Knight,
+                faction: Faction::Player,
+            },
+            UnitClass::Knight.base_stats(),
+            GridPos {
+                col: 2,
+                row: 1,
+                faction: Faction::Player,
+            },
+            ActionGauge { current: 100.0 },
+            Transform::from_xyz(-100.0, 0.0, 10.0),
+        ))
+        .id();
+
+    // Spawn a stuck dash animation
+    app.world_mut().spawn(DashAnimation2d {
+        origin: Vec2::ZERO,
+        target: Vec2::ONE,
+        timer: Timer::from_seconds(10.0, TimerMode::Once),
+        returning: false,
+        damage_dealt: false,
+        target_entity: player_ent,
+        attacker_entity: player_ent,
+        damage: 10.0,
+        is_crit: false,
+        is_ultimate: false,
+        class: UnitClass::Knight,
+    });
+
+    app.add_systems(Update, battle_tick_system);
+
+    // Set active attacker and set stall timer to 3.1s to trigger watchdog
+    {
+        let mut turn_mgr = app.world_mut().resource_mut::<BattleTurnManager>();
+        turn_mgr.active_attacker = Some(player_ent);
+        turn_mgr.animation_stall_timer = 3.1;
+    }
+    app.update();
+
+    let turn_mgr = app.world().resource::<BattleTurnManager>();
+    assert_eq!(
+        turn_mgr.active_attacker, None,
+        "Animation stall watchdog must clear active_attacker after 3 seconds!"
+    );
+}
+
+#[test]
+fn test_check_battle_end_pvp_draw_reports_draw() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, bevy::state::app::StatesPlugin));
+    app.add_event::<PlaySoundEvent>();
+    app.init_state::<GameState>();
+    app.init_resource::<PlayerEconomy>();
+    app.init_resource::<BattleRng>();
+    app.init_resource::<BattleSimulationAdapter>();
+    app.init_resource::<crate::net::PvpManager>();
+
+    // Set state to Battle and PvP active
+    *app.world_mut().resource_mut::<State<GameState>>() = State::new(GameState::Battle);
+    {
+        let mut pvp = app.world_mut().resource_mut::<crate::net::PvpManager>();
+        pvp.active = true;
+        pvp.role = "host".to_string();
+        pvp.round = 1;
+        pvp.room_code = "1234".to_string();
+    }
+    {
+        let mut adapter = app.world_mut().resource_mut::<BattleSimulationAdapter>();
+        // Draw result from simulation
+        adapter.settled_winner = Some(None);
+    }
+
+    app.add_systems(Update, check_battle_end);
+    app.update();
+
+    // Check that system runs and does not panic on draw
+    let adapter = app.world().resource::<BattleSimulationAdapter>();
+    assert_eq!(adapter.settled_winner, Some(None));
+}
