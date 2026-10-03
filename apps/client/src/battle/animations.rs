@@ -319,11 +319,13 @@ pub fn update_dash_animations(
                             target_transform.translation.xy()
                         };
                         let recoil_dir = (dash.target - dash.origin).normalize_or_zero() * 16.0;
-                        commands.entity(target_ent).insert(UnitHitRecoil2d {
-                            original_pos: orig_pos,
-                            recoil_offset: recoil_dir,
-                            timer: Timer::from_seconds(0.18, TimerMode::Once),
-                        });
+                        if let Some(mut e) = commands.get_entity(target_ent) {
+                            e.insert(UnitHitRecoil2d {
+                                original_pos: orig_pos,
+                                recoil_offset: recoil_dir,
+                                timer: Timer::from_seconds(0.18, TimerMode::Once),
+                            });
+                        }
                     }
                 }
 
@@ -342,7 +344,7 @@ pub fn update_dash_animations(
                 if let Some(ref mut s) = maybe_attacker_squash {
                     s.target_scale = Vec3::ONE;
                 }
-                commands.entity(entity).remove::<DashAnimation2d>();
+                if let Some(mut e) = commands.get_entity(entity) { e.remove::<DashAnimation2d>(); }
 
                 turn_manager.active_attacker = None;
                 turn_manager.cooldown_timer.reset();
@@ -622,11 +624,13 @@ pub fn update_projectiles(
                         target_transform.translation.xy()
                     };
                     let recoil_dir = (proj.target_pos - proj.start).normalize_or_zero() * 14.0;
-                    commands.entity(target_ent).insert(UnitHitRecoil2d {
-                        original_pos: orig_pos,
-                        recoil_offset: recoil_dir,
-                        timer: Timer::from_seconds(0.18, TimerMode::Once),
-                    });
+                    if let Some(mut e) = commands.get_entity(target_ent) {
+                        e.insert(UnitHitRecoil2d {
+                            original_pos: orig_pos,
+                            recoil_offset: recoil_dir,
+                            timer: Timer::from_seconds(0.18, TimerMode::Once),
+                        });
+                    }
                 }
 
                 if let Some((row, target_faction)) = proj.aoe_row {
@@ -688,7 +692,7 @@ pub fn update_projectiles(
                 }
             }
 
-            commands.entity(proj_entity).despawn_recursive();
+            if let Some(e) = commands.get_entity(proj_entity) { e.despawn_recursive(); }
         }
     }
 

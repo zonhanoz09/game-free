@@ -50,7 +50,7 @@ pub fn on_enter_battle(
     );
 
     for entity in units.iter() {
-        commands.entity(entity).insert(ActionGauge { current: 0.0 });
+        if let Some(mut e) = commands.get_entity(entity) { e.insert(ActionGauge { current: 0.0 }); }
     }
 
     let mut syn_counts = std::collections::HashMap::new();
@@ -147,25 +147,25 @@ pub fn on_exit_battle(
     adapter.pending_events.clear();
 
     for entity in projectiles.iter() {
-        commands.entity(entity).despawn_recursive();
+        if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
     }
     for entity in floating_texts.iter() {
-        commands.entity(entity).despawn_recursive();
+        if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
     }
     for entity in vfx_query.iter() {
-        commands.entity(entity).despawn_recursive();
+        if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
     }
     for entity in sparks_query.iter() {
-        commands.entity(entity).despawn_recursive();
+        if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
     }
     for entity in spotlight_query.iter() {
-        commands.entity(entity).despawn_recursive();
+        if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
     }
     for (entity, dash) in dashes.iter() {
         if let Ok(mut transform) = transforms.get_mut(entity) {
             transform.translation.x = dash.origin.x;
             transform.translation.y = dash.origin.y;
         }
-        commands.entity(entity).remove::<DashAnimation2d>();
+        if let Some(mut e) = commands.get_entity(entity) { e.remove::<DashAnimation2d>(); }
     }
 }

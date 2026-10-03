@@ -63,7 +63,7 @@ pub fn update_floating_text(
         }
 
         if float.timer.finished() {
-            commands.entity(entity).despawn_recursive();
+            if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
         }
     }
 }
@@ -118,7 +118,7 @@ pub fn update_spark_particles(
         sprite.color = Color::srgba(c.red, c.green, c.blue, alpha);
 
         if spark.timer.finished() {
-            commands.entity(entity).despawn_recursive();
+            if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
         }
     }
 }
@@ -144,7 +144,7 @@ pub fn update_combat_vfx(
         sprite.color = Color::srgba(c.red, c.green, c.blue, alpha);
 
         if vfx.timer.finished() {
-            commands.entity(entity).despawn_recursive();
+            if let Some(e) = commands.get_entity(entity) { e.despawn_recursive(); }
         }
     }
 }
@@ -170,7 +170,7 @@ pub fn update_hit_recoil(
         if recoil.timer.finished() {
             transform.translation.x = recoil.original_pos.x;
             transform.translation.y = recoil.original_pos.y;
-            commands.entity(entity).remove::<UnitHitRecoil2d>();
+            if let Some(mut e) = commands.get_entity(entity) { e.remove::<UnitHitRecoil2d>(); }
         }
     }
 }

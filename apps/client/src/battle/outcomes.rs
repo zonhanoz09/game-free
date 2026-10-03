@@ -15,7 +15,7 @@ pub fn check_unit_deaths(
             );
             transform.translation.y = -9999.0;
             *vis = Visibility::Hidden;
-            commands.entity(entity).insert(DeadUnit);
+            if let Some(mut e) = commands.get_entity(entity) { e.insert(DeadUnit); }
         }
     }
 }

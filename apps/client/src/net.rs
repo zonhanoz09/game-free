@@ -293,7 +293,9 @@ pub fn pvp_network_system(
                     // Immediately clear any single-player bot enemy units from the board!
                     for (ent, unit) in all_board_units.iter() {
                         if unit.faction == Faction::Enemy {
-                            commands.entity(ent).despawn_recursive();
+                            if let Some(e) = commands.get_entity(ent) {
+                                e.despawn_recursive();
+                            }
                         }
                     }
 
@@ -323,7 +325,9 @@ pub fn pvp_network_system(
                     // 1. Despawn ONLY existing enemy units on board (DO NOT delete player units!)
                     for (ent, unit) in all_board_units.iter() {
                         if unit.faction == Faction::Enemy {
-                            commands.entity(ent).despawn_recursive();
+                            if let Some(e) = commands.get_entity(ent) {
+                                e.despawn_recursive();
+                            }
                         }
                     }
 
@@ -397,7 +401,9 @@ pub fn pvp_network_system(
                     // Clear defeated enemies from board
                     for (ent, unit) in all_board_units.iter() {
                         if unit.faction == Faction::Enemy {
-                            commands.entity(ent).despawn_recursive();
+                            if let Some(e) = commands.get_entity(ent) {
+                                e.despawn_recursive();
+                            }
                         }
                     }
 
@@ -533,7 +539,9 @@ pub fn pvp_network_system(
                     adapter.pending_events.clear();
                     for (ent, unit) in all_board_units.iter() {
                         if unit.faction == Faction::Enemy {
-                            commands.entity(ent).despawn_recursive();
+                            if let Some(e) = commands.get_entity(ent) {
+                                e.despawn_recursive();
+                            }
                         }
                     }
                     next_state.set(GameState::Placement);
@@ -580,6 +588,69 @@ pub fn pvp_network_system(
                             info!("[PVP] Ready & Locked In triggered from UI StartBattle!");
                         }
                     } else {
+                        let enemy_count = all_board_units
+                            .iter()
+                            .filter(|(_, u)| u.faction == Faction::Enemy)
+                            .count();
+                        if enemy_count == 0 {
+                            let ai_squad = [
+                                (UnitClass::Knight, 0, 1),
+                                (UnitClass::Archer, 1, 0),
+                                (UnitClass::Mage, 2, 2),
+                            ];
+                            for (u_class, col, row) in ai_squad {
+                                crate::units::spawn_unit_ext(
+                                    &mut commands,
+                                    &textures,
+                                    u_class,
+                                    Faction::Enemy,
+                                    col,
+                                    row,
+                                    1,
+                                    false,
+                                );
+                            }
+                        }
+
+                        let player_count = all_board_units
+                            .iter()
+                            .filter(|(_, u)| u.faction == Faction::Player)
+                            .count();
+                        if player_count == 0 {
+                            if !player_deck.cards.is_empty() {
+                                for (idx, card) in player_deck.cards.iter().enumerate() {
+                                    let unit_class = general_unit_class(&card.hero_class);
+                                    let (col, row) = match card.position {
+                                        Some(pos) => formation_position_to_grid(pos, Faction::Player),
+                                        None => formation_position_to_grid(idx * 3, Faction::Player),
+                                    };
+                                    crate::units::spawn_unit_ext_bonus_with_initiative(
+                                        &mut commands,
+                                        &textures,
+                                        unit_class,
+                                        Faction::Player,
+                                        col,
+                                        row,
+                                        card.star_level.max(1),
+                                        false,
+                                        card.hp_bonus,
+                                        card.atk_bonus,
+                                        card.initiative_bonus,
+                                    );
+                                }
+                            } else {
+                                crate::units::spawn_unit(
+                                    &mut commands,
+                                    &textures,
+                                    UnitClass::Knight,
+                                    Faction::Player,
+                                    2,
+                                    1,
+                                );
+                            }
+                        }
+
+                        adapter.reset(false, 12345, None);
                         next_state.set(GameState::Battle);
                     }
                 }

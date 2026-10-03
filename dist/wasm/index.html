@@ -3301,7 +3301,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261003151130-dccc67cb';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261003152533-34758cf5';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -5626,20 +5626,15 @@
         window.startPveBattle = function() {
             pvpState.active = false;
             pvpState.roomCode = null;
-            if (typeof js_to_rust_pvp === 'function') {
-                js_to_rust_pvp(JSON.stringify({ type: 'EXIT_MATCH' }));
-            }
             window.enterBattleScreen(true, '🤖 AI Thủ Lĩnh Arena', '👹');
             const readyBtn = document.getElementById('btn-battle-ready');
             const rInd = document.getElementById('ready-indicator');
             if (readyBtn) readyBtn.style.display = 'none';
             if (rInd) rInd.textContent = '⚔️ Đang giao chiến!';
 
-            setTimeout(() => {
-                if (typeof js_to_rust_pvp === 'function') {
-                    js_to_rust_pvp(JSON.stringify({ type: 'START_BATTLE' }));
-                }
-            }, 300);
+            if (typeof js_to_rust_pvp === 'function') {
+                js_to_rust_pvp(JSON.stringify({ type: 'START_BATTLE' }));
+            }
         };
 
         const rustPvP = new RustPvPClient();

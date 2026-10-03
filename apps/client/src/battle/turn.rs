@@ -56,7 +56,7 @@ pub fn battle_tick_system(
     }
 
     for spot in spotlight_query.iter() {
-        commands.entity(spot).despawn_recursive();
+        if let Some(e) = commands.get_entity(spot) { e.despawn_recursive(); }
     }
 
     // Helper closure to compute deterministic unit ID if BattleUnitId not yet applied
@@ -88,7 +88,7 @@ pub fn battle_tick_system(
     };
 
     for &(entity, uid) in &unit_ids {
-        commands.entity(entity).insert(BattleUnitId(uid));
+        if let Some(mut e) = commands.get_entity(entity) { e.insert(BattleUnitId(uid)); }
     }
 
     // Auto-initialize headless battle simulation for single player if not already created
@@ -335,22 +335,24 @@ pub fn battle_tick_system(
                         ));
 
                         if let Some(actor_ent) = current_actor_ent {
-                            commands.entity(actor_ent).insert(DashAnimation2d {
-                                origin: current_actor_pos,
-                                target: dash_target,
-                                timer: Timer::from_seconds(
-                                    if current_is_ultimate { 0.30 } else { 0.25 },
-                                    TimerMode::Once,
-                                ),
-                                returning: false,
-                                damage_dealt: false,
-                                target_entity: target_ent,
-                                attacker_entity: actor_ent,
-                                damage: damage_amount as f32,
-                                is_crit: critical,
-                                is_ultimate: current_is_ultimate,
-                                class: current_actor_class,
-                            });
+                            if let Some(mut e) = commands.get_entity(actor_ent) {
+                                e.insert(DashAnimation2d {
+                                    origin: current_actor_pos,
+                                    target: dash_target,
+                                    timer: Timer::from_seconds(
+                                        if current_is_ultimate { 0.30 } else { 0.25 },
+                                        TimerMode::Once,
+                                    ),
+                                    returning: false,
+                                    damage_dealt: false,
+                                    target_entity: target_ent,
+                                    attacker_entity: actor_ent,
+                                    damage: damage_amount as f32,
+                                    is_crit: critical,
+                                    is_ultimate: current_is_ultimate,
+                                    class: current_actor_class,
+                                });
+                            }
                         }
                     } else {
                         sound_events.send(PlaySoundEvent(
@@ -479,7 +481,7 @@ pub fn battle_tick_system(
             CombatEvent::Defeated { unit_id } => {
                 adapter.pending_events.pop_front();
                 if let Some(&(u_ent, _)) = unit_ids.iter().find(|(_, id)| *id == unit_id) {
-                    commands.entity(u_ent).insert(DeadUnit);
+                    if let Some(mut e) = commands.get_entity(u_ent) { e.insert(DeadUnit); }
                 }
             }
             CombatEvent::BattleEnded { winner } => {
