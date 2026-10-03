@@ -36,7 +36,7 @@ pub fn handle_keyboard_gameplay_shortcuts(
                 );
                 if let Ok(mut txt) = tooltip.get_single_mut() {
                     *txt = Text::new(format!(
-                        "⚠️ Not enough gold! Need {}G, have {}G.",
+                        "⚠️ Không đủ vàng! Cần {} Vàng, hiện có {} Vàng.",
                         cost, economy.gold
                     ));
                 }
@@ -58,7 +58,7 @@ pub fn handle_keyboard_gameplay_shortcuts(
                         );
                         if let Ok(mut txt) = tooltip.get_single_mut() {
                             *txt = Text::new(format!(
-                                "Recruited {} for {}G (Placed on Bench #{}) [HotKey #{}]",
+                                "Đã chiêu mộ {} ({} Vàng) -> Hàng Chờ #{} [Phím {}]",
                                 bought_class.name(),
                                 cost,
                                 slot + 1,
@@ -70,7 +70,7 @@ pub fn handle_keyboard_gameplay_shortcuts(
                     info!("[SHOP] Reserve bench is full (6/6 slots occupied)!");
                     if let Ok(mut txt) = tooltip.get_single_mut() {
                         *txt = Text::new(
-                            "⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first."
+                            "⚠️ Hàng chờ đã đầy (6/6)! Hãy xuất trận hoặc bán bớt tướng."
                                 .to_string(),
                         );
                     }
@@ -145,7 +145,7 @@ pub fn handle_keyboard_gameplay_shortcuts(
             );
             if let Ok(mut txt) = tooltip.get_single_mut() {
                 *txt = Text::new(format!(
-                    "Sold {}★ {} for +{}G! [Key: S]",
+                    "Đã bán {}★ {} nhận +{} Vàng! [Phím: S]",
                     star,
                     class.name(),
                     refund

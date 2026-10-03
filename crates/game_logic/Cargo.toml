@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 game-core = { path = "../core" }
+game-data-schema = { path = "../data_schema" }
+serde = { version = "1.0", features = ["derive"] }

@@ -38,6 +38,11 @@ pub(crate) struct BuyCardRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct BuyBattleSlotRequest {
+    username: String,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct UpgradeCardRequest {
     username: String,
     card_id: String,
@@ -185,6 +190,7 @@ pub async fn handle_profile(
                 },
                 "collection": {
                     "total_cards": user.cards.len(),
+                    "battle_slots": user.battle_slots,
                     "total_foils": total_foils,
                     "max_collection": 25,
                     "cards": user.cards,
@@ -284,6 +290,19 @@ pub async fn handle_delete_deck(
     }
 }
 
+pub async fn handle_get_shop_cards(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let db = state.db.read().await;
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "cards": db.data.shop_cards,
+        })),
+    )
+}
+
 pub async fn handle_buy_card(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<BuyCardRequest>,
@@ -293,6 +312,23 @@ pub async fn handle_buy_card(
         Ok((user, card)) => (
             StatusCode::OK,
             Json(serde_json::json!({ "success": true, "user": user.sanitized(), "card": card })),
+        ),
+        Err(msg) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "success": false, "message": msg })),
+        ),
+    }
+}
+
+pub async fn handle_buy_battle_slot(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<BuyBattleSlotRequest>,
+) -> impl IntoResponse {
+    let mut db = state.db.write().await;
+    match db.buy_battle_slot(&payload.username) {
+        Ok(user) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "success": true, "user": user.sanitized() })),
         ),
         Err(msg) => (
             StatusCode::BAD_REQUEST,
@@ -406,4 +442,283 @@ pub async fn handle_record_match(
         payload.rounds.unwrap_or(1),
     );
     Json(serde_json::json!({ "success": true }))
+}
+
+
+#[derive(Deserialize)]
+pub(crate) struct GachaPullRequest {
+    pub username: String,
+    pub count: u32,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct UpgradeStarRequest {
+    pub username: String,
+    pub hero_id: String,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct UpgradeLevelRequest {
+    pub username: String,
+    pub hero_id: String,
+    pub levels: u32,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct ProgressionQuery {
+    pub username: String,
+}
+
+pub(crate) async fn handle_gacha_pull(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<GachaPullRequest>,
+) -> impl IntoResponse {
+    let mut prog_guard = state.player_progression.write().await;
+    let player = prog_guard
+        .entry(payload.username.clone())
+        .or_insert_with(|| game_logic::gacha::PlayerProgressionState::new(5000));
+
+    let mut rng = game_logic::gacha::GachaRng::new(rand::random());
+    match player.pull(&mut rng, payload.count, 100) {
+        Ok(results) => {
+            let pity = player.pity_counter;
+            let currency = player.currency;
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "success": true,
+                    "pulls": results,
+                    "pity_counter": pity,
+                    "currency": currency,
+                })),
+            )
+        }
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "success": false,
+                "error": format!("{:?}", err),
+            })),
+        ),
+    }
+}
+
+pub(crate) async fn handle_get_progression(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<ProgressionQuery>,
+) -> impl IntoResponse {
+    let mut prog_guard = state.player_progression.write().await;
+    let player = prog_guard
+        .entry(query.username)
+        .or_insert_with(|| game_logic::gacha::PlayerProgressionState::new(5000));
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "currency": player.currency,
+            "pity_counter": player.pity_counter,
+            "total_pulls": player.total_pulls,
+            "heroes": player.heroes,
+        })),
+    )
+}
+
+pub(crate) async fn handle_upgrade_star(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<UpgradeStarRequest>,
+) -> impl IntoResponse {
+    let mut prog_guard = state.player_progression.write().await;
+    let player = prog_guard
+        .entry(payload.username)
+        .or_insert_with(|| game_logic::gacha::PlayerProgressionState::new(5000));
+
+    match player.upgrade_star(&payload.hero_id) {
+        Ok(new_star) => {
+            let shards = player.heroes.get(&payload.hero_id).map(|h| h.shards).unwrap_or(0);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "success": true,
+                    "hero_id": payload.hero_id,
+                    "new_star": new_star,
+                    "remaining_shards": shards,
+                })),
+            )
+        }
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "success": false,
+                "error": format!("{:?}", err),
+            })),
+        ),
+    }
+}
+
+pub(crate) async fn handle_upgrade_level(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<UpgradeLevelRequest>,
+) -> impl IntoResponse {
+    let mut prog_guard = state.player_progression.write().await;
+    let player = prog_guard
+        .entry(payload.username)
+        .or_insert_with(|| game_logic::gacha::PlayerProgressionState::new(5000));
+
+    match player.upgrade_level(&payload.hero_id, payload.levels, 50) {
+        Ok(new_level) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "success": true,
+                "hero_id": payload.hero_id,
+                "new_level": new_level,
+                "currency": player.currency,
+            })),
+        ),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "success": false,
+                "error": format!("{:?}", err),
+            })),
+        ),
+    }
+}
+
+
+#[derive(Deserialize)]
+pub(crate) struct CalculateStatsRequest {
+    pub template_id: String,
+    pub rarity_id: Option<String>,
+    pub level: Option<u32>,
+    pub star: Option<u8>,
+    pub slot_id: u8,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct FormationLayoutQuery {
+    pub username: String,
+    pub formation_type: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct SaveFormationRequest {
+    pub username: String,
+    pub formation: game_data_schema::PlayerFormationRow,
+}
+
+pub(crate) async fn handle_get_master_data(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let db = state.db.read().await;
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "rarities": db.data.master_rarities,
+            "line_configs": db.data.master_lines,
+            "skills": db.data.master_skills,
+            "templates": db.data.master_templates,
+        })),
+    )
+}
+
+pub(crate) async fn handle_calculate_formation_stats(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CalculateStatsRequest>,
+) -> impl IntoResponse {
+    let db = state.db.read().await;
+    let template = match db.data.master_templates.iter().find(|t| t.card_template_id == payload.template_id) {
+        Some(t) => t,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "success": false,
+                    "error": format!("Card template '{}' not found", payload.template_id)
+                })),
+            );
+        }
+    };
+
+    let rarity_id = payload.rarity_id.as_deref().unwrap_or(&template.rarity_id);
+    let rarity = match db.data.master_rarities.get(rarity_id) {
+        Some(r) => r,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "success": false,
+                    "error": format!("Rarity '{}' not found", rarity_id)
+                })),
+            );
+        }
+    };
+
+    let level = payload.level.unwrap_or(1);
+    let star = payload.star.unwrap_or(1);
+
+    match game_logic::formation_calc::compute_unit_final_stats(
+        template,
+        rarity,
+        level,
+        star,
+        payload.slot_id,
+        &db.data.master_lines,
+    ) {
+        Ok(stats) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "success": true,
+                "stats": stats,
+            })),
+        ),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "success": false,
+                "error": err,
+            })),
+        ),
+    }
+}
+
+pub(crate) async fn handle_get_formation_layout(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FormationLayoutQuery>,
+) -> impl IntoResponse {
+    let db = state.db.read().await;
+    let ftype = query.formation_type.as_deref().unwrap_or("PVE_CAMPAIGN");
+    let formation = db.get_user_formation(&query.username, ftype).unwrap_or_else(|| {
+        game_data_schema::PlayerFormationRow {
+            formation_id: 0,
+            user_id: 0,
+            formation_type: ftype.to_string(),
+            ..Default::default()
+        }
+    });
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "formation": formation,
+        })),
+    )
+}
+
+pub(crate) async fn handle_save_formation_layout(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SaveFormationRequest>,
+) -> impl IntoResponse {
+    let mut db = state.db.write().await;
+    db.save_user_formation(&payload.username, payload.formation.clone());
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "success": true,
+            "formation": payload.formation,
+        })),
+    )
 }

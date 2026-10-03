@@ -9,58 +9,58 @@ pub fn update_unit_count_ui(
         .filter(|u| u.faction == Faction::Player)
         .count();
     for mut text in text_query.iter_mut() {
-        *text = Text::new(format!("Units: {} / {}", player_units, MAX_PLAYER_UNITS));
+        *text = Text::new(format!("Tướng: {} / {}", player_units, MAX_PLAYER_UNITS));
     }
 }
 
 pub fn update_hero_inspection_system(
+    textures: Res<GameTextures>,
+    windows: Query<&Window>,
+    camera_q: Query<(&Camera, &GlobalTransform), With<crate::board::MainCamera2d>>,
     hovered: Res<HoveredTile>,
     selected: Res<SelectedUnitState>,
-    textures: Res<GameTextures>,
-    board_units: Query<(&Unit, &GridPos, &UnitStats), Without<DeadUnit>>,
-    bench_units: Query<(&Unit, &BenchPos, &UnitStats), Without<DeadUnit>>,
+    board_units: Query<(&Unit, &GridPos, &UnitStats, &Transform), Without<DeadUnit>>,
+    bench_units: Query<(&Unit, &BenchPos, &UnitStats, &Transform), Without<DeadUnit>>,
     mut inspector_root: Query<&mut Node, (With<InspectorRoot>, Without<InspectStatBar>)>,
-    mut avatar_query: Query<&mut ImageNode, With<InspectHeroAvatar>>,
-    mut header_query: Query<(&InspectHeader, &mut Text, Option<&mut TextColor>)>,
     mut bar_query: Query<(&InspectStatBar, &mut Node), Without<InspectorRoot>>,
-    mut text_query: Query<
-        (&InspectStatText, &mut Text),
-        (Without<InspectHeader>, Without<InspectorRoot>),
-    >,
-    mut skill_query: Query<
-        (&InspectSkill, &mut Text),
-        (
-            Without<InspectHeader>,
-            Without<InspectStatText>,
-            Without<InspectorRoot>,
-        ),
-    >,
+    mut avatar_img: Query<&mut ImageNode, With<InspectHeroAvatar>>,
+    mut text_queries: ParamSet<(
+        Query<(&InspectHeader, &mut Text, Option<&mut TextColor>)>,
+        Query<(&InspectStatText, &mut Text)>,
+        Query<(&InspectSkill, &mut Text)>,
+    )>,
 ) {
     let mut inspected: Option<(UnitClass, Faction, UnitStats)> = None;
+    let mut inspected_world_pos: Option<Vec2> = None;
 
     if let Some(tile) = &hovered.tile {
-        if let Some((unit, _, stats)) = board_units
-            .iter()
-            .find(|(_, g, _)| g.col == tile.col && g.row == tile.row && g.faction == tile.faction)
-        {
+        if let Some((unit, _, stats, transform)) = board_units.iter().find(|(_, g, _, _)| {
+            g.col == tile.col && g.row == tile.row && g.faction == tile.faction
+        }) {
             inspected = Some((unit.class, unit.faction, *stats));
+            inspected_world_pos = Some(transform.translation.truncate());
         }
     }
 
     if inspected.is_none() {
         if let Some(slot) = hovered.bench_slot {
-            if let Some((unit, _, stats)) = bench_units.iter().find(|(_, b, _)| b.slot == slot) {
+            if let Some((unit, _, stats, transform)) =
+                bench_units.iter().find(|(_, b, _, _)| b.slot == slot)
+            {
                 inspected = Some((unit.class, Faction::Player, *stats));
+                inspected_world_pos = Some(transform.translation.truncate());
             }
         }
     }
 
     if inspected.is_none() {
         if let Some(sel_ent) = selected.entity {
-            if let Ok((unit, _, stats)) = board_units.get(sel_ent) {
+            if let Ok((unit, _, stats, transform)) = board_units.get(sel_ent) {
                 inspected = Some((unit.class, unit.faction, *stats));
-            } else if let Ok((unit, _, stats)) = bench_units.get(sel_ent) {
+                inspected_world_pos = Some(transform.translation.truncate());
+            } else if let Ok((unit, _, stats, transform)) = bench_units.get(sel_ent) {
                 inspected = Some((unit.class, Faction::Player, *stats));
+                inspected_world_pos = Some(transform.translation.truncate());
             }
         }
     }
@@ -76,11 +76,36 @@ pub fn update_hero_inspection_system(
 
     root_node.display = Display::Flex;
 
-    if let Ok(mut img) = avatar_query.get_single_mut() {
+    // Dynamically position the card inspector BESIDE the hovered unit!
+    if let (Some(world_pos), Ok((camera, cam_transform)), Ok(window)) = (
+        inspected_world_pos,
+        camera_q.get_single(),
+        windows.get_single(),
+    ) {
+        if let Ok(viewport_pos) = camera.world_to_viewport(cam_transform, world_pos.extend(0.0)) {
+            let win_w = window.width();
+            let win_h = window.height();
+
+            if viewport_pos.x < win_w * 0.5 {
+                // Unit is on the left side -> show inspector panel to the right of the unit
+                root_node.left = Val::Px((viewport_pos.x + 50.0).clamp(10.0, win_w - 300.0));
+                root_node.right = Val::Auto;
+            } else {
+                // Unit is on the right side -> show inspector panel to the left of the unit
+                root_node.left = Val::Px((viewport_pos.x - 300.0).clamp(10.0, win_w - 300.0));
+                root_node.right = Val::Auto;
+            }
+
+            root_node.top = Val::Px((viewport_pos.y - 120.0).clamp(65.0, win_h - 380.0));
+            root_node.bottom = Val::Auto;
+        }
+    }
+
+    if let Ok(mut img) = avatar_img.get_single_mut() {
         img.image = textures.get_unit_texture(class);
     }
 
-    for (header, mut txt, text_col) in header_query.iter_mut() {
+    for (header, mut txt, text_col) in text_queries.p0().iter_mut() {
         match header.0 {
             InspectHeaderField::Name => {
                 *txt = Text::new(class.name());
@@ -89,11 +114,11 @@ pub fn update_hero_inspection_system(
                 if let Some(mut col) = text_col {
                     match faction {
                         Faction::Player => {
-                            *txt = Text::new("ALLY");
+                            *txt = Text::new("QUÂN TA");
                             col.0 = Color::srgb(0.3, 0.7, 1.0);
                         }
                         Faction::Enemy => {
-                            *txt = Text::new("ENEMY");
+                            *txt = Text::new("QUÂN ĐỊCH");
                             col.0 = Color::srgb(1.0, 0.3, 0.3);
                         }
                     }
@@ -116,7 +141,7 @@ pub fn update_hero_inspection_system(
         node.width = Val::Percent(ratio * 100.0);
     }
 
-    for (stat_txt, mut txt) in text_query.iter_mut() {
+    for (stat_txt, mut txt) in text_queries.p1().iter_mut() {
         match stat_txt.0 {
             InspectStatType::Hp => {
                 *txt = Text::new(format!("{:.0} / {:.0}", stats.hp, stats.max_hp));
@@ -128,11 +153,7 @@ pub fn update_hero_inspection_system(
                 *txt = Text::new(format!("{:.0}", stats.atk));
             }
             InspectStatType::Def => {
-                if stats.shield > 0.0 {
-                    *txt = Text::new(format!("{:.0} (+{:.0} Shld)", stats.def, stats.shield));
-                } else {
-                    *txt = Text::new(format!("{:.0}", stats.def));
-                }
+                *txt = Text::new(format!("{:.0}", stats.def));
             }
             InspectStatType::Spd => {
                 *txt = Text::new(format!("{:.0}", stats.speed));
@@ -140,7 +161,7 @@ pub fn update_hero_inspection_system(
         }
     }
 
-    for (sk, mut txt) in skill_query.iter_mut() {
+    for (sk, mut txt) in text_queries.p2().iter_mut() {
         match sk.0 {
             InspectSkillField::Name => {
                 *txt = Text::new(class.skill_name());
@@ -162,24 +183,19 @@ pub fn update_hero_inspection_system(
 }
 
 pub fn update_shop_cards_ui(
-    economy: Res<PlayerEconomy>,
     textures: Res<GameTextures>,
+    economy: Res<PlayerEconomy>,
     mut card_buttons: Query<(&ShopCard, &mut BackgroundColor, &mut BorderColor)>,
-    mut avatars: Query<(&ShopCardAvatar, &mut ImageNode, &mut Visibility)>,
-    mut names: Query<(&ShopCardName, &mut Text, &mut TextColor)>,
-    mut costs: Query<(&ShopCardCost, &mut Text), Without<ShopCardName>>,
+    mut avatar_images: Query<(&ShopCardAvatar, &mut ImageNode, &mut Visibility)>,
     mut lock_button: Query<
         (&mut BackgroundColor, &mut BorderColor),
         (With<ShopLockToggle>, Without<ShopCard>),
     >,
-    mut lock_text: Query<
-        &mut Text,
-        (
-            With<ShopLockText>,
-            Without<ShopCardName>,
-            Without<ShopCardCost>,
-        ),
-    >,
+    mut text_queries: ParamSet<(
+        Query<(&ShopCardName, &mut Text, &mut TextColor)>,
+        Query<(&ShopCardCost, &mut Text)>,
+        Query<&mut Text, With<ShopLockText>>,
+    )>,
 ) {
     for (card, mut bg, mut border) in card_buttons.iter_mut() {
         let idx = card.0;
@@ -199,7 +215,7 @@ pub fn update_shop_cards_ui(
         }
     }
 
-    for (avatar, mut img, mut vis) in avatars.iter_mut() {
+    for (avatar, mut img, mut vis) in avatar_images.iter_mut() {
         let idx = avatar.0;
         if let Some(class) = economy.shop_slots[idx] {
             img.image = textures.get_unit_texture(class);
@@ -209,21 +225,21 @@ pub fn update_shop_cards_ui(
         }
     }
 
-    for (name_comp, mut txt, mut col) in names.iter_mut() {
+    for (name_comp, mut txt, mut col) in text_queries.p0().iter_mut() {
         let idx = name_comp.0;
         if let Some(class) = economy.shop_slots[idx] {
             *txt = Text::new(class.name());
             col.0 = Color::WHITE;
         } else {
-            *txt = Text::new("[PURCHASED]");
+            *txt = Text::new("[ĐÃ MUA]");
             col.0 = Color::srgb(0.45, 0.48, 0.52);
         }
     }
 
-    for (cost_comp, mut txt) in costs.iter_mut() {
+    for (cost_comp, mut txt) in text_queries.p1().iter_mut() {
         let idx = cost_comp.0;
         if let Some(class) = economy.shop_slots[idx] {
-            *txt = Text::new(format!("🪙 {}G | {}", unit_cost(class), class.role_title()));
+            *txt = Text::new(format!("{} Vàng | {}", unit_cost(class), class.role_abbr()));
         } else {
             *txt = Text::new("--");
         }
@@ -239,11 +255,11 @@ pub fn update_shop_cards_ui(
         }
     }
 
-    if let Ok(mut txt) = lock_text.get_single_mut() {
+    if let Ok(mut txt) = text_queries.p2().get_single_mut() {
         if economy.shop_locked {
-            *txt = Text::new("🔒 Locked [E]");
+            *txt = Text::new("🔒 Đã Khóa [E]");
         } else {
-            *txt = Text::new("🔓 Lock [E]");
+            *txt = Text::new("🔓 Khóa [E]");
         }
     }
 }
@@ -271,7 +287,7 @@ pub fn handle_shop_clicks(
                     );
                     if let Ok(mut txt) = tooltip.get_single_mut() {
                         *txt = Text::new(format!(
-                            "⚠️ Not enough gold! Need {}G, have {}G.",
+                            "⚠️ Không đủ vàng! Cần {} Vàng, hiện có {} Vàng.",
                             cost, economy.gold
                         ));
                     }
@@ -294,7 +310,7 @@ pub fn handle_shop_clicks(
                         );
                         if let Ok(mut txt) = tooltip.get_single_mut() {
                             *txt = Text::new(format!(
-                                "Recruited {} for {}G (Placed on Bench #{})",
+                                "Đã chiêu mộ {} ({} Vàng) -> Hàng Chờ #{}",
                                 bought_class.name(),
                                 cost,
                                 slot + 1
@@ -305,7 +321,7 @@ pub fn handle_shop_clicks(
                     info!("[SHOP] Reserve bench is full (6/6 slots occupied)!");
                     if let Ok(mut txt) = tooltip.get_single_mut() {
                         *txt = Text::new(
-                            "⚠️ Reserve Bench is full (6/6)! Deploy or sell a hero first."
+                            "⚠️ Hàng chờ đã đầy (6/6)! Hãy xuất trận hoặc bán bớt tướng."
                                 .to_string(),
                         );
                     }
@@ -330,7 +346,7 @@ pub fn handle_speed_toggle(
                 speed.multiplier = 1.0;
             }
             for mut text in text_query.iter_mut() {
-                *text = Text::new(format!("Speed: {:.0}x", speed.multiplier));
+                *text = Text::new(format!("Tốc độ: {:.0}x", speed.multiplier));
             }
             info!("[UI] Battle speed toggled: {:.0}x", speed.multiplier);
         }
@@ -383,7 +399,7 @@ pub fn handle_start_battle_button(
                     lineup.push(crate::net::PvpUnitData {
                         col: g.col,
                         row: g.row,
-                        class: u.class.name().to_string(),
+                        class: u.class.id_str().to_string(),
                         star_level: s.0,
                     });
                 }
@@ -397,38 +413,10 @@ pub fn handle_start_battle_button(
                     2,
                     0,
                 );
-                spawn_unit(
-                    &mut commands,
-                    &textures,
-                    UnitClass::Archer,
-                    Faction::Player,
-                    0,
-                    1,
-                );
-                spawn_unit(
-                    &mut commands,
-                    &textures,
-                    UnitClass::Assassin,
-                    Faction::Player,
-                    1,
-                    2,
-                );
                 lineup.push(crate::net::PvpUnitData {
                     col: 2,
                     row: 0,
-                    class: UnitClass::Knight.name().to_string(),
-                    star_level: 1,
-                });
-                lineup.push(crate::net::PvpUnitData {
-                    col: 0,
-                    row: 1,
-                    class: UnitClass::Archer.name().to_string(),
-                    star_level: 1,
-                });
-                lineup.push(crate::net::PvpUnitData {
-                    col: 1,
-                    row: 2,
-                    class: UnitClass::Assassin.name().to_string(),
+                    class: UnitClass::Knight.id_str().to_string(),
                     star_level: 1,
                 });
             }
@@ -486,13 +474,7 @@ pub fn handle_start_battle_button(
                 let board_positions = [(2, 1), (2, 0), (1, 2)];
                 for (idx, card) in player_deck.cards.iter().take(3).enumerate() {
                     let (col, row) = board_positions[idx];
-                    let unit_class = match card.hero_class.as_str() {
-                        "Archer" => UnitClass::Archer,
-                        "Mage" => UnitClass::Mage,
-                        "Assassin" => UnitClass::Assassin,
-                        "Cleric" => UnitClass::Cleric,
-                        _ => UnitClass::Knight,
-                    };
+                    let unit_class = crate::net::general_unit_class(&card.hero_class);
                     crate::units::spawn_unit_ext_bonus_with_initiative(
                         &mut commands,
                         &textures,
@@ -530,7 +512,7 @@ pub fn update_start_button_text(
                 *text = Text::new("⚔️ KHÓA TRẬN & SẴN SÀNG");
             }
         } else {
-            *text = Text::new("⚔️ ĐẤU AI VỚI ĐỘI HÌNH LƯU");
+            *text = Text::new("⚔️ Xuất Trận [Space]");
         }
     }
 }
@@ -544,6 +526,7 @@ pub fn handle_clear_button(
     mut economy: ResMut<PlayerEconomy>,
     mut selected: ResMut<SelectedUnitState>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut tooltip: Query<&mut Text, With<TooltipText>>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
@@ -576,6 +559,12 @@ pub fn handle_clear_button(
                 "[UI] Squad cleared: {} heroes sold for +{}G -> Total Gold: {}G",
                 refunded_count, total_refund, economy.gold
             );
+            if let Ok(mut txt) = tooltip.get_single_mut() {
+                *txt = Text::new(format!(
+                    "🧹 Đã thu hồi toàn bộ {} tướng, hoàn lại +{} Vàng!",
+                    refunded_count, total_refund
+                ));
+            }
         }
     }
 }
@@ -589,6 +578,7 @@ pub fn handle_preset_button(
     mut economy: ResMut<PlayerEconomy>,
     mut selected: ResMut<SelectedUnitState>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut tooltip: Query<&mut Text, With<TooltipText>>,
 ) {
     if *current_state.get() != GameState::Placement {
         return;
@@ -633,11 +623,20 @@ pub fn handle_preset_button(
                     "[UI] Preset squad deployed (Cost: 7G) -> Remaining Gold: {}G",
                     economy.gold
                 );
+                if let Ok(mut txt) = tooltip.get_single_mut() {
+                    *txt = Text::new("📋 Đã triển khai Đội Hình Mẫu (Chi phí: 7 Vàng)".to_string());
+                }
             } else {
                 info!(
                     "[UI] Cannot deploy preset squad: Need 7G (Current: {}G)",
                     economy.gold
                 );
+                if let Ok(mut txt) = tooltip.get_single_mut() {
+                    *txt = Text::new(format!(
+                        "⚠️ Không đủ vàng triển khai Đội Hình Mẫu! Cần 7 Vàng, hiện có {} Vàng.",
+                        economy.gold
+                    ));
+                }
             }
         }
     }
@@ -687,7 +686,7 @@ pub fn handle_unit_and_tile_interaction(
                     );
                     if let Ok(mut txt) = tooltip.get_single_mut() {
                         *txt = Text::new(format!(
-                            "Sold {}★ {} for +{}G!",
+                            "Đã bán {}★ {} nhận +{} Vàng!",
                             star.0,
                             unit.class.name(),
                             refund
@@ -721,7 +720,7 @@ pub fn handle_unit_and_tile_interaction(
                 );
                 if let Ok(mut txt) = tooltip.get_single_mut() {
                     *txt = Text::new(format!(
-                        "Sold {}★ {} for +{}G!",
+                        "Đã bán {}★ {} nhận +{} Vàng!",
                         star.0,
                         unit.class.name(),
                         refund
@@ -885,7 +884,7 @@ pub fn handle_unit_and_tile_interaction(
                                         "[DEPLOY] Board is full (5/5)! Cannot deploy another hero."
                                     );
                                     if let Ok(mut txt) = tooltip.get_single_mut() {
-                                        *txt = Text::new("⚠️ Board squad is full (5/5)! Swap with an active hero instead.".to_string());
+                                        *txt = Text::new("⚠️ Bàn cờ đã đầy (5/5 tướng)! Hãy hoán đổi vị trí với tướng đang xuất trận.".to_string());
                                     }
                                     return;
                                 }
@@ -953,14 +952,10 @@ pub fn update_tooltip_system(
         };
 
         *text = Text::new(format!(
-            "Selected: {}★ {} ({}) - Left-Click empty slot to place, click another hero to swap, Right-Click to sell.",
+            "Đang chọn: {}★ {} ({}) - Chuột trái vào ô trống để đặt/đổi chỗ, Chuột phải để bán.",
             star,
             class.name(),
-            if is_bench {
-                "Reserve Bench"
-            } else {
-                "Active Board"
-            }
+            if is_bench { "Hàng Chờ" } else { "Bàn Cờ" }
         ));
         return;
     }
@@ -970,14 +965,13 @@ pub fn update_tooltip_system(
             g.col == tile.col && g.row == tile.row && g.faction == tile.faction
         }) {
             *text = Text::new(format!(
-                "Hovering: {} {}★ {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} (Right-Click to sell)",
-                unit.class.icon(),
+                "Tướng: {}★ {} [{}] - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} | SPD: {:.0} (Chuột phải để bán)",
                 star.0,
                 unit.class.name(),
                 if unit.faction == Faction::Player {
-                    "Ally"
+                    "Quân Ta"
                 } else {
-                    "Enemy"
+                    "Quân Địch"
                 },
                 stats.hp,
                 stats.max_hp,
@@ -993,9 +987,8 @@ pub fn update_tooltip_system(
         if let Some((unit, _, stats, star)) = bench_units.iter().find(|(_, b, _, _)| b.slot == slot)
         {
             *text = Text::new(format!(
-                "Reserve Bench #{}: {} {}★ {} - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} (Click to deploy/swap, Right-Click to sell)",
+                "Hàng Chờ #{}: {}★ {} - HP: {:.0}/{:.0} | ATK: {:.0} | DEF: {:.0} (Chuột trái để đặt/đổi, Chuột phải để bán)",
                 slot + 1,
-                unit.class.icon(),
                 star.0,
                 unit.class.name(),
                 stats.hp,
@@ -1007,5 +1000,5 @@ pub fn update_tooltip_system(
         }
     }
 
-    *text = Text::new("💡 Click a shop card below to recruit. Left-Click heroes to position/swap. Right-Click to sell for gold.".to_string());
+    *text = Text::new("💡 Nhấn vào thẻ tướng bên dưới để chiêu mộ. Chuột trái để điều động/hoán đổi vị trí. Chuột phải để bán tướng lấy vàng.".to_string());
 }

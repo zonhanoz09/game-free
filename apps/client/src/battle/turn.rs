@@ -1,4 +1,5 @@
 use super::*;
+use game_logic::{BattleState, BoardSlot, CombatEvent, TeamSide, UnitState};
 
 pub fn battle_tick_system(
     mut commands: Commands,
@@ -8,6 +9,7 @@ pub fn battle_tick_system(
     hit_stop: Res<HitStopManager>,
     mut camera_shake: ResMut<CameraShake2d>,
     mut turn_manager: ResMut<BattleTurnManager>,
+    mut adapter: ResMut<BattleSimulationAdapter>,
     mut units: Query<
         (
             Entity,
@@ -17,11 +19,14 @@ pub fn battle_tick_system(
             &Transform,
             &mut ActionGauge,
             Option<&mut ChibiSquashStretch>,
+            Option<&BattleUnitId>,
         ),
         Without<DeadUnit>,
     >,
     spotlight_query: Query<Entity, With<ActiveTurnSpotlight2d>>,
     boss_query: Query<&BossUnit>,
+    dash_query: Query<&DashAnimation2d>,
+    proj_query: Query<&Projectile2d>,
     mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     if hit_stop.active {
@@ -30,8 +35,17 @@ pub fn battle_tick_system(
 
     let dt = time.delta_secs() * speed.multiplier;
 
+    let has_active_dash = dash_query.iter().next().is_some();
+    let has_active_proj = proj_query.iter().next().is_some();
+
     if turn_manager.active_attacker.is_some() {
-        return;
+        if !has_active_dash && !has_active_proj {
+            // Watchdog auto-recovery: previous animation completed or despawned
+            turn_manager.active_attacker = None;
+            turn_manager.cooldown_timer.reset();
+        } else {
+            return;
+        }
     }
 
     turn_manager
@@ -45,483 +59,447 @@ pub fn battle_tick_system(
         commands.entity(spot).despawn_recursive();
     }
 
-    for (_, _, stats, _, _, mut gauge, _) in units.iter_mut() {
-        gauge.current += stats.speed * 8.5 * dt;
-    }
-
-    let mut best_candidate: Option<(Entity, UnitClass, Faction, UnitStats, GridPos, Vec2)> = None;
-    let mut highest_gauge = 99.99f32;
-
-    for (entity, unit, stats, grid, transform, gauge, _) in units.iter() {
-        if gauge.current >= 100.0 && gauge.current > highest_gauge {
-            highest_gauge = gauge.current;
-            best_candidate = Some((
-                entity,
-                unit.class,
-                unit.faction,
-                *stats,
-                *grid,
-                transform.translation.xy(),
-            ));
-        }
-    }
-
-    let Some((actor_entity, class, faction, stats, grid, actor_pos)) = best_candidate else {
-        return;
+    // Helper closure to compute deterministic unit ID if BattleUnitId not yet applied
+    let unit_ids: Vec<(Entity, u32)> = {
+        let mut p_idx = 0usize;
+        let mut e_idx = 0usize;
+        units
+            .iter()
+            .map(|(ent, unit, _, _, _, _, _, maybe_id)| {
+                let side = match unit.faction {
+                    Faction::Player => TeamSide::Attacker,
+                    Faction::Enemy => TeamSide::Defender,
+                };
+                let index = if unit.faction == Faction::Player {
+                    let cur = p_idx;
+                    p_idx += 1;
+                    cur
+                } else {
+                    let cur = e_idx;
+                    e_idx += 1;
+                    cur
+                };
+                let uid = maybe_id
+                    .map(|id| id.0)
+                    .unwrap_or_else(|| calculate_unit_id(side, index, adapter.seed));
+                (ent, uid)
+            })
+            .collect()
     };
 
-    let is_ultimate = stats.mana >= stats.max_mana;
-    if is_ultimate {
-        info!(
-            "[ACTION] [ULTIMATE] {:?} {:?} cast ULTIMATE: {}!",
-            faction,
-            class,
-            class.ultimate_name()
-        );
-    } else {
-        info!(
-            "[ACTION] {:?} {:?} took turn (Speed: {:.0}, ATB full)",
-            faction, class, stats.speed
-        );
+    for &(entity, uid) in &unit_ids {
+        commands.entity(entity).insert(BattleUnitId(uid));
     }
 
-    if let Ok((_, _, mut actor_stats, _, _, mut gauge, maybe_squash)) = units.get_mut(actor_entity)
-    {
-        gauge.current -= 100.0;
-        if let Some(mut squash) = maybe_squash {
-            squash.target_scale = Vec3::new(0.85, 1.28, 1.0);
-        }
-        if is_ultimate {
-            actor_stats.mana = 0.0;
-            if class == UnitClass::Knight {
-                actor_stats.shield += 80.0;
-            }
-        } else {
-            actor_stats.mana = (actor_stats.mana + 25.0).min(actor_stats.max_mana);
-        }
-    }
+    // Auto-initialize headless battle simulation for single player if not already created
+    if adapter.battle_state.is_none() && !adapter.is_pvp {
+        let mut sim_state = BattleState::default();
 
-    turn_manager.active_attacker = Some(actor_entity);
-    turn_manager.acted_this_cycle.insert(actor_entity);
-
-    let living_units: std::collections::HashSet<Entity> = units.iter().map(|(e, ..)| e).collect();
-    turn_manager
-        .acted_this_cycle
-        .retain(|e| living_units.contains(e));
-    let living_count = living_units.len();
-
-    if living_count > 0 && turn_manager.acted_this_cycle.len() >= living_count {
-        turn_manager.cycle_turn_count += 1;
-        turn_manager.acted_this_cycle.clear();
-        crate::net::rust_to_js_pvp(&format!(
-            r#"{{"type":"ROUND_TURN_COMPLETED","turn":{},"total":{}}}"#,
-            turn_manager.cycle_turn_count, living_count
-        ));
-    } else {
-        crate::net::rust_to_js_pvp(&format!(
-            r#"{{"type":"STRIKE_ACTION","acted":{},"total":{},"current_turn":{}}}"#,
-            turn_manager.acted_this_cycle.len(),
-            living_count,
-            turn_manager.cycle_turn_count
-        ));
-    }
-
-    commands.spawn((
-        Sprite {
-            custom_size: Some(Vec2::new(84.0, 84.0)),
-            color: Color::srgba(1.0, 0.85, 0.25, 0.65),
-            ..default()
-        },
-        Transform::from_xyz(actor_pos.x, actor_pos.y, 2.0),
-        ActiveTurnSpotlight2d {
-            attacker_entity: actor_entity,
-        },
-    ));
-
-    let is_boss_unit = boss_query.get(actor_entity).is_ok();
-    if is_ultimate {
-        sound_events.send(PlaySoundEvent(SoundEffect::Ultimate));
-        if is_boss_unit {
-            spawn_floating_text(
-                &mut commands,
-                &mut rng,
-                actor_pos + Vec2::new(0.0, 42.0),
-                "[BOSS ULTIMATE]\nCATACLYSMIC EARTHQUAKE!",
-                Color::srgb(1.0, 0.25, 0.25),
-                21.0,
-            );
-            camera_shake.add_trauma(0.85);
-        } else {
-            spawn_floating_text(
-                &mut commands,
-                &mut rng,
-                actor_pos + Vec2::new(0.0, 36.0),
-                &format!("[ULTIMATE]\n{}!", class.ultimate_name().to_uppercase()),
-                Color::srgb(1.0, 0.88, 0.2),
-                17.0,
-            );
-            camera_shake.add_trauma(0.50);
-        }
-    } else {
-        match class {
-            UnitClass::Cleric => sound_events.send(PlaySoundEvent(SoundEffect::Heal)),
-            UnitClass::Archer => sound_events.send(PlaySoundEvent(SoundEffect::Arrow)),
-            UnitClass::Mage => sound_events.send(PlaySoundEvent(SoundEffect::Magic)),
-            UnitClass::Knight => sound_events.send(PlaySoundEvent(SoundEffect::Slash)),
-            UnitClass::Assassin => sound_events.send(PlaySoundEvent(SoundEffect::Dagger)),
-        };
-    }
-
-    let opponent_faction = match faction {
-        Faction::Player => Faction::Enemy,
-        Faction::Enemy => Faction::Player,
-    };
-
-    struct TargetSnapshot {
-        entity: Entity,
-        faction: Faction,
-        hp: f32,
-        max_hp: f32,
-        grid: GridPos,
-        pos: Vec2,
-    }
-
-    let target_list: Vec<TargetSnapshot> = units
-        .iter()
-        .map(|(e, u, s, g, t, _, _)| TargetSnapshot {
-            entity: e,
-            faction: u.faction,
-            hp: s.hp,
-            max_hp: s.max_hp,
-            grid: *g,
-            pos: t.translation.xy(),
-        })
-        .collect();
-
-    // Case 1: Cleric
-    if class == UnitClass::Cleric {
-        if is_ultimate {
-            let heal_amount = 45.0 + stats.atk * 1.60;
-            for t in target_list.iter() {
-                if t.faction == faction && t.hp > 0.0 {
-                    let t_pos = t.pos;
-                    let t_entity = t.entity;
-                    commands.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::splat(44.0)),
-                            color: Color::srgba(1.0, 0.92, 0.35, 0.85),
-                            ..default()
-                        },
-                        Transform::from_xyz(t_pos.x, t_pos.y, 38.0),
-                        CombatVfx2d {
-                            timer: Timer::from_seconds(0.40, TimerMode::Once),
-                            initial_scale: Vec2::splat(0.4),
-                            target_scale: Vec2::splat(2.5),
-                            rotate_speed: 2.0,
-                        },
-                    ));
-                    commands.spawn((
-                        Sprite {
-                            custom_size: Some(Vec2::new(18.0, 28.0)),
-                            color: Color::srgb(1.0, 0.98, 0.5),
-                            ..default()
-                        },
-                        Transform::from_xyz(t_pos.x, t_pos.y + 110.0, 50.0),
-                        Projectile2d {
-                            start: t_pos + Vec2::new(0.0, 110.0),
-                            target_pos: t_pos,
-                            target_entity: t_entity,
-                            timer: Timer::from_seconds(0.28, TimerMode::Once),
-                            damage: heal_amount,
-                            is_heal: true,
-                            is_crit: true,
-                            is_ultimate: true,
-                            aoe_row: None,
-                            arc_height: 10.0,
-                            class,
-                        },
-                    ));
-                }
-            }
-            for (_, u, _, _, _, mut a_gauge, _) in units.iter_mut() {
-                if u.faction == faction {
-                    a_gauge.current = (a_gauge.current + 25.0).min(100.0);
-                }
-            }
-        } else {
-            let mut lowest_ally: Option<(Entity, f32, Vec2)> = None;
-            for t in target_list.iter() {
-                if t.faction == faction && t.hp > 0.0 {
-                    let hp_ratio = t.hp / t.max_hp;
-                    if lowest_ally.is_none() || hp_ratio < lowest_ally.unwrap().1 {
-                        lowest_ally = Some((t.entity, hp_ratio, t.pos));
-                    }
-                }
-            }
-
-            if let Some((target_entity, _, target_pos)) = lowest_ally {
-                let heal_amount = 32.0 + stats.atk * 0.50;
-                commands.spawn((
-                    Sprite {
-                        custom_size: Some(Vec2::new(20.0, 20.0)),
-                        color: Color::srgb(1.0, 0.95, 0.4),
-                        ..default()
-                    },
-                    Transform::from_xyz(actor_pos.x, actor_pos.y, 50.0),
-                    Projectile2d {
-                        start: actor_pos,
-                        target_pos,
-                        target_entity,
-                        timer: Timer::from_seconds(0.38, TimerMode::Once),
-                        damage: heal_amount,
-                        is_heal: true,
-                        is_crit: false,
-                        is_ultimate: false,
-                        aoe_row: None,
-                        arc_height: 38.0,
-                        class,
-                    },
-                ));
-            } else {
-                turn_manager.active_attacker = None;
-                turn_manager.cooldown_timer.reset();
-            }
-        }
-        return;
-    }
-
-    // Case 2: Archer / Mage Ultimate All-Target Attacks
-    if is_ultimate && class == UnitClass::Archer {
-        let mut count = 0;
-        for t in target_list.iter() {
-            if t.faction == opponent_faction && t.hp > 0.0 {
-                let t_pos = t.pos;
-                let t_entity = t.entity;
-                let raw_dmg = stats.atk * 1.35;
-                commands.spawn((
-                    Sprite {
-                        custom_size: Some(Vec2::new(24.0, 7.0)),
-                        color: Color::srgb(0.25, 1.0, 0.45),
-                        ..default()
-                    },
-                    Transform::from_xyz(actor_pos.x, actor_pos.y, 50.0),
-                    Projectile2d {
-                        start: actor_pos + Vec2::new(0.0, 20.0),
-                        target_pos: t_pos,
-                        target_entity: t_entity,
-                        timer: Timer::from_seconds(0.32 + count as f32 * 0.05, TimerMode::Once),
-                        damage: raw_dmg,
-                        is_heal: false,
-                        is_crit: true,
-                        is_ultimate: true,
-                        aoe_row: None,
-                        arc_height: 60.0 + count as f32 * 8.0,
-                        class,
-                    },
-                ));
-                count += 1;
-            }
-        }
-        if count == 0 {
-            turn_manager.active_attacker = None;
-            turn_manager.cooldown_timer.reset();
-        }
-        return;
-    }
-
-    if is_ultimate && class == UnitClass::Mage {
-        let mut count = 0;
-        for t in target_list.iter() {
-            if t.faction == opponent_faction && t.hp > 0.0 {
-                let t_pos = t.pos;
-                let t_entity = t.entity;
-                let raw_dmg = stats.atk * 1.60;
-                commands.spawn((
-                    Sprite {
-                        custom_size: Some(Vec2::new(26.0, 32.0)),
-                        color: Color::srgb(0.9, 0.4, 1.0),
-                        ..default()
-                    },
-                    Transform::from_xyz(t_pos.x, t_pos.y + 130.0, 50.0),
-                    Projectile2d {
-                        start: t_pos + Vec2::new(0.0, 130.0),
-                        target_pos: t_pos,
-                        target_entity: t_entity,
-                        timer: Timer::from_seconds(0.26 + count as f32 * 0.04, TimerMode::Once),
-                        damage: raw_dmg,
-                        is_heal: false,
-                        is_crit: true,
-                        is_ultimate: true,
-                        aoe_row: None,
-                        arc_height: 8.0,
-                        class,
-                    },
-                ));
-                count += 1;
-            }
-        }
-        if count == 0 {
-            turn_manager.active_attacker = None;
-            turn_manager.cooldown_timer.reset();
-        }
-        return;
-    }
-
-    // Case 3: Single / Focused Attacks
-    let mut target_candidate: Option<(Entity, Vec2, GridPos)> = None;
-
-    match class {
-        UnitClass::Assassin => {
-            let mut best_backline_dist = -1i32;
-            let mut lowest_hp = f32::MAX;
-
-            for t in target_list.iter() {
-                if t.faction == opponent_faction && t.hp > 0.0 {
-                    let depth = match opponent_faction {
-                        Faction::Enemy => t.grid.col as i32,
-                        Faction::Player => 2 - t.grid.col as i32,
-                    };
-
-                    if depth > best_backline_dist
-                        || (depth == best_backline_dist && t.hp < lowest_hp)
-                    {
-                        best_backline_dist = depth;
-                        lowest_hp = t.hp;
-                        target_candidate = Some((t.entity, t.pos, t.grid));
-                    }
-                }
-            }
-        }
-        UnitClass::Archer => {
-            let mut lowest_hp = f32::MAX;
-
-            for t in target_list.iter() {
-                if t.faction == opponent_faction && t.hp > 0.0 {
-                    if t.hp < lowest_hp {
-                        lowest_hp = t.hp;
-                        target_candidate = Some((t.entity, t.pos, t.grid));
-                    }
-                }
-            }
-        }
-        UnitClass::Knight | UnitClass::Mage => {
-            let mut min_col = usize::MAX;
-            let mut best_row_diff = usize::MAX;
-
-            for t in target_list.iter() {
-                if t.faction == opponent_faction && t.hp > 0.0 {
-                    let frontline_col = match opponent_faction {
-                        Faction::Player => 2 - t.grid.col,
-                        Faction::Enemy => t.grid.col,
-                    };
-
-                    let row_diff = (grid.row as i32 - t.grid.row as i32).unsigned_abs() as usize;
-
-                    if frontline_col < min_col
-                        || (frontline_col == min_col && row_diff < best_row_diff)
-                    {
-                        min_col = frontline_col;
-                        best_row_diff = row_diff;
-                        target_candidate = Some((t.entity, t.pos, t.grid));
-                    }
-                }
-            }
-        }
-        UnitClass::Cleric => {}
-    }
-
-    if let Some((target_entity, target_pos, target_grid)) = target_candidate {
-        let is_crit = is_ultimate || rng.next_f32() < stats.crit_rate;
-        let crit_mult = if is_crit { 1.5 } else { 1.0 };
-        let mult = if is_ultimate {
-            match class {
-                UnitClass::Knight => 2.20,
-                UnitClass::Assassin => 2.80,
-                _ => 1.50,
-            }
-        } else {
-            1.0
-        };
-        let raw_dmg = stats.atk * mult * crit_mult;
-
-        let is_melee = class == UnitClass::Knight || class == UnitClass::Assassin;
-
-        if is_melee {
-            let offset_dir = (actor_pos - target_pos).normalize_or_zero();
-            let dash_target = target_pos + offset_dir * 46.0;
-
-            commands.spawn((
-                Sprite {
-                    custom_size: Some(Vec2::splat(if is_ultimate { 28.0 } else { 18.0 })),
-                    color: if is_ultimate {
-                        Color::srgba(1.0, 0.85, 0.25, 0.85)
-                    } else {
-                        Color::srgba(0.85, 0.85, 0.90, 0.65)
-                    },
-                    ..default()
-                },
-                Transform::from_xyz(actor_pos.x, actor_pos.y, 35.0),
-                CombatVfx2d {
-                    timer: Timer::from_seconds(0.20, TimerMode::Once),
-                    initial_scale: Vec2::splat(1.0),
-                    target_scale: Vec2::splat(2.4),
-                    rotate_speed: 1.0,
-                },
-            ));
-
-            commands.entity(actor_entity).insert(DashAnimation2d {
-                origin: actor_pos,
-                target: dash_target,
-                timer: Timer::from_seconds(if is_ultimate { 0.30 } else { 0.25 }, TimerMode::Once),
-                returning: false,
-                damage_dealt: false,
-                target_entity,
-                attacker_entity: actor_entity,
-                damage: raw_dmg,
-                is_crit,
-                is_ultimate,
-                class,
-            });
-        } else {
-            let (col, sz, arc_h, aoe) = if class == UnitClass::Mage {
-                (
-                    Color::srgb(0.75, 0.30, 1.0),
-                    Vec2::new(18.0, 18.0),
-                    24.0,
-                    Some((target_grid.row, opponent_faction)),
-                )
-            } else {
-                (
-                    Color::srgb(0.30, 0.95, 0.40),
-                    Vec2::new(22.0, 6.0),
-                    35.0,
-                    None,
-                )
+        for (entity, unit, stats, grid, _, gauge, _, _) in units.iter() {
+            let side = match unit.faction {
+                Faction::Player => TeamSide::Attacker,
+                Faction::Enemy => TeamSide::Defender,
             };
+            let uid = unit_ids
+                .iter()
+                .find(|(e, _)| *e == entity)
+                .map(|(_, id)| *id)
+                .unwrap_or(1);
 
-            commands.spawn((
-                Sprite {
-                    custom_size: Some(sz),
-                    color: col,
-                    ..default()
-                },
-                Transform::from_xyz(actor_pos.x, actor_pos.y, 50.0),
-                Projectile2d {
-                    start: actor_pos,
-                    target_pos,
-                    target_entity,
-                    timer: Timer::from_seconds(0.32, TimerMode::Once),
-                    damage: raw_dmg,
-                    is_heal: false,
-                    is_crit,
-                    is_ultimate,
-                    aoe_row: aoe,
-                    arc_height: arc_h,
-                    class,
-                },
-            ));
+            if let Some(slot) =
+                BoardSlot::new(side, (grid.col.min(2)) as u8, (grid.row.min(2)) as u8)
+            {
+                let mut u_state = UnitState::new(
+                    uid,
+                    side,
+                    slot,
+                    stats.max_hp.max(1.0) as u32,
+                    stats.atk.max(1.0) as u32,
+                    stats.def.max(0.0) as u32,
+                    stats.speed.max(1.0) as u32,
+                );
+                u_state.hp = stats.hp.max(1.0) as u32;
+                u_state.rage = stats.mana as u16;
+                u_state.gauge.current = (gauge.current * 100.0) as u32;
+                let _ = sim_state.add_unit(u_state);
+            }
         }
-    } else {
+        adapter.battle_state = Some(sim_state);
+    }
+
+    // Step simulation if no events are pending
+    if adapter.pending_events.is_empty() {
+        if !adapter.is_pvp {
+            if let Some(ref mut battle) = adapter.battle_state {
+                if let Some(winner) = battle.winner() {
+                    adapter.settled_winner = Some(winner);
+                    adapter
+                        .pending_events
+                        .push_back(CombatEvent::BattleEnded { winner });
+                } else {
+                    let mut advance_limit = 0;
+                    while battle.next_ready_unit().is_none() && advance_limit < 1000 {
+                        battle.advance_gauges();
+                        advance_limit += 1;
+                    }
+
+                    // Synchronize visual action gauges with simulation gauges
+                    for u in &battle.units {
+                        if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == u.id) {
+                            if let Ok((.., mut visual_gauge, _, _)) = units.get_mut(ent) {
+                                visual_gauge.current =
+                                    (u.gauge.current as f32 / 100.0).clamp(0.0, 100.0);
+                            }
+                        }
+                    }
+
+                    if let Some(actor_id) = battle.next_ready_unit() {
+                        let actor_class = unit_ids
+                            .iter()
+                            .find(|(_, id)| *id == actor_id)
+                            .and_then(|(ent, _)| units.get(*ent).ok())
+                            .map(|(_, u, ..)| u.class)
+                            .unwrap_or(UnitClass::Knight);
+
+                        let (normal, ultimate) = skill_specs_for_class(actor_class);
+                        let is_crit = rng.next_f32() < 0.20;
+                        match battle.step(&normal, &ultimate, is_crit) {
+                            Ok(events) => {
+                                adapter.pending_events.extend(events);
+                            }
+                            Err(e) => {
+                                warn!(
+                                    "[BATTLE] Step error with ultimate: {:?}, attempting normal skill fallback",
+                                    e
+                                );
+                                match battle.step(&normal, &normal, is_crit) {
+                                    Ok(events) => {
+                                        adapter.pending_events.extend(events);
+                                    }
+                                    Err(e2) => {
+                                        warn!(
+                                            "[BATTLE] Normal skill fallback failed: {:?}, forcing gauge consumption for unit {}",
+                                            e2, actor_id
+                                        );
+                                        if let Some(actor_u) =
+                                            battle.units.iter_mut().find(|u| u.id == actor_id)
+                                        {
+                                            actor_u.gauge.consume_turn();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if let Some(ref mut battle) = adapter.battle_state {
+            if let Some(winner) = battle.winner() {
+                adapter.settled_winner = Some(winner);
+                adapter
+                    .pending_events
+                    .push_back(CombatEvent::BattleEnded { winner });
+            }
+        }
+    }
+
+    // Consume authoritative events and drive visual presentation
+    let mut current_actor_ent: Option<Entity> = None;
+    let mut current_actor_pos = Vec2::ZERO;
+    let mut current_actor_class = UnitClass::Knight;
+    let mut current_is_ultimate = false;
+    let mut spawned_any_attack = false;
+
+    while let Some(event) = adapter.pending_events.front() {
+        match *event {
+            CombatEvent::ActionReady { unit_id } => {
+                if current_actor_ent.is_some() {
+                    break;
+                }
+                adapter.pending_events.pop_front();
+                if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == unit_id) {
+                    if let Ok((_, unit, _, _, transform, mut gauge, maybe_squash, _)) =
+                        units.get_mut(ent)
+                    {
+                        current_actor_ent = Some(ent);
+                        current_actor_pos = transform.translation.xy();
+                        current_actor_class = unit.class;
+                        gauge.current = 0.0;
+                        if let Some(mut squash) = maybe_squash {
+                            squash.target_scale = Vec3::new(0.85, 1.28, 1.0);
+                        }
+                        commands.spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::new(84.0, 84.0)),
+                                color: Color::srgba(1.0, 0.85, 0.25, 0.65),
+                                ..default()
+                            },
+                            Transform::from_xyz(current_actor_pos.x, current_actor_pos.y, 2.0),
+                            ActiveTurnSpotlight2d {
+                                attacker_entity: ent,
+                            },
+                        ));
+                        turn_manager.active_attacker = Some(ent);
+                        turn_manager.acted_this_cycle.insert(ent);
+                    }
+                }
+            }
+            CombatEvent::UltimateTriggered { unit_id } => {
+                adapter.pending_events.pop_front();
+                current_is_ultimate = true;
+                sound_events.send(PlaySoundEvent(SoundEffect::Ultimate));
+                camera_shake.add_trauma(0.50);
+                if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == unit_id) {
+                    if let Ok((_, unit, ..)) = units.get(ent) {
+                        let is_boss = boss_query.get(ent).is_ok();
+                        let text = if is_boss {
+                            "[BOSS TUYỆT KỸ]\nĐỘNG ĐẤT DIỆT THẾ!".to_string()
+                        } else {
+                            format!("[TUYỆT KỸ]\n{}!", unit.class.ultimate_name().to_uppercase())
+                        };
+                        spawn_floating_text(
+                            &mut commands,
+                            &mut rng,
+                            current_actor_pos + Vec2::new(0.0, 36.0),
+                            &text,
+                            Color::srgb(1.0, 0.88, 0.2),
+                            17.0,
+                        );
+                    }
+                }
+            }
+            CombatEvent::Attack {
+                attacker_id: _,
+                target_id,
+                critical,
+            } => {
+                adapter.pending_events.pop_front();
+
+                let mut damage_amount = 20u32;
+                if let Some(CombatEvent::Damage {
+                    target_id: tid,
+                    amount,
+                    target_hp,
+                    ..
+                }) = adapter.pending_events.front()
+                {
+                    if *tid == target_id {
+                        damage_amount = *amount;
+                        let hp_val = *target_hp as f32;
+                        adapter.pending_events.pop_front();
+                        if let Some(&(t_ent, _)) = unit_ids.iter().find(|(_, id)| *id == target_id)
+                        {
+                            if let Ok((_, _, mut stats, ..)) = units.get_mut(t_ent) {
+                                stats.hp = hp_val;
+                            }
+                        }
+                    }
+                }
+
+                let target_info =
+                    unit_ids
+                        .iter()
+                        .find(|(_, id)| *id == target_id)
+                        .and_then(|&(t_ent, _)| {
+                            units.get(t_ent).ok().map(|(_, u, _, g, t, ..)| {
+                                (t_ent, t.translation.xy(), *g, u.faction)
+                            })
+                        });
+
+                if let Some((target_ent, target_pos, target_grid, target_faction)) = target_info {
+                    spawned_any_attack = true;
+                    let is_melee = current_actor_class.is_melee();
+                    if is_melee {
+                        sound_events.send(PlaySoundEvent(
+                            if current_actor_class == UnitClass::Assassin {
+                                SoundEffect::Dagger
+                            } else {
+                                SoundEffect::Slash
+                            },
+                        ));
+                        let offset_dir = (current_actor_pos - target_pos).normalize_or_zero();
+                        let dash_target = target_pos + offset_dir * 46.0;
+
+                        commands.spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::splat(if current_is_ultimate {
+                                    28.0
+                                } else {
+                                    18.0
+                                })),
+                                color: if current_is_ultimate {
+                                    Color::srgba(1.0, 0.85, 0.25, 0.85)
+                                } else {
+                                    Color::srgba(0.85, 0.85, 0.90, 0.65)
+                                },
+                                ..default()
+                            },
+                            Transform::from_xyz(current_actor_pos.x, current_actor_pos.y, 35.0),
+                            CombatVfx2d {
+                                timer: Timer::from_seconds(0.20, TimerMode::Once),
+                                initial_scale: Vec2::splat(1.0),
+                                target_scale: Vec2::splat(2.4),
+                                rotate_speed: 1.0,
+                            },
+                        ));
+
+                        if let Some(actor_ent) = current_actor_ent {
+                            commands.entity(actor_ent).insert(DashAnimation2d {
+                                origin: current_actor_pos,
+                                target: dash_target,
+                                timer: Timer::from_seconds(
+                                    if current_is_ultimate { 0.30 } else { 0.25 },
+                                    TimerMode::Once,
+                                ),
+                                returning: false,
+                                damage_dealt: false,
+                                target_entity: target_ent,
+                                attacker_entity: actor_ent,
+                                damage: damage_amount as f32,
+                                is_crit: critical,
+                                is_ultimate: current_is_ultimate,
+                                class: current_actor_class,
+                            });
+                        }
+                    } else {
+                        sound_events.send(PlaySoundEvent(
+                            if current_actor_class.is_magic() || current_actor_class.is_healer() {
+                                SoundEffect::Magic
+                            } else {
+                                SoundEffect::Arrow
+                            },
+                        ));
+                        let (col, sz, arc_h, aoe) = if current_actor_class.is_magic() {
+                            (
+                                current_actor_class.color(),
+                                Vec2::new(18.0, 18.0),
+                                24.0,
+                                Some((target_grid.col, target_faction)),
+                            )
+                        } else if current_actor_class.is_healer() {
+                            (
+                                Color::srgb(0.95, 0.85, 0.3),
+                                Vec2::new(16.0, 16.0),
+                                20.0,
+                                None,
+                            )
+                        } else {
+                            (
+                                Color::srgb(0.30, 0.95, 0.40),
+                                Vec2::new(22.0, 6.0),
+                                35.0,
+                                None,
+                            )
+                        };
+
+                        commands.spawn((
+                            Sprite {
+                                custom_size: Some(sz),
+                                color: col,
+                                ..default()
+                            },
+                            Transform::from_xyz(current_actor_pos.x, current_actor_pos.y, 50.0),
+                            Projectile2d {
+                                start: current_actor_pos,
+                                target_pos,
+                                target_entity: target_ent,
+                                timer: Timer::from_seconds(0.32, TimerMode::Once),
+                                damage: damage_amount as f32,
+                                is_heal: false,
+                                is_crit: critical,
+                                is_ultimate: current_is_ultimate,
+                                aoe_row: aoe,
+                                arc_height: arc_h,
+                                class: current_actor_class,
+                            },
+                        ));
+                    }
+                }
+            }
+            CombatEvent::Damage {
+                target_id,
+                amount,
+                target_hp,
+                ..
+            } => {
+                adapter.pending_events.pop_front();
+                if let Some(&(t_ent, _)) = unit_ids.iter().find(|(_, id)| *id == target_id) {
+                    if let Ok((_, _, mut stats, _, transform, ..)) = units.get_mut(t_ent) {
+                        stats.hp = target_hp as f32;
+                        spawn_floating_text(
+                            &mut commands,
+                            &mut rng,
+                            transform.translation.xy() + Vec2::new(0.0, 28.0),
+                            &format!("-{}", amount),
+                            Color::srgb(1.0, 0.35, 0.35),
+                            14.0,
+                        );
+                    }
+                }
+            }
+            CombatEvent::Heal {
+                target_id,
+                amount,
+                target_hp,
+                ..
+            } => {
+                adapter.pending_events.pop_front();
+                sound_events.send(PlaySoundEvent(SoundEffect::Heal));
+                if let Some(&(t_ent, _)) = unit_ids.iter().find(|(_, id)| *id == target_id) {
+                    if let Ok((_, _, mut stats, _, transform, ..)) = units.get_mut(t_ent) {
+                        stats.hp = target_hp as f32;
+                        spawn_floating_text(
+                            &mut commands,
+                            &mut rng,
+                            transform.translation.xy() + Vec2::new(0.0, 28.0),
+                            &format!("+{}", amount),
+                            Color::srgb(0.25, 0.95, 0.35),
+                            15.0,
+                        );
+                    }
+                }
+            }
+            CombatEvent::RageChanged { unit_id, rage } => {
+                adapter.pending_events.pop_front();
+                if let Some(&(u_ent, _)) = unit_ids.iter().find(|(_, id)| *id == unit_id) {
+                    if let Ok((_, _, mut stats, ..)) = units.get_mut(u_ent) {
+                        stats.mana = rage as f32;
+                    }
+                }
+            }
+            CombatEvent::Stunned { unit_id } => {
+                adapter.pending_events.pop_front();
+                if let Some(&(u_ent, _)) = unit_ids.iter().find(|(_, id)| *id == unit_id) {
+                    if let Ok((_, _, _, _, transform, ..)) = units.get(u_ent) {
+                        spawn_floating_text(
+                            &mut commands,
+                            &mut rng,
+                            transform.translation.xy() + Vec2::new(0.0, 32.0),
+                            "CHOÁNG!",
+                            Color::srgb(1.0, 0.85, 0.2),
+                            14.0,
+                        );
+                    }
+                }
+            }
+            CombatEvent::StatusApplied { .. } => {
+                adapter.pending_events.pop_front();
+            }
+            CombatEvent::Defeated { unit_id } => {
+                adapter.pending_events.pop_front();
+                if let Some(&(u_ent, _)) = unit_ids.iter().find(|(_, id)| *id == unit_id) {
+                    commands.entity(u_ent).insert(DeadUnit);
+                }
+            }
+            CombatEvent::BattleEnded { winner } => {
+                adapter.pending_events.pop_front();
+                adapter.settled_winner = Some(winner);
+                break;
+            }
+        }
+    }
+
+    if current_actor_ent.is_some() && !spawned_any_attack {
         turn_manager.active_attacker = None;
         turn_manager.cooldown_timer.reset();
     }

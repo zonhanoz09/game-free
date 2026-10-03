@@ -20,7 +20,7 @@ pub fn show_victory_ui(mut commands: Commands) {
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("VICTORY!"),
+                Text::new("CHIẾN THẮNG!"),
                 TextFont {
                     font_size: 46.0,
                     ..default()
@@ -29,7 +29,7 @@ pub fn show_victory_ui(mut commands: Commands) {
             ));
 
             parent.spawn((
-                Text::new("You have vanquished the entire enemy force upon the arena!"),
+                Text::new("Toàn bộ quân địch trên sa trường đã bị tiêu diệt!"),
                 TextFont {
                     font_size: 16.5,
                     ..default()
@@ -60,7 +60,7 @@ pub fn show_victory_ui(mut commands: Commands) {
                             NextStageButton,
                         ))
                         .with_child((
-                            Text::new("NEXT STAGE >>"),
+                            Text::new("ẢI KẾ TIẾP >>"),
                             TextFont {
                                 font_size: 16.0,
                                 ..default()
@@ -83,7 +83,7 @@ pub fn show_victory_ui(mut commands: Commands) {
                             RetryButton,
                         ))
                         .with_child((
-                            Text::new("Retry Stage"),
+                            Text::new("Đấu Lại"),
                             TextFont {
                                 font_size: 14.0,
                                 ..default()
@@ -114,7 +114,7 @@ pub fn show_defeat_ui(mut commands: Commands) {
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("DEFEAT!"),
+                Text::new("THẤT BẠI!"),
                 TextFont {
                     font_size: 46.0,
                     ..default()
@@ -123,7 +123,7 @@ pub fn show_defeat_ui(mut commands: Commands) {
             ));
 
             parent.spawn((
-                Text::new("Your champions have fallen! Adjust your positioning and try again."),
+                Text::new("Đội hình của bạn đã gục ngã! Hãy sắp xếp lại trận pháp và thử lại."),
                 TextFont {
                     font_size: 16.5,
                     ..default()
@@ -147,7 +147,7 @@ pub fn show_defeat_ui(mut commands: Commands) {
                     RetryButton,
                 ))
                 .with_child((
-                    Text::new("RETRY <<"),
+                    Text::new("THỬ LẠI <<"),
                     TextFont {
                         font_size: 16.0,
                         ..default()
@@ -197,7 +197,7 @@ pub fn update_gold_display_system(
 ) {
     let interest = (economy.gold / 10).clamp(0, 5);
     for mut text in text_query.iter_mut() {
-        *text = Text::new(format!("🪙 {}G (+{}G next)", economy.gold, 5 + interest));
+        *text = Text::new(format!("💰 {} Vàng (+{} kế)", economy.gold, 5 + interest));
     }
 }
 
@@ -224,7 +224,7 @@ pub fn handle_reroll_and_lock_buttons(
         if economy.reroll(&mut rng) {
             sound_events.send(PlaySoundEvent(SoundEffect::Click));
         } else if let Ok(mut txt) = tooltip.get_single_mut() {
-            *txt = Text::new("⚠️ Need at least 2G to roll the shop!".to_string());
+            *txt = Text::new("⚠️ Cần ít nhất 2 Vàng để đổi thẻ tướng mới!".to_string());
         }
     }
 

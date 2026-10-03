@@ -20,7 +20,7 @@ wasm-bindgen --out-dir dist/wasm --target web target/wasm32-unknown-unknown/rele
 mkdir -p dist/wasm/assets
 cp -r assets/* dist/wasm/assets/ 2>/dev/null || true
 WASM_VERSION="$(date -u +%Y%m%d%H%M%S)-$(sha256sum dist/wasm/game-free_bg.wasm | cut -c1-8)"
-sed -i -E "s#\./game-free\.js(\?v=[^']*)?'#./game-free.js?v=${WASM_VERSION}'#" dist/wasm/index.html
+sed -i -E "s#\\./game-free\\.js(\\?v=[^']*)?'#./game-free.js?v=${WASM_VERSION}'#" dist/wasm/index.html
 
 # 2. Tạo OCI Bastion Session & Thiết lập SSH Tunnel
 echo "🛡️ Khởi tạo OCI Bastion Port-Forwarding Session..."
@@ -56,10 +56,16 @@ done
 echo "📤 Đang đồng bộ files lên OCI Private Instance (10.0.1.60)..."
 SSH_OPTS=(-i "$HOME/.ssh/id_ed25519" -o StrictHostKeyChecking=no -p "${LOCAL_TUNNEL_PORT}")
 ssh "${SSH_OPTS[@]}" ubuntu@127.0.0.1 \
-    "mkdir -p /opt/game-free/app/dist/wasm /opt/game-free/app/apps/client /opt/game-free/app/apps/server /opt/game-free/app/deploy/docker"
+    "mkdir -p /opt/game-free/app/dist/wasm /opt/game-free/app/apps/client /opt/game-free/app/apps/server /opt/game-free/app/deploy/docker /opt/game-free/app/assets /opt/game-free/app/migrations"
 rsync -avz -e "ssh ${SSH_OPTS[*]}" \
     --exclude ".git" --exclude "target" \
     dist/wasm/ ubuntu@127.0.0.1:/opt/game-free/app/dist/wasm/
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    --exclude ".git" --exclude "target" \
+    assets/ ubuntu@127.0.0.1:/opt/game-free/app/assets/
+rsync -avz -e "ssh ${SSH_OPTS[*]}" \
+    --exclude ".git" --exclude "target" \
+    migrations/ ubuntu@127.0.0.1:/opt/game-free/app/migrations/
 rsync -avz -e "ssh ${SSH_OPTS[*]}" \
     --exclude ".git" --exclude "target" \
     apps/server/ ubuntu@127.0.0.1:/opt/game-free/app/apps/server/
@@ -89,7 +95,6 @@ ssh "${SSH_OPTS[@]}" \
             --network-alias game-server \
             -p 8080:8080 \
             -v /opt/game-free/app/dist/wasm:/app/dist/wasm \
-            -v /opt/game-free/app/data:/app/data \
             -w /app \
             tactical-arena-rust:latest && \
         sudo docker ps

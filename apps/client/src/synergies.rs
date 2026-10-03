@@ -4,21 +4,31 @@ use bevy::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SynergyType {
-    Vanguard,
-    Sharpshooter,
-    Arcanist,
-    Shadow,
-    Divine,
+    Vanguard,     // Tank / Warrior
+    Sharpshooter, // DPS / Ranged
+    Arcanist,     // Mage / Burst AoE
+    Shadow,       // Assassin / Crit
+    Divine,       // Healer / Support
 }
 
 impl SynergyType {
     pub fn name(&self) -> &'static str {
         match self {
-            SynergyType::Vanguard => "Vanguard (Thiết Vệ)",
-            SynergyType::Sharpshooter => "Sharpshooter (Xạ Thủ)",
-            SynergyType::Arcanist => "Arcanist (Ma Đạo)",
-            SynergyType::Shadow => "Shadow (Bóng Đêm)",
-            SynergyType::Divine => "Divine (Thần Thánh)",
+            SynergyType::Vanguard => "Thiết Vệ",
+            SynergyType::Sharpshooter => "Thần Xạ",
+            SynergyType::Arcanist => "Kỳ Môn",
+            SynergyType::Shadow => "Ám Ảnh",
+            SynergyType::Divine => "Thần Ân",
+        }
+    }
+
+    pub fn threshold(&self) -> usize {
+        match self {
+            SynergyType::Vanguard => 2,
+            SynergyType::Sharpshooter => 2,
+            SynergyType::Arcanist => 2,
+            SynergyType::Shadow => 2,
+            SynergyType::Divine => 1,
         }
     }
 
@@ -28,25 +38,18 @@ impl SynergyType {
             SynergyType::Sharpshooter => "🏹",
             SynergyType::Arcanist => "⚡",
             SynergyType::Shadow => "🗡️",
-            SynergyType::Divine => "✨",
-        }
-    }
-
-    pub fn threshold(&self) -> usize {
-        match self {
-            SynergyType::Divine => 1,
-            _ => 2,
+            SynergyType::Divine => "⚕️",
         }
     }
 
     #[allow(dead_code)]
     pub fn description(&self) -> &'static str {
         match self {
-            SynergyType::Vanguard => "(2) +35 Giáp cho Thiết Vệ, +15 Giáp cho cả đội.",
-            SynergyType::Sharpshooter => "(2) +25% Sức mạnh tấn công & +15% Tỷ lệ chí mạng.",
-            SynergyType::Arcanist => "(2) +30% Công phép & +30 Mana khởi đầu trận đấu.",
-            SynergyType::Shadow => "(2) +25% Tỷ lệ chí mạng & +50% Sát thương chí mạng.",
-            SynergyType::Divine => "(1) Hồi 5% Máu tối đa mỗi lượt cho toàn bộ đồng minh.",
+            SynergyType::Vanguard => "(2) +35 Giáp cho Tiền Tuyến, +15 Giáp cho toàn đội",
+            SynergyType::Sharpshooter => "(2) +25% Công, +15% Tỉ Lệ Bạo Kích cho Thần Xạ",
+            SynergyType::Arcanist => "(2) +30% Công Phép, bắt đầu trận với 30 Nộ Khí",
+            SynergyType::Shadow => "(2) +25% Tỉ Lệ Bạo Kích, ưu tiên áp sát hàng sau",
+            SynergyType::Divine => "(1) Hồi 20 HP mỗi lượt cho toàn đội hình",
         }
     }
 
@@ -63,11 +66,15 @@ impl SynergyType {
 
 pub fn class_to_synergy(class: UnitClass) -> SynergyType {
     match class {
-        UnitClass::Knight => SynergyType::Vanguard,
+        UnitClass::Knight | UnitClass::DianWei | UnitClass::SunCe | UnitClass::CaoCao => {
+            SynergyType::Vanguard
+        }
         UnitClass::Archer => SynergyType::Sharpshooter,
-        UnitClass::Mage => SynergyType::Arcanist,
+        UnitClass::Mage | UnitClass::GuoJia | UnitClass::LuXun | UnitClass::JiaXu => {
+            SynergyType::Arcanist
+        }
         UnitClass::Assassin => SynergyType::Shadow,
-        UnitClass::Cleric => SynergyType::Divine,
+        UnitClass::Cleric | UnitClass::DaQiaoXiaoQiao => SynergyType::Divine,
     }
 }
 
@@ -129,14 +136,7 @@ mod tests {
 
     #[test]
     fn test_all_classes_mapped_to_synergies() {
-        let classes = [
-            UnitClass::Knight,
-            UnitClass::Archer,
-            UnitClass::Mage,
-            UnitClass::Assassin,
-            UnitClass::Cleric,
-        ];
-        for c in classes {
+        for c in UnitClass::ALL {
             let syn = class_to_synergy(c);
             assert!(!syn.name().is_empty());
             assert!(!syn.icon().is_empty());

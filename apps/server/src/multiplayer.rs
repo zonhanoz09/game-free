@@ -19,8 +19,10 @@ pub struct PlayerSession {
 pub struct Room {
     pub code: String,
     pub round: usize,
+    pub settled_round: usize,
     pub host: PlayerSession,
     pub guest: Option<PlayerSession>,
+    pub authority: Option<crate::authority::AuthoritativeBattle>,
 }
 
 #[derive(Serialize)]
@@ -39,6 +41,7 @@ pub struct AppState {
     pub db: Arc<RwLock<Database>>,
     pub rooms: Arc<RwLock<HashMap<String, Room>>>,
     pub quick_match: Arc<RwLock<Option<QuickMatchEntry>>>,
+    pub player_progression: Arc<RwLock<HashMap<String, game_logic::gacha::PlayerProgressionState>>>,
 }
 
 pub(crate) fn generate_room_code() -> String {

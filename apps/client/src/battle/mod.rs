@@ -4,9 +4,9 @@ use crate::economy::PlayerEconomy;
 use crate::types::*;
 use crate::units::{BossUnit, ChibiSquashStretch, Unit};
 use bevy::prelude::*;
-use game_logic::mitigate_damage;
 use std::f32::consts::PI;
 
+mod adapter;
 mod animations;
 mod components;
 mod lifecycle;
@@ -16,6 +16,7 @@ mod tests;
 mod turn;
 mod vfx;
 
+pub use adapter::*;
 pub use animations::*;
 pub use components::*;
 pub use lifecycle::*;

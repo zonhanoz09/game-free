@@ -1,4 +1,4 @@
-use crate::battle::{ActionGauge, HitStopManager};
+use crate::battle::HitStopManager;
 use crate::board::{bench_world_pos, grid_to_world_pos};
 use crate::types::*;
 use bevy::prelude::*;
@@ -17,13 +17,193 @@ pub struct HealthBarFill2d;
 pub struct ManaBarFill2d;
 
 #[derive(Component)]
-pub struct StaminaBarFill2d;
-
-#[derive(Component)]
 pub struct BossUnit;
 
 #[derive(Component)]
 pub struct HealthBarRoot2d;
+
+#[derive(Component)]
+pub struct EffectIconsRoot2d;
+
+#[derive(Component)]
+#[allow(dead_code)]
+pub struct EffectIconsText2d;
+
+#[derive(Component)]
+pub struct EffectBadgeSlot {
+    pub index: usize,
+}
+
+#[derive(Component)]
+pub struct EffectBadgeText {
+    #[allow(dead_code)]
+    pub index: usize,
+}
+
+#[derive(Clone, Copy)]
+pub struct BadgeInfo {
+    pub label: &'static str,
+    pub bg_color: Color,
+    pub text_color: Color,
+    pub width: f32,
+}
+
+pub fn get_badge_info(effect_id: &str, name: &str) -> BadgeInfo {
+    let lower_id = effect_id.to_lowercase();
+    let lower_name = name.to_lowercase();
+
+    if lower_id.contains("shield") || lower_name.contains("khiên") || lower_name.contains("thuẫn") {
+        BadgeInfo {
+            label: "KHIÊN",
+            bg_color: Color::srgb(0.05, 0.60, 0.90),
+            text_color: Color::WHITE,
+            width: 32.0,
+        }
+    } else if lower_id.contains("burn") || lower_name.contains("hỏa") || lower_name.contains("bỏng") {
+        BadgeInfo {
+            label: "HỎA",
+            bg_color: Color::srgb(0.92, 0.32, 0.08),
+            text_color: Color::WHITE,
+            width: 28.0,
+        }
+    } else if lower_id.contains("poison") || lower_name.contains("độc") {
+        BadgeInfo {
+            label: "ĐỘC",
+            bg_color: Color::srgb(0.18, 0.72, 0.22),
+            text_color: Color::WHITE,
+            width: 28.0,
+        }
+    } else if lower_id.contains("freeze") || lower_name.contains("băng") {
+        BadgeInfo {
+            label: "BĂNG",
+            bg_color: Color::srgb(0.20, 0.70, 0.95),
+            text_color: Color::srgb(0.05, 0.15, 0.3),
+            width: 30.0,
+        }
+    } else if lower_id.contains("stun") || lower_name.contains("choáng") {
+        BadgeInfo {
+            label: "CHOÁNG",
+            bg_color: Color::srgb(0.95, 0.75, 0.10),
+            text_color: Color::srgb(0.1, 0.1, 0.1),
+            width: 38.0,
+        }
+    } else if lower_id.contains("bleed") || lower_name.contains("máu") {
+        BadgeInfo {
+            label: "MÁU",
+            bg_color: Color::srgb(0.85, 0.12, 0.18),
+            text_color: Color::WHITE,
+            width: 28.0,
+        }
+    } else if lower_id.contains("syn_vanguard") || lower_name.contains("thiết vệ") {
+        BadgeInfo {
+            label: "THIẾT VỆ",
+            bg_color: Color::srgb(0.12, 0.38, 0.85),
+            text_color: Color::WHITE,
+            width: 42.0,
+        }
+    } else if lower_id.contains("syn_sharpshooter") || lower_name.contains("thần xạ") {
+        BadgeInfo {
+            label: "THẦN XẠ",
+            bg_color: Color::srgb(0.90, 0.50, 0.08),
+            text_color: Color::WHITE,
+            width: 42.0,
+        }
+    } else if lower_id.contains("syn_arcanist") || lower_name.contains("kỳ môn") {
+        BadgeInfo {
+            label: "KỲ MÔN",
+            bg_color: Color::srgb(0.55, 0.18, 0.85),
+            text_color: Color::WHITE,
+            width: 40.0,
+        }
+    } else if lower_id.contains("syn_shadow") || lower_name.contains("ám ảnh") {
+        BadgeInfo {
+            label: "ÁM ẢNH",
+            bg_color: Color::srgb(0.35, 0.15, 0.50),
+            text_color: Color::WHITE,
+            width: 40.0,
+        }
+    } else if lower_id.contains("syn_divine") || lower_name.contains("thần ân") {
+        BadgeInfo {
+            label: "THẦN ÂN",
+            bg_color: Color::srgb(0.10, 0.68, 0.48),
+            text_color: Color::WHITE,
+            width: 42.0,
+        }
+    } else if lower_id.contains("weaken") || lower_name.contains("suy yếu") {
+        BadgeInfo {
+            label: "YẾU",
+            bg_color: Color::srgb(0.55, 0.30, 0.65),
+            text_color: Color::WHITE,
+            width: 26.0,
+        }
+    } else if lower_id.contains("vulnerable") || lower_name.contains("sơ hở") {
+        BadgeInfo {
+            label: "HỞ",
+            bg_color: Color::srgb(0.85, 0.45, 0.12),
+            text_color: Color::WHITE,
+            width: 26.0,
+        }
+    } else if lower_id.contains("heal") || lower_name.contains("hồi phục") {
+        BadgeInfo {
+            label: "HỒI",
+            bg_color: Color::srgb(0.15, 0.80, 0.40),
+            text_color: Color::WHITE,
+            width: 26.0,
+        }
+    } else {
+        BadgeInfo {
+            label: "BUFF",
+            bg_color: Color::srgb(0.4, 0.4, 0.5),
+            text_color: Color::WHITE,
+            width: 30.0,
+        }
+    }
+}
+
+#[derive(Component, Default, Clone, Debug)]
+pub struct ActiveStatusEffects {
+    pub effects: Vec<StatusEffectInstance>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StatusEffectInstance {
+    pub effect_id: String,
+    pub icon: String,
+    pub name: String,
+    pub turns_remaining: i32,
+}
+
+impl ActiveStatusEffects {
+    pub fn add(&mut self, effect_id: &str, icon: &str, name: &str, turns: i32) {
+        if let Some(existing) = self.effects.iter_mut().find(|e| e.effect_id == effect_id) {
+            existing.turns_remaining = existing.turns_remaining.max(turns);
+        } else {
+            self.effects.push(StatusEffectInstance {
+                effect_id: effect_id.to_string(),
+                icon: icon.to_string(),
+                name: name.to_string(),
+                turns_remaining: turns,
+            });
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn remove(&mut self, effect_id: &str) {
+        self.effects.retain(|e| e.effect_id != effect_id);
+    }
+
+    #[allow(dead_code)]
+    pub fn tick_turns(&mut self) {
+        for eff in self.effects.iter_mut() {
+            eff.turns_remaining = eff.turns_remaining.saturating_sub(1);
+        }
+        self.effects.retain(|e| e.turns_remaining > 0);
+    }
+
+    pub fn clear(&mut self) {
+        self.effects.clear();
+    }
+}
 
 #[derive(Component)]
 pub struct UnitVisualRoot;
@@ -157,8 +337,9 @@ pub fn spawn_unit_ext_bonus_with_initiative(
         },
         crate::economy::StarLevel(star_level),
         stats,
+        ActiveStatusEffects::default(),
         GridPos { col, row, faction },
-        ActionGauge { current: 0.0 },
+        crate::battle::ActionGauge { current: 0.0 },
         ChibiSquashStretch::default(),
         Transform::from_xyz(world_pos.x, world_pos.y, z_depth).with_scale(Vec3::splat(token_scale)),
         Visibility::default(),
@@ -179,6 +360,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
             Transform::from_xyz(0.0, 0.0, -0.2),
         ));
 
+        // Soft drop shadow
         parent.spawn((
             Sprite {
                 custom_size: Some(Vec2::new(76.0, 22.0)),
@@ -200,6 +382,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                 Visibility::default(),
             ))
             .with_children(|vis_parent| {
+                // Outer Card Border
                 vis_parent.spawn((
                     Sprite {
                         custom_size: Some(Vec2::splat(68.0)),
@@ -209,6 +392,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                     Transform::from_xyz(0.0, 0.0, 0.0),
                 ));
 
+                // Inner Bevel
                 vis_parent.spawn((
                     Sprite {
                         custom_size: Some(Vec2::splat(64.0)),
@@ -218,6 +402,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                     Transform::from_xyz(0.0, 0.0, 0.1),
                 ));
 
+                // Dark Portrait Plate
                 vis_parent.spawn((
                     Sprite {
                         custom_size: Some(Vec2::splat(58.0)),
@@ -227,34 +412,136 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                     Transform::from_xyz(0.0, 0.0, 0.2),
                 ));
 
-                let portrait_tex = textures.get_unit_texture(unit_class);
-                let flip_x = faction == Faction::Enemy;
-
+                // Hero Portrait Texture Plate
                 vis_parent.spawn((
                     Sprite {
-                        image: portrait_tex,
-                        custom_size: Some(Vec2::splat(56.0)),
-                        flip_x,
+                        custom_size: Some(Vec2::splat(44.0)),
+                        color: Color::srgba(0.04, 0.06, 0.10, 0.90),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.3),
+                    Transform::from_xyz(0.0, 2.0, 0.25),
                 ));
 
                 vis_parent.spawn((
                     Sprite {
-                        custom_size: Some(Vec2::splat(16.0)),
+                        custom_size: Some(Vec2::splat(40.0)),
                         color: unit_class.color(),
                         ..default()
                     },
-                    Transform::from_xyz(-22.0, 22.0, 0.4),
+                    Transform::from_xyz(0.0, 2.0, 0.28),
                 ));
+
+                // Real unit card texture
+                vis_parent.spawn((
+                    Sprite {
+                        image: textures.get_unit_texture(unit_class),
+                        custom_size: Some(Vec2::splat(38.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 2.0, 0.32),
+                ));
+
+                vis_parent.spawn((
+                    Text2d::new(unit_class.name()),
+                    TextFont {
+                        font_size: 8.5,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Transform::from_xyz(0.0, -18.0, 0.38),
+                ));
+
+                // Top-Left Class Role Badge
+                vis_parent
+                    .spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::splat(20.0)),
+                            color: Color::srgba(0.06, 0.08, 0.14, 0.95),
+                            ..default()
+                        },
+                        Transform::from_xyz(-23.0, 23.0, 0.4),
+                    ))
+                    .with_children(|badge| {
+                        badge.spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::splat(18.0)),
+                                color: unit_class.color(),
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, 0.05),
+                        ));
+                        badge.spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::splat(15.0)),
+                                color: Color::srgb(0.08, 0.10, 0.16),
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                        ));
+                        badge.spawn((
+                            Text2d::new(unit_class.role_abbr()),
+                            TextFont {
+                                font_size: 7.5,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                            Transform::from_xyz(0.0, 0.0, 0.2),
+                        ));
+                    });
+
+                // Top-Right Star Rating / Boss Badge
+                if is_boss {
+                    vis_parent
+                        .spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::new(34.0, 15.0)),
+                                color: Color::srgba(0.5, 0.05, 0.1, 0.92),
+                                ..default()
+                            },
+                            Transform::from_xyz(18.0, 23.0, 0.4),
+                        ))
+                        .with_child((
+                            Text2d::new("👑 BOSS"),
+                            TextFont {
+                                font_size: 8.5,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.3, 0.3)),
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                        ));
+                } else if star_level > 1 {
+                    vis_parent
+                        .spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::new(
+                                    if star_level >= 3 { 32.0 } else { 24.0 },
+                                    15.0,
+                                )),
+                                color: Color::srgba(0.05, 0.07, 0.12, 0.92),
+                                ..default()
+                            },
+                            Transform::from_xyz(20.0, 23.0, 0.4),
+                        ))
+                        .with_children(|star_badge| {
+                            star_badge.spawn((
+                                Text2d::new(crate::economy::StarLevel(star_level).badge()),
+                                TextFont {
+                                    font_size: 9.5,
+                                    ..default()
+                                },
+                                TextColor(crate::economy::StarLevel(star_level).color()),
+                                Transform::from_xyz(0.0, 0.0, 0.1),
+                            ));
+                        });
+                }
             });
 
+        // Bottom Name Plate Pill
         parent
             .spawn((
                 Sprite {
-                    custom_size: Some(Vec2::new(60.0, 14.0)),
-                    color: Color::srgba(0.05, 0.07, 0.10, 0.85),
+                    custom_size: Some(Vec2::new(64.0, 14.0)),
+                    color: Color::srgba(0.05, 0.07, 0.10, 0.88),
                     ..default()
                 },
                 Transform::from_xyz(0.0, -31.0, 0.5),
@@ -265,11 +552,11 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                 } else if star_level > 1 {
                     format!(
                         "{} {}",
-                        unit_class.name().to_uppercase(),
+                        unit_class.name(),
                         crate::economy::StarLevel(star_level).badge()
                     )
                 } else {
-                    unit_class.name().to_uppercase()
+                    unit_class.name().to_string()
                 }),
                 TextFont {
                     font_size: if is_boss { 9.5 } else { 9.0 },
@@ -285,71 +572,99 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                 Transform::from_xyz(0.0, 0.0, 0.1),
             ));
 
+        // Overhead Status Effects Container
+        parent
+            .spawn((
+                EffectIconsRoot2d,
+                Transform::from_xyz(0.0, 59.0, 1.2),
+                Visibility::default(),
+            ))
+            .with_children(|fx_parent| {
+                for idx in 0..3 {
+                    fx_parent
+                        .spawn((
+                            EffectBadgeSlot { index: idx },
+                            Sprite {
+                                custom_size: Some(Vec2::new(32.0, 13.0)),
+                                color: Color::srgba(0.1, 0.1, 0.1, 0.9),
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                            Visibility::Hidden,
+                        ))
+                        .with_child((
+                            EffectBadgeText { index: idx },
+                            Text2d::new(""),
+                            TextFont {
+                                font_size: 7.5,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                        ));
+                }
+            });
+
+        // Overhead Dual Status Bars (HP + Mana)
         parent
             .spawn((
                 HealthBarRoot2d,
-                Transform::from_xyz(0.0, 48.0, 1.0),
+                Transform::from_xyz(0.0, 46.0, 1.0),
                 Visibility::default(),
             ))
             .with_children(|bar_parent| {
+                // Background Frame
                 bar_parent.spawn((
                     Sprite {
-                        custom_size: Some(Vec2::new(64.0, 7.0)),
+                        custom_size: Some(Vec2::new(66.0, 12.0)),
+                        color: Color::srgba(0.04, 0.05, 0.08, 0.95),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, -2.5, 0.0),
+                ));
+
+                // HP Bar BG
+                bar_parent.spawn((
+                    Sprite {
+                        custom_size: Some(Vec2::new(64.0, 6.0)),
                         color: Color::srgb(0.06, 0.08, 0.12),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    Transform::from_xyz(0.0, 0.0, 0.05),
                 ));
 
+                // HP Bar Fill
                 bar_parent.spawn((
                     HealthBarFill2d,
                     Sprite {
                         custom_size: Some(Vec2::new(62.0, 5.0)),
-                        color: Color::srgb(0.2, 0.85, 0.3),
+                        color: Color::srgb(0.2, 0.85, 0.35),
                         anchor: Anchor::CenterLeft,
                         ..default()
                     },
                     Transform::from_xyz(-31.0, 0.0, 0.1),
                 ));
 
+                // Mana Bar BG
                 bar_parent.spawn((
                     Sprite {
-                        custom_size: Some(Vec2::new(64.0, 4.5)),
+                        custom_size: Some(Vec2::new(64.0, 4.0)),
                         color: Color::srgb(0.04, 0.05, 0.09),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, -5.5, 0.0),
+                    Transform::from_xyz(0.0, -5.5, 0.05),
                 ));
 
+                // Mana Bar Fill
                 bar_parent.spawn((
                     ManaBarFill2d,
                     Sprite {
-                        custom_size: Some(Vec2::new(62.0, 3.5)),
+                        custom_size: Some(Vec2::new(62.0, 3.2)),
                         color: Color::srgb(0.22, 0.55, 1.0),
                         anchor: Anchor::CenterLeft,
                         ..default()
                     },
                     Transform::from_xyz(-31.0, -5.5, 0.1),
-                ));
-
-                bar_parent.spawn((
-                    Sprite {
-                        custom_size: Some(Vec2::new(64.0, 3.5)),
-                        color: Color::srgb(0.04, 0.05, 0.08),
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, -10.0, 0.0),
-                ));
-
-                bar_parent.spawn((
-                    StaminaBarFill2d,
-                    Sprite {
-                        custom_size: Some(Vec2::new(62.0, 2.5)),
-                        color: Color::srgb(0.2, 0.85, 1.0),
-                        anchor: Anchor::CenterLeft,
-                        ..default()
-                    },
-                    Transform::from_xyz(-31.0, -10.0, 0.1),
                 ));
             });
     });
@@ -411,6 +726,7 @@ pub fn spawn_bench_unit_bonus(
         },
         crate::economy::StarLevel(star_level),
         stats,
+        ActiveStatusEffects::default(),
         BenchPos { slot },
         ChibiSquashStretch::default(),
         Transform::from_xyz(world_pos.x, world_pos.y, z_depth).with_scale(Vec3::splat(token_scale)),
@@ -428,6 +744,7 @@ pub fn spawn_bench_unit_bonus(
             Transform::from_xyz(0.0, 0.0, -0.2),
         ));
 
+        // Soft drop shadow
         parent.spawn((
             Sprite {
                 custom_size: Some(Vec2::new(76.0, 22.0)),
@@ -449,6 +766,7 @@ pub fn spawn_bench_unit_bonus(
                 Visibility::default(),
             ))
             .with_children(|vis_parent| {
+                // Outer Card Border
                 vis_parent.spawn((
                     Sprite {
                         custom_size: Some(Vec2::splat(68.0)),
@@ -458,6 +776,7 @@ pub fn spawn_bench_unit_bonus(
                     Transform::from_xyz(0.0, 0.0, 0.0),
                 ));
 
+                // Inner Bevel
                 vis_parent.spawn((
                     Sprite {
                         custom_size: Some(Vec2::splat(64.0)),
@@ -467,6 +786,7 @@ pub fn spawn_bench_unit_bonus(
                     Transform::from_xyz(0.0, 0.0, 0.1),
                 ));
 
+                // Dark Portrait Plate
                 vis_parent.spawn((
                     Sprite {
                         custom_size: Some(Vec2::splat(58.0)),
@@ -476,26 +796,112 @@ pub fn spawn_bench_unit_bonus(
                     Transform::from_xyz(0.0, 0.0, 0.2),
                 ));
 
-                let portrait_tex = textures.get_unit_texture(unit_class);
+                // Central Hero Icon Emblem
                 vis_parent.spawn((
                     Sprite {
-                        image: portrait_tex,
-                        custom_size: Some(Vec2::splat(56.0)),
+                        custom_size: Some(Vec2::splat(44.0)),
+                        color: Color::srgba(0.04, 0.06, 0.10, 0.90),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.3),
+                    Transform::from_xyz(0.0, 2.0, 0.25),
                 ));
 
                 vis_parent.spawn((
                     Sprite {
-                        custom_size: Some(Vec2::splat(16.0)),
+                        custom_size: Some(Vec2::splat(40.0)),
                         color: unit_class.color(),
                         ..default()
                     },
-                    Transform::from_xyz(-22.0, 22.0, 0.4),
+                    Transform::from_xyz(0.0, 2.0, 0.28),
                 ));
+
+                // Real unit card texture
+                vis_parent.spawn((
+                    Sprite {
+                        image: textures.get_unit_texture(unit_class),
+                        custom_size: Some(Vec2::splat(38.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 2.0, 0.32),
+                ));
+
+                vis_parent.spawn((
+                    Text2d::new(unit_class.name()),
+                    TextFont {
+                        font_size: 8.5,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Transform::from_xyz(0.0, -18.0, 0.38),
+                ));
+
+                // Top-Left Class Role Badge
+                vis_parent
+                    .spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::splat(20.0)),
+                            color: Color::srgba(0.06, 0.08, 0.14, 0.95),
+                            ..default()
+                        },
+                        Transform::from_xyz(-23.0, 23.0, 0.4),
+                    ))
+                    .with_children(|badge| {
+                        badge.spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::splat(18.0)),
+                                color: unit_class.color(),
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, 0.05),
+                        ));
+                        badge.spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::splat(15.0)),
+                                color: Color::srgb(0.08, 0.10, 0.16),
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                        ));
+                        badge.spawn((
+                            Text2d::new(unit_class.role_abbr()),
+                            TextFont {
+                                font_size: 7.5,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                            Transform::from_xyz(0.0, 0.0, 0.2),
+                        ));
+                    });
+
+                // Top-Right Star Rating Badge
+                if star_level > 1 {
+                    vis_parent
+                        .spawn((
+                            Sprite {
+                                custom_size: Some(Vec2::new(
+                                    if star_level >= 3 { 32.0 } else { 24.0 },
+                                    15.0,
+                                )),
+                                color: Color::srgba(0.05, 0.07, 0.12, 0.92),
+                                ..default()
+                            },
+                            Transform::from_xyz(20.0, 23.0, 0.4),
+                        ))
+                        .with_children(|star_badge| {
+                            star_badge.spawn((
+                                Text2d::new(crate::economy::StarLevel(star_level).badge()),
+                                TextFont {
+                                    font_size: 9.5,
+                                    ..default()
+                                },
+                                TextColor(crate::economy::StarLevel(star_level).color()),
+                                Transform::from_xyz(0.0, 0.0, 0.1),
+                            ));
+                        });
+                }
             });
 
+        // Bottom Name Plate Pill
         parent
             .spawn((
                 Sprite {
@@ -509,11 +915,11 @@ pub fn spawn_bench_unit_bonus(
                 Text2d::new(if star_level > 1 {
                     format!(
                         "{} {}",
-                        unit_class.name().to_uppercase(),
+                        unit_class.name(),
                         crate::economy::StarLevel(star_level).badge()
                     )
                 } else {
-                    unit_class.name().to_uppercase()
+                    unit_class.name().to_string()
                 }),
                 TextFont {
                     font_size: 9.0,
@@ -527,10 +933,44 @@ pub fn spawn_bench_unit_bonus(
                 Transform::from_xyz(0.0, 0.0, 0.1),
             ));
 
+        // Overhead Status Effects Container
+        parent
+            .spawn((
+                EffectIconsRoot2d,
+                Transform::from_xyz(0.0, 59.0, 1.2),
+                Visibility::default(),
+            ))
+            .with_children(|fx_parent| {
+                for idx in 0..3 {
+                    fx_parent
+                        .spawn((
+                            EffectBadgeSlot { index: idx },
+                            Sprite {
+                                custom_size: Some(Vec2::new(32.0, 13.0)),
+                                color: Color::srgba(0.1, 0.1, 0.1, 0.9),
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                            Visibility::Hidden,
+                        ))
+                        .with_child((
+                            EffectBadgeText { index: idx },
+                            Text2d::new(""),
+                            TextFont {
+                                font_size: 7.5,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                            Transform::from_xyz(0.0, 0.0, 0.1),
+                        ));
+                }
+            });
+
+        // Overhead HP Bar
         parent
             .spawn((
                 HealthBarRoot2d,
-                Transform::from_xyz(0.0, 48.0, 1.0),
+                Transform::from_xyz(0.0, 46.0, 1.0),
                 Visibility::default(),
             ))
             .with_children(|bar_parent| {
@@ -632,37 +1072,20 @@ pub fn animate_idle_bobbing(
 }
 
 pub fn update_unit_health_bars(
-    units: Query<(&UnitStats, &Children, Option<&ActionGauge>), (With<Unit>, Without<DeadUnit>)>,
+    units: Query<(&UnitStats, &Children), (With<Unit>, Without<DeadUnit>)>,
     mut hp_fill_query: Query<
         (&mut Transform, &mut Sprite),
-        (
-            With<HealthBarFill2d>,
-            Without<ManaBarFill2d>,
-            Without<StaminaBarFill2d>,
-        ),
+        (With<HealthBarFill2d>, Without<ManaBarFill2d>),
     >,
     mut mana_fill_query: Query<
         (&mut Transform, &mut Sprite),
-        (
-            With<ManaBarFill2d>,
-            Without<HealthBarFill2d>,
-            Without<StaminaBarFill2d>,
-        ),
-    >,
-    mut stamina_fill_query: Query<
-        &mut Transform,
-        (
-            With<StaminaBarFill2d>,
-            Without<HealthBarFill2d>,
-            Without<ManaBarFill2d>,
-        ),
+        (With<ManaBarFill2d>, Without<HealthBarFill2d>),
     >,
     roots: Query<&Children, With<HealthBarRoot2d>>,
 ) {
-    for (stats, unit_children, maybe_gauge) in units.iter() {
+    for (stats, unit_children) in units.iter() {
         let hp_ratio = (stats.hp / stats.max_hp).clamp(0.0, 1.0);
         let mana_ratio = (stats.mana / stats.max_mana).clamp(0.0, 1.0);
-        let stamina_ratio = maybe_gauge.map_or(0.0, |g| (g.current / 100.0).clamp(0.0, 1.0));
 
         for child in unit_children.iter() {
             if let Ok(bar_children) = roots.get(*child) {
@@ -691,10 +1114,72 @@ pub fn update_unit_health_bars(
                             sprite.color = Color::srgb(0.22, 0.55, 1.0); // Arcane Mana Blue
                         }
                     }
+                }
+            }
+        }
+    }
+}
 
-                    // Update Stamina / Action Gauge Bar
-                    if let Ok(mut transform) = stamina_fill_query.get_mut(*bar_child) {
-                        transform.scale.x = stamina_ratio;
+pub fn update_unit_effect_icons(
+    units: Query<(&UnitStats, &ActiveStatusEffects, &Children), (With<Unit>, Without<DeadUnit>)>,
+    roots: Query<&Children, With<EffectIconsRoot2d>>,
+    mut slots: Query<(&EffectBadgeSlot, &mut Transform, &mut Sprite, &mut Visibility, &Children), Without<EffectBadgeText>>,
+    mut text_query: Query<(&EffectBadgeText, &mut Text2d, &mut TextColor), Without<EffectBadgeSlot>>,
+) {
+    for (stats, active_fx, children) in units.iter() {
+        let mut badges: Vec<BadgeInfo> = Vec::new();
+
+        // 1. Shield active
+        if stats.shield > 0.0 {
+            badges.push(get_badge_info("shield", "Khiên"));
+        }
+
+        // 2. Active status effects
+        for eff in &active_fx.effects {
+            if badges.len() >= 3 {
+                break;
+            }
+            let info = get_badge_info(&eff.effect_id, &eff.name);
+            if !badges.iter().any(|b| b.label == info.label) {
+                badges.push(info);
+            }
+        }
+
+        let count = badges.len();
+
+        for child in children.iter() {
+            if let Ok(slot_entities) = roots.get(*child) {
+                for &slot_entity in slot_entities.iter() {
+                    if let Ok((slot, mut transform, mut sprite, mut vis, slot_children)) = slots.get_mut(slot_entity) {
+                        if slot.index < count {
+                            let badge = &badges[slot.index];
+
+                            let offset_x = match count {
+                                1 => 0.0,
+                                2 => if slot.index == 0 { -18.0 } else { 18.0 },
+                                _ => match slot.index {
+                                    0 => -26.0,
+                                    1 => 0.0,
+                                    _ => 26.0,
+                                },
+                            };
+
+                            transform.translation.x = offset_x;
+                            sprite.custom_size = Some(Vec2::new(badge.width, 13.0));
+                            sprite.color = badge.bg_color;
+                            *vis = Visibility::Inherited;
+
+                            for &text_child in slot_children.iter() {
+                                if let Ok((_, mut text, mut color)) = text_query.get_mut(text_child) {
+                                    if text.0 != badge.label {
+                                        *text = Text2d::new(badge.label);
+                                    }
+                                    color.0 = badge.text_color;
+                                }
+                            }
+                        } else {
+                            *vis = Visibility::Hidden;
+                        }
                     }
                 }
             }

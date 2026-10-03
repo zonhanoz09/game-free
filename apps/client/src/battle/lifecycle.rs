@@ -33,29 +33,59 @@ pub fn on_enter_battle(
     mut commands: Commands,
     units: Query<Entity, (With<Unit>, With<GridPos>)>,
     mut turn_manager: ResMut<BattleTurnManager>,
-    mut player_units: Query<(&Unit, &mut UnitStats), (With<GridPos>, Without<DeadUnit>)>,
+    mut player_units: Query<(&Unit, &mut UnitStats, &mut crate::units::ActiveStatusEffects), (With<GridPos>, Without<DeadUnit>)>,
+    mut adapter: ResMut<BattleSimulationAdapter>,
+    pvp_mgr: Res<crate::net::PvpManager>,
+    rng: Res<BattleRng>,
 ) {
     turn_manager.active_attacker = None;
     turn_manager.cooldown_timer.reset();
     turn_manager.acted_this_cycle.clear();
     turn_manager.cycle_turn_count = 0;
 
+    adapter.reset(
+        pvp_mgr.active,
+        rng.state,
+        pvp_mgr.authoritative_battle_id.clone(),
+    );
+
     for entity in units.iter() {
         commands.entity(entity).insert(ActionGauge { current: 0.0 });
     }
 
-    let mut class_counts = std::collections::HashMap::new();
-    for (unit, _) in player_units.iter() {
+    let mut syn_counts = std::collections::HashMap::new();
+    for (unit, _, _) in player_units.iter() {
         if unit.faction == Faction::Player {
-            *class_counts.entry(unit.class).or_insert(0) += 1;
+            let syn = crate::synergies::class_to_synergy(unit.class);
+            *syn_counts.entry(syn).or_insert(0) += 1;
         }
     }
 
-    let vanguard_active = class_counts.get(&UnitClass::Knight).copied().unwrap_or(0) >= 2;
-    let sharpshooter_active = class_counts.get(&UnitClass::Archer).copied().unwrap_or(0) >= 2;
-    let arcanist_active = class_counts.get(&UnitClass::Mage).copied().unwrap_or(0) >= 2;
-    let shadow_active = class_counts.get(&UnitClass::Assassin).copied().unwrap_or(0) >= 2;
-    let divine_active = class_counts.get(&UnitClass::Cleric).copied().unwrap_or(0) >= 1;
+    let vanguard_active = syn_counts
+        .get(&crate::synergies::SynergyType::Vanguard)
+        .copied()
+        .unwrap_or(0)
+        >= 2;
+    let sharpshooter_active = syn_counts
+        .get(&crate::synergies::SynergyType::Sharpshooter)
+        .copied()
+        .unwrap_or(0)
+        >= 2;
+    let arcanist_active = syn_counts
+        .get(&crate::synergies::SynergyType::Arcanist)
+        .copied()
+        .unwrap_or(0)
+        >= 2;
+    let shadow_active = syn_counts
+        .get(&crate::synergies::SynergyType::Shadow)
+        .copied()
+        .unwrap_or(0)
+        >= 2;
+    let divine_active = syn_counts
+        .get(&crate::synergies::SynergyType::Divine)
+        .copied()
+        .unwrap_or(0)
+        >= 1;
 
     info!("==================== [BATTLE START] ====================");
     info!(
@@ -63,28 +93,34 @@ pub fn on_enter_battle(
         vanguard_active, sharpshooter_active, arcanist_active, shadow_active, divine_active
     );
 
-    for (unit, mut stats) in player_units.iter_mut() {
+    for (unit, mut stats, mut fx) in player_units.iter_mut() {
         if unit.faction == Faction::Player {
+            let syn = crate::synergies::class_to_synergy(unit.class);
             if vanguard_active {
-                stats.def += if unit.class == UnitClass::Knight {
+                stats.def += if syn == crate::synergies::SynergyType::Vanguard {
                     35.0
                 } else {
                     15.0
                 };
+                fx.add("syn_vanguard", "🔰", "Thiết Vệ", 99);
             }
-            if sharpshooter_active && unit.class == UnitClass::Archer {
+            if sharpshooter_active && syn == crate::synergies::SynergyType::Sharpshooter {
                 stats.atk *= 1.25;
                 stats.crit_rate += 0.15;
+                fx.add("syn_sharpshooter", "🏹", "Thần Xạ", 99);
             }
-            if arcanist_active && unit.class == UnitClass::Mage {
+            if arcanist_active && syn == crate::synergies::SynergyType::Arcanist {
                 stats.atk *= 1.30;
                 stats.mana = 30.0;
+                fx.add("syn_arcanist", "⚡", "Kỳ Môn", 99);
             }
-            if shadow_active && unit.class == UnitClass::Assassin {
+            if shadow_active && syn == crate::synergies::SynergyType::Shadow {
                 stats.crit_rate += 0.25;
+                fx.add("syn_shadow", "🗡️", "Ám Ảnh", 99);
             }
             if divine_active {
                 stats.hp = (stats.hp + 20.0).min(stats.max_hp);
+                fx.add("syn_divine", "⚕️", "Thần Ân", 99);
             }
         }
     }
@@ -100,8 +136,15 @@ pub fn on_exit_battle(
     dashes: Query<(Entity, &DashAnimation2d)>,
     mut turn_manager: ResMut<BattleTurnManager>,
     mut transforms: Query<&mut Transform>,
+    mut adapter: ResMut<BattleSimulationAdapter>,
+    mut all_effects: Query<&mut crate::units::ActiveStatusEffects>,
 ) {
+    for mut fx in all_effects.iter_mut() {
+        fx.clear();
+    }
     turn_manager.active_attacker = None;
+    adapter.battle_state = None;
+    adapter.pending_events.clear();
 
     for entity in projectiles.iter() {
         commands.entity(entity).despawn_recursive();

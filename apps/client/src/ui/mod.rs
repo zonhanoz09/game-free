@@ -5,7 +5,6 @@ use crate::economy::{
     GoldDisplayText, PlayerEconomy, ShopLockToggle, ShopRerollButton, StarLevel, refund_amount,
     unit_cost,
 };
-use crate::stages::get_stage_def;
 use crate::synergies::{SynergyContainer, SynergyCountText, SynergyRow, SynergyType};
 use crate::types::*;
 use crate::units::{Unit, spawn_bench_unit, spawn_unit, spawn_unit_ext};

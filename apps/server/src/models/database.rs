@@ -1,49 +1,24 @@
 use super::*;
 
 pub struct Database {
-    file_path: PathBuf,
     pub(crate) data: DatabaseData,
     adb: Option<OracleAdbClient>,
 }
 
 impl Database {
-    pub fn new(path: impl AsRef<Path>) -> Self {
-        let file_path = path.as_ref().to_path_buf();
-        if let Some(parent) = file_path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-
-        let mut data = if file_path.exists() {
-            fs::read_to_string(&file_path)
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok())
-                .unwrap_or_default()
-        } else {
-            DatabaseData::default()
-        };
-
-        for user in data.users.values_mut() {
-            user.ensure_valid_id_and_deck();
-        }
-
-        Self {
-            file_path,
-            data,
-            adb: None,
-        }
+    #[allow(dead_code)]
+    pub fn new_in_memory() -> Self {
+        let mut data = DatabaseData::default();
+        data.ensure_master_data();
+        Self { data, adb: None }
     }
 
-    pub async fn new_with_adb(path: impl AsRef<Path>) -> Self {
-        let file_path = path.as_ref().to_path_buf();
-        if let Some(parent) = file_path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-
+    pub async fn new_with_adb() -> Self {
         let adb = OracleAdbClient::new_from_env();
         let mut data = DatabaseData::default();
-        let mut loaded_from_adb = false;
 
         if let Some(ref client) = adb {
+            // 1. Load users, their cards, decks, and ratings
             match client.load_all_users().await {
                 Ok(users) => {
                     println!(
@@ -51,27 +26,46 @@ impl Database {
                         users.len()
                     );
                     for u in users {
-                        data.users.insert(u.username.clone(), u);
+                        data.users.insert(u.username.to_lowercase(), u);
                     }
-                    loaded_from_adb = true;
+                }
+                Err(e) => {
+                    eprintln!("[ORACLE ADB WARNING] Could not load users from ADB: {}", e);
+                }
+            }
+
+            // 2. Load player formations
+            match client.load_all_formations().await {
+                Ok(formations) => {
+                    println!(
+                        "[ORACLE AUTONOMOUS DB] Loaded {} formations from Oracle Cloud ADB.",
+                        formations.len()
+                    );
+                    data.player_formations = formations;
                 }
                 Err(e) => {
                     eprintln!(
-                        "[ORACLE ADB WARNING] Could not load from ADB ({}). Falling back to local disk.",
+                        "[ORACLE ADB WARNING] Could not load formations from ADB: {}",
                         e
                     );
                 }
             }
-        }
 
-        if !loaded_from_adb && file_path.exists() {
-            if let Ok(content) = fs::read_to_string(&file_path) {
-                if let Ok(local_data) = serde_json::from_str::<DatabaseData>(&content) {
-                    data = local_data;
+            // 3. Load master configs
+            match client.load_all_master_configs().await {
+                Ok(configs) => {
                     println!(
-                        "[LOCAL DB] Loaded {} users and {} matches from local file.",
-                        data.users.len(),
-                        data.matches.len()
+                        "[ORACLE AUTONOMOUS DB] Loaded {} master configs from Oracle Cloud ADB.",
+                        configs.len()
+                    );
+                    for (k, v) in configs {
+                        data.apply_master_config(&k, &v);
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[ORACLE ADB WARNING] Could not load master configs from ADB: {}",
+                        e
                     );
                 }
             }
@@ -79,19 +73,58 @@ impl Database {
 
         for user in data.users.values_mut() {
             user.ensure_valid_id_and_deck();
+            user.ensure_battle_slots();
         }
 
-        Self {
-            file_path,
-            data,
-            adb,
+        data.ensure_master_data();
+
+        let database = Self { data, adb };
+
+        for user in database.data.users.values() {
+            database.persist_user_adb(user);
         }
+
+        database
     }
 
+    pub fn get_user_formation(
+        &self,
+        username: &str,
+        formation_type: &str,
+    ) -> Option<game_data_schema::PlayerFormationRow> {
+        let key = username.to_lowercase();
+        self.data
+            .player_formations
+            .get(&key)?
+            .iter()
+            .find(|f| f.formation_type == formation_type)
+            .cloned()
+    }
+
+    pub fn save_user_formation(
+        &mut self,
+        username: &str,
+        formation: game_data_schema::PlayerFormationRow,
+    ) {
+        let key = username.to_lowercase();
+        let formations = self.data.player_formations.entry(key.clone()).or_default();
+        if let Some(pos) = formations
+            .iter()
+            .position(|f| f.formation_type == formation.formation_type)
+        {
+            formations[pos] = formation.clone();
+        } else {
+            formations.push(formation.clone());
+        }
+        self.persist_formation_adb(&key, &formation);
+    }
+
+    #[allow(dead_code)]
     pub fn set_adb_client(&mut self, adb: OracleAdbClient) {
         self.adb = Some(adb);
     }
 
+    #[allow(dead_code)]
     pub async fn init_from_adb(&mut self) -> Result<usize, String> {
         let adb = match &self.adb {
             Some(c) => c.clone(),
@@ -112,11 +145,10 @@ impl Database {
             self.data.users.insert(key, user);
         }
 
-        self.save();
         Ok(count)
     }
 
-    fn persist_user_adb(&self, user: &User) {
+    pub fn persist_user_adb(&self, user: &User) {
         if let Some(adb) = &self.adb {
             let adb = adb.clone();
             let user = user.clone();
@@ -127,6 +159,101 @@ impl Database {
                         user.username, e
                     );
                 }
+            });
+        }
+    }
+
+    pub fn delete_user_adb(&self, username: &str) {
+        if let Some(adb) = &self.adb {
+            let adb = adb.clone();
+            let u = username.to_string();
+            tokio::spawn(async move {
+                if let Err(e) = adb.delete_user(&u).await {
+                    eprintln!("[ORACLE ADB ERROR] Failed to delete user {}: {}", u, e);
+                }
+            });
+        }
+    }
+
+    pub fn delete_deck_adb(&self, deck_id: &str) {
+        if let Some(adb) = &self.adb {
+            let adb = adb.clone();
+            let did = deck_id.to_string();
+            tokio::spawn(async move {
+                if let Err(e) = adb.delete_deck(&did).await {
+                    eprintln!("[ORACLE ADB ERROR] Failed to delete deck {}: {}", did, e);
+                }
+            });
+        }
+    }
+
+    pub fn delete_card_adb(&self, player_id: &str, card_id: &str) {
+        if let Some(adb) = &self.adb {
+            let adb = adb.clone();
+            let pid = player_id.to_string();
+            let cid = card_id.to_string();
+            tokio::spawn(async move {
+                if let Err(e) = adb.delete_card(&pid, &cid).await {
+                    eprintln!("[ORACLE ADB ERROR] Failed to delete card {}: {}", cid, e);
+                }
+            });
+        }
+    }
+
+    pub fn persist_formation_adb(
+        &self,
+        username: &str,
+        formation: &game_data_schema::PlayerFormationRow,
+    ) {
+        if let Some(adb) = &self.adb {
+            let adb = adb.clone();
+            let u = username.to_string();
+            let f = formation.clone();
+            tokio::spawn(async move {
+                if let Err(e) = adb.save_formation(&u, &f).await {
+                    eprintln!(
+                        "[ORACLE ADB ERROR] Failed to save formation for {}: {}",
+                        u, e
+                    );
+                }
+            });
+        }
+    }
+
+    pub fn persist_all_master_configs_adb(&self) {
+        if let Some(adb) = &self.adb {
+            let adb = adb.clone();
+            let rarities_json =
+                serde_json::to_string(&self.data.master_rarities).unwrap_or_default();
+            let lines_json = serde_json::to_string(&self.data.master_lines).unwrap_or_default();
+            let skills_json = serde_json::to_string(&self.data.master_skills).unwrap_or_default();
+            let templates_json =
+                serde_json::to_string(&self.data.master_templates).unwrap_or_default();
+            let effects_json = serde_json::to_string(&self.data.master_effects).unwrap_or_default();
+            let cells_json = serde_json::to_string(&self.data.master_cells).unwrap_or_default();
+            let shop_json = serde_json::to_string(&self.data.shop_cards).unwrap_or_default();
+            let ts_json =
+                serde_json::to_string(&self.data.master_template_skills).unwrap_or_default();
+            let syn_json = serde_json::to_string(&self.data.master_synergies).unwrap_or_default();
+
+            tokio::spawn(async move {
+                let _ = adb
+                    .save_master_config("master_rarities", &rarities_json)
+                    .await;
+                let _ = adb.save_master_config("master_lines", &lines_json).await;
+                let _ = adb.save_master_config("master_skills", &skills_json).await;
+                let _ = adb
+                    .save_master_config("master_templates", &templates_json)
+                    .await;
+                let _ = adb
+                    .save_master_config("master_effects", &effects_json)
+                    .await;
+                let _ = adb.save_master_config("master_cells", &cells_json).await;
+                let _ = adb.save_master_config("shop_cards", &shop_json).await;
+                let _ = adb
+                    .save_master_config("master_template_skills", &ts_json)
+                    .await;
+                let _ = adb.save_master_config("master_synergies", &syn_json).await;
             });
         }
     }
@@ -147,9 +274,7 @@ impl Database {
     }
 
     pub fn save(&self) {
-        if let Ok(json) = serde_json::to_string_pretty(&self.data) {
-            let _ = fs::write(&self.file_path, json);
-        }
+        self.persist_all_master_configs_adb();
     }
 
     fn hash_password(password: &str) -> String {
@@ -228,6 +353,7 @@ impl Database {
             matches: 0,
             gold: 100,
             gems: 10,
+            battle_slots: 1,
             rank_tier: "Đồng".to_string(),
             rank_division: 3,
             rank_stars: 0,
@@ -334,13 +460,36 @@ impl Database {
             .get_mut(&clean)
             .ok_or("Người chơi không tồn tại!")?;
 
-        let (cost, name) = match hero_class {
-            "Knight" => (50, "Hiệp Sĩ Hoàng Gia"),
-            "Archer" => (50, "Cung Thủ Thần Nhãn"),
-            "Mage" => (60, "Pháp Sư Băng Hoả"),
-            "Assassin" => (60, "Sát Thủ Bóng Đêm"),
-            "Cleric" => (55, "Mục Sư Thánh Quang"),
-            _ => return Err("Loại thẻ tướng không hợp lệ!".to_string()),
+        let (cost, name) = if let Some(shop_card) = self
+            .data
+            .shop_cards
+            .iter()
+            .find(|c| c.card_id == hero_class)
+        {
+            if !shop_card.is_available {
+                return Err(format!(
+                    "Tướng {} hiện đang tạm ngưng mở bán trong cửa hàng!",
+                    shop_card.name
+                ));
+            }
+            (shop_card.price, shop_card.name.clone())
+        } else {
+            let (c, n) = match hero_class {
+                "zhao_yun" => (55, "Triệu Vân"),
+                "huang_zhong" => (55, "Hoàng Trung"),
+                "zhuge_liang" => (65, "Gia Cát Lượng"),
+                "cao_cao" => (70, "Tào Tháo"),
+                "dian_wei" => (60, "Điển Vi"),
+                "guo_jia" => (65, "Quách Gia"),
+                "sun_ce" => (55, "Tôn Sách"),
+                "lu_xun" => (65, "Lục Tốn"),
+                "da_qiao_xiao_qiao" => (60, "Đại Kiều & Tiểu Kiều"),
+                "zhang_he_yan_liang" | "zhang_he" => (65, "Trương Cáp & Nhan Lương"),
+                "hua_tuo" => (75, "Hoa Đà"),
+                "jia_xu" => (65, "Giả Hủ"),
+                _ => return Err("Danh tướng Tam Quốc không hợp lệ!".to_string()),
+            };
+            (c, n.to_string())
         };
 
         if user.gold < cost {
@@ -381,6 +530,28 @@ impl Database {
         Ok((res_user, new_card))
     }
 
+    pub fn buy_battle_slot(&mut self, username: &str) -> Result<User, String> {
+        let clean = username.trim().to_lowercase();
+        let user = self
+            .data
+            .users
+            .get_mut(&clean)
+            .ok_or("Người chơi không tồn tại!")?;
+        if user.battle_slots >= 5 {
+            return Err("Bạn đã mở tối đa 5 ô ra trận.".to_string());
+        }
+        let cost = 100u32 + (user.battle_slots.saturating_sub(1) as u32 * 50);
+        if user.gold < cost {
+            return Err(format!("Bạn không đủ vàng! Cần {} vàng.", cost));
+        }
+        user.gold -= cost;
+        user.battle_slots += 1;
+        let result = user.clone();
+        self.save();
+        self.persist_user_adb(&result);
+        Ok(result)
+    }
+
     pub fn upgrade_card(
         &mut self,
         username: &str,
@@ -403,42 +574,42 @@ impl Database {
         let msg = match upgrade_type {
             "level" => {
                 if card.level >= 10 {
-                    return Err("Thẻ bài đã đạt cấp tối đa (Cấp 10)!".to_string());
+                    return Err("Thẻ bài đã đạt cấp độ tối đa (Level 10)!".to_string());
                 }
                 let cost = card.level * 20;
                 if user.gold < cost {
                     return Err(format!(
-                        "Cần {} vàng để nâng cấp (hiện có {} vàng)!",
+                        "Cần {} vàng để nâng cấp level (bạn có: {} vàng)",
                         cost, user.gold
                     ));
                 }
                 user.gold -= cost;
                 card.level += 1;
-                card.hp_bonus += 25.0;
-                card.atk_bonus += 5.0;
+                card.hp_bonus += 15.0;
+                card.atk_bonus += 3.0;
                 format!(
-                    "Nâng cấp thành công lên Cấp {}! (+25 HP, +5 ATK)",
-                    card.level
+                    "Nâng cấp thành công! '{}' đạt Cấp {} (+15 HP, +3 ATK).",
+                    card.name, card.level
                 )
             }
             "star" => {
-                if card.star_level >= 3 {
-                    return Err("Thẻ bài đã đạt số sao tối đa (3★)!".to_string());
+                if card.star_level >= 5 {
+                    return Err("Thẻ bài đã đạt sao tối đa (5 Sao)!".to_string());
                 }
-                let cost = 100;
+                let cost = card.star_level * 50;
                 if user.gold < cost {
                     return Err(format!(
-                        "Cần {} vàng để nâng sao (hiện có {} vàng)!",
+                        "Cần {} vàng để tăng sao (bạn có: {} vàng)",
                         cost, user.gold
                     ));
                 }
                 user.gold -= cost;
                 card.star_level += 1;
-                card.hp_bonus += 50.0;
-                card.atk_bonus += 12.0;
+                card.hp_bonus += 40.0;
+                card.atk_bonus += 8.0;
                 format!(
-                    "Đột phá thành công lên {}★! (+50 HP, +12 ATK)",
-                    card.star_level
+                    "Đột phá thành công! '{}' đạt {} Sao (+40 HP, +8 ATK).",
+                    card.name, card.star_level
                 )
             }
             _ => return Err("Loại nâng cấp không hợp lệ!".to_string()),
@@ -514,6 +685,7 @@ impl Database {
         }
 
         let card = &user.cards[idx];
+        let cid = card.id.clone();
         let base_cost = match card.hero_class.as_str() {
             "Knight" | "Archer" => 50,
             "Mage" | "Assassin" => 60,
@@ -526,8 +698,9 @@ impl Database {
         user.cards.remove(idx);
         user.gold += refund;
         let res_user = user.clone();
-        self.save();
+        self.delete_card_adb(&res_user.id, &cid);
         self.persist_user_adb(&res_user);
+        self.save();
         Ok((res_user, refund))
     }
 
@@ -547,6 +720,13 @@ impl Database {
             .get_mut(&clean)
             .ok_or("Người chơi không tồn tại!")?;
 
+        let active_cards: u32 = cards.iter().map(|entry| entry.count).sum();
+        if active_cards > user.battle_slots as u32 {
+            return Err(format!(
+                "Bạn đang mở {} ô ra trận, nhưng đã chọn {} thẻ. Hãy mua thêm ô trong Cửa Hàng.",
+                user.battle_slots, active_cards
+            ));
+        }
         let (is_valid, errors) = validate_deck(&deck_name, &hero_class, &cards, &user.cards);
         let d_id = deck_id.unwrap_or_else(|| format!("deck_{}_{}", clean, chrono_now()));
         let cb = cardback_id.unwrap_or_else(|| user.cardback_id.clone());
@@ -598,8 +778,9 @@ impl Database {
         user.decks.remove(idx);
 
         let res_user = user.clone();
-        self.save();
+        self.delete_deck_adb(deck_id);
         self.persist_user_adb(&res_user);
+        self.save();
         Ok(res_user)
     }
 

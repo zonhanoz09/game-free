@@ -5,6 +5,7 @@ WORKDIR /build
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
+COPY assets ./assets
 COPY apps/client/Cargo.toml ./apps/client/Cargo.toml
 RUN mkdir -p apps/client/src && printf 'fn main() {}\n' > apps/client/src/main.rs
 COPY apps/server/Cargo.toml apps/server/Cargo.lock ./apps/server/

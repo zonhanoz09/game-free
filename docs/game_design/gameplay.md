@@ -1,57 +1,77 @@
-# Gameplay hiện tại
+# Gameplay hiện hành
 
-## Vòng lặp chính
+## Trạng thái sản phẩm
 
-1. Người chơi vào sảnh web, đăng nhập hoặc chơi guest.
-2. Mở **Kho thẻ bài** để xem collection, lọc theo vai trò/phẩm cấp, tìm kiếm,
-   nâng cấp cấp độ/sao, bán thẻ hoặc foil thẻ.
-3. Mở **Đội hình ra trận**, kéo tối đa ba thẻ vào bàn 3x3 và xếp vào đúng hàng.
-4. Chọn PvE để đấu AI hoặc PvP để ghép trận nhanh/tạo phòng/tham gia bằng mã phòng.
-5. Trận đấu diễn ra theo action gauge (ATB). Kết quả cập nhật phần thưởng, ELO và
-   tiến trình người chơi.
+Game là đấu trường thẻ tướng Tam Quốc 3x3. Người chơi thu thập tướng, chọn tối
+đa 5 tướng ra trận, sắp xếp vào 9 ô, sau đó đấu PvE hoặc PvP theo thanh hành
+động. Roster hiện tại dùng các ID danh tướng Tam Quốc; các archetype cũ chỉ còn
+là adapter trình bày/tương thích trong lúc refactor combat engine.
 
-## Năm lớp tướng
+**Trạng thái triển khai:** collection, shop, deck, slot unlock, formation UI,
+PvE và PvP transport đã có. Combat headless dùng chung, server-authoritative
+replay/reward và skill data-driven vẫn đang chờ các phase tương ứng; không mô tả
+chúng như hành vi đã hoàn tất.
 
-| Lớp | Vai trò | Hành vi chính |
-|---|---|---|
-| Knight | Đỡ Đòn | Đánh tuyến trước, chịu sát thương |
-| Archer | Xạ Thủ | Bắn mục tiêu có HP thấp |
-| Mage | Pháp Sư | Sát thương phép lan theo hàng |
-| Assassin | Sát Thủ | Đột kích tuyến sau, có chí mạng |
-| Cleric | Hỗ Trợ | Hồi máu đồng minh nguy cấp |
+## Vòng lặp người chơi
 
-## Luật đội hình và bonus vị trí
+1. Đăng nhập hoặc chơi guest.
+2. Mở kho thẻ để xem, mua và quản lý tướng.
+3. Mở đội hình, chọn tối đa 5 tướng và đặt vào lưới 3x3.
+4. Chọn PvE hoặc PvP.
+5. Trận đấu chạy theo action value; tướng đủ thanh hành động sẽ ra đòn hoặc
+   dùng tuyệt kỹ khi đủ 100 Nộ.
+6. Nhận kết quả và phần thưởng do server xác thực.
 
-| Vị trí | Vai trò hợp lệ | Bonus |
-|---|---|---|
-| Tiên phong | Đỡ Đòn | +25% HP hiệu dụng |
-| Chủ lực | Sát Thủ, Xạ Thủ | +20% ATK hiệu dụng |
-| Hỗ trợ | Hỗ Trợ, Pháp Sư | +30 Speed/tiên cơ |
+## Bàn cờ và đội hình
 
-UI bàn 3x3 cho phép kéo-thả hoặc chọn thẻ rồi chọn ô; mỗi hàng tương ứng một
-vai trò và chỉ có tối đa ba thẻ xuất trận. UI chặn việc xếp sai vai trò. Khi đồng bộ sang Bevy, bonus được truyền vào
-`DeckCardData` và cộng trực tiếp vào `UnitStats` lúc spawn. Thẻ không nằm trong
-ba vị trí vẫn được giữ làm dự bị.
+Mỗi phe có 9 ô. `col=0` là tiền phong, `col=1` là trung quân, `col=2` là hậu
+phương; `row=0/1/2` lần lượt là trên/giữa/dưới. Slot ID được tính:
+
+```text
+slot_id = col * 3 + row + 1
+```
+
+Đội hình được lưu theo slot, tối đa 5 tướng, mặc định mở 1 slot; các slot tiếp
+theo mua bằng tiền trong cửa hàng. UI đội hình và UI trận đấu dùng cùng một
+layout 3x3.
 
 ## Combat
 
-Combat dùng action gauge dựa trên `speed`; tướng đầy gauge sẽ hành động. Hệ thống
-hiện có HP, ATK, DEF, mana, speed, crit, khiên, hồi máu, mục tiêu theo lớp,
-floating combat text, hit-stop, camera shake, projectile và hiệu ứng va chạm.
+- Action value đạt 10000 theo tốc độ `SPD` sẽ kích hoạt lượt.
+- Đánh thường trúng mục tiêu: +25 Nộ.
+- Nhận sát thương trực tiếp: +15 Nộ.
+- Hạ gục mục tiêu: +20 Nộ.
+- Đủ 100 Nộ ở đầu lượt: bắt buộc dùng tuyệt kỹ và tiêu hao 100 Nộ.
+- Targeting mặc định ưu tiên cùng tầng, sau đó dùng khoảng cách Manhattan và
+  tie-break tầng giữa.
+- Các rule đặc biệt gồm hậu phương, mục tiêu thấp HP, mục tiêu ATK cao, hàng,
+  cột và hình dấu thập.
 
-PvE có các stage tăng dần, stage 10 có boss và các stage sau đó chuyển sang
-endless. PvP truyền lineup, vị trí, class và sao qua WebSocket; server xử lý
-phòng, trạng thái ready, round và sát thương giữa hai người chơi.
+Luật chi tiết và công thức chuẩn nằm trong
+[`system_game.md`](system_game.md). Khi combat engine được tách xong, client chỉ
+render simulation events; client không tự tính damage, target hoặc reward.
 
-## Collection và kinh tế
+## Roster và collection
 
-Mỗi `UserCard` có id, hero class, sao, level, HP/ATK bonus, starter/foil và
-quantity. Người chơi có thể mua thẻ bằng gold, nâng cấp level/sao, foil bằng
-gems và bán thẻ không phải starter. Deck được lưu theo `DeckCardEntry` và
-được server validate trước khi lưu.
+Roster hiện tại gồm Triệu Vân, Hoàng Trung, Gia Cát Lượng, Tào Tháo, Điển Vi,
+Quách Gia, Tôn Sách, Lục Tốn, Đại Kiều & Tiểu Kiều, Trương Cáp & Nhan Lương,
+Hoa Đà và Giả Hủ. Mỗi thẻ có identity, faction, role, rarity, level, sao và
+skill data.
 
-## UI web
+Các kỹ năng chỉ được hiển thị là khả dụng khi effect tương ứng đã được mô phỏng
+và kiểm thử trong shared engine. Không thêm skill riêng trong UI hoặc Bevy
+system.
 
-`dist/wasm/index.html` chứa lobby, modal profile/shop/collection/deck/PvP,
-leaderboard, result screen và bridge JavaScript ↔ Bevy WASM. Modal deck đã tách
-thành hai tab **Kho thẻ bài** và **Đội hình ra trận** để giảm mật độ card.
+## PvE, PvP và authority
+
+PvE có stage tăng dần và endless sau stage cuối. PvP truyền đội hình, slot và
+trạng thái qua WebSocket. Mục tiêu kiến trúc là server chạy simulation
+headless, xác thực replay và tự tính kết quả, phần thưởng, ELO; hiện tại đây là
+phần đang refactor, vì vậy client chưa được coi là nguồn authority cuối cùng
+cho combat.
+
+## Phạm vi chưa kích hoạt
+
+Gacha pity, nâng sao bằng mảnh, tactics, equipment và faction synergy là các
+phase sau của roadmap. Không coi chúng là gameplay hiện hành cho đến khi engine,
+protocol, persistence và UI cùng đạt cổng nghiệm thu.

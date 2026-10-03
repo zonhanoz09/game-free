@@ -1,21 +1,24 @@
 use super::*;
 
 pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<GameFonts>) {
-    // 1. Top Bar UI
+    // 1. Top Bar UI (Placement Mode Only)
     commands
-        .spawn((Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(12.0),
-            left: Val::Px(0.0),
-            right: Val::Px(0.0),
-            height: Val::Px(64.0),
-            justify_content: JustifyContent::SpaceBetween,
-            align_items: AlignItems::Center,
-            padding: UiRect::horizontal(Val::Px(32.0)),
-            ..default()
-        },))
+        .spawn((
+            PlacementUiRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(12.0),
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                height: Val::Px(64.0),
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                padding: UiRect::horizontal(Val::Px(32.0)),
+                ..default()
+            },
+        ))
         .with_children(|parent| {
-            // Left: Game Title & Stage
+            // Left: Stage Information
             parent
                 .spawn(Node {
                     flex_direction: FlexDirection::Column,
@@ -23,24 +26,16 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                 })
                 .with_children(|col| {
                     col.spawn((
-                        Text::new("3v3 TACTICAL ARENA - 2D AUTO-BATTLER"),
+                        Text::new("Ải 1: Tiền Tuyến Tiên Phong"),
                         TextFont {
-                            font_size: 19.0,
-                            ..default()
-                        },
-                        TextColor(Color::srgb(0.92, 0.96, 1.0)),
-                    ));
-                    col.spawn((
-                        Text::new("Stage 1: Vanguard Frontline"),
-                        TextFont {
-                            font_size: 14.0,
+                            font_size: 15.5,
                             ..default()
                         },
                         TextColor(Color::srgb(0.98, 0.82, 0.3)),
                         StageTitleText,
                     ));
                     col.spawn((
-                        Text::new(""),
+                        Text::new("Đội hình thử thách được tạo ngẫu nhiên từ thẻ bài Cửa Hàng"),
                         TextFont {
                             font_size: 11.5,
                             ..default()
@@ -59,7 +54,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                 })
                 .with_children(|col| {
                     col.spawn((
-                        Text::new("Units: 0 / 5"),
+                        Text::new("Tướng: 0 / 5"),
                         TextFont {
                             font_size: 16.5,
                             ..default()
@@ -68,7 +63,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         UnitCountText,
                     ));
                     col.spawn((
-                        Text::new("🪙 15G (+6G next)"),
+                        Text::new("15 Vàng (+6 kế)"),
                         TextFont {
                             font_size: 14.5,
                             ..default()
@@ -77,7 +72,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         GoldDisplayText,
                     ));
                     col.spawn((
-                        Text::new("L-Click: Place/Inspect  |  R-Click: Sell/Refund"),
+                        Text::new("Chuột Trái: Đặt / Xem Tướng  |  Chuột Phải: Bán / Hoàn Vàng"),
                         TextFont {
                             font_size: 11.5,
                             ..default()
@@ -104,7 +99,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     SpeedToggleButton,
                 ))
                 .with_child((
-                    Text::new("Speed: 1x"),
+                    Text::new("Tốc độ: 1x"),
                     TextFont {
                         font_size: 14.0,
                         ..default()
@@ -114,9 +109,10 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                 ));
         });
 
-    // 1.5 Team Synergies Panel (Left Edge)
+    // 1.5 Team Synergies Panel (Left Edge - Placement Mode Only)
     commands
         .spawn((
+            PlacementUiRoot,
             Node {
                 position_type: PositionType::Absolute,
                 top: Val::Px(82.0),
@@ -135,7 +131,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
         ))
         .with_children(|panel| {
             panel.spawn((
-                Text::new("TEAM SYNERGIES"),
+                Text::new("KÍCH HOẠT HỆ TỘC"),
                 TextFont {
                     font_size: 13.0,
                     ..default()
@@ -172,7 +168,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                             Text::new(format!(
                                 "{} {}",
                                 syn.icon(),
-                                syn.name().split(" ").next().unwrap()
+                                syn.name().split(' ').next().unwrap_or("")
                             )),
                             TextFont {
                                 font_size: 11.0,
@@ -193,7 +189,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
             }
         });
 
-    // 2. Modern Hero Inspection Card (Right Panel)
+    // 2. Modern Hero Inspection Card (Hover Beside Card)
     commands
         .spawn((
             InspectorRoot,
@@ -223,19 +219,30 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     ..default()
                 })
                 .with_children(|header| {
-                    header.spawn((
-                        ImageNode {
-                            image: textures.knight.clone(),
-                            ..default()
-                        },
-                        Node {
-                            width: Val::Px(46.0),
-                            height: Val::Px(46.0),
-                            ..default()
-                        },
-                        BorderRadius::all(Val::Px(6.0)),
-                        InspectHeroAvatar,
-                    ));
+                    header
+                        .spawn((
+                            Node {
+                                width: Val::Px(46.0),
+                                height: Val::Px(46.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                overflow: Overflow::clip(),
+                                border: UiRect::all(Val::Px(1.5)),
+                                ..default()
+                            },
+                            BorderColor(Color::srgba(0.35, 0.55, 0.85, 0.6)),
+                            BackgroundColor(Color::srgba(0.12, 0.16, 0.24, 0.9)),
+                            BorderRadius::all(Val::Px(8.0)),
+                        ))
+                        .with_child((
+                            ImageNode::new(textures.knight.clone()),
+                            Node {
+                                width: Val::Px(40.0),
+                                height: Val::Px(40.0),
+                                ..default()
+                            },
+                            InspectHeroAvatar,
+                        ));
 
                     header
                         .spawn(Node {
@@ -252,7 +259,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                             })
                             .with_children(|name_row| {
                                 name_row.spawn((
-                                    Text::new("Knight"),
+                                    Text::new("Triệu Vân"),
                                     TextFont {
                                         font_size: 16.5,
                                         ..default()
@@ -261,7 +268,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                                     InspectHeader(InspectHeaderField::Name),
                                 ));
                                 name_row.spawn((
-                                    Text::new("ALLY"),
+                                    Text::new("QUÂN TA"),
                                     TextFont {
                                         font_size: 10.5,
                                         ..default()
@@ -272,7 +279,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                             });
 
                             info.spawn((
-                                Text::new("Frontline Iron Vanguard (Tank)"),
+                                Text::new("Tiên Phong Thiết Giáp (Đỡ Đòn)"),
                                 TextFont {
                                     font_size: 11.0,
                                     ..default()
@@ -309,7 +316,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|row| {
                         row.spawn((
-                            Text::new("HP (Health)"),
+                            Text::new("Sinh Lực (HP)"),
                             TextFont { font_size: 11.0, ..default() },
                             TextColor(Color::srgb(0.4, 0.9, 0.5)),
                         ));
@@ -347,7 +354,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|row| {
                         row.spawn((
-                            Text::new("MP (Mana)"),
+                            Text::new("Nội Lực (MP)"),
                             TextFont { font_size: 11.0, ..default() },
                             TextColor(Color::srgb(0.3, 0.75, 1.0)),
                         ));
@@ -385,7 +392,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|row| {
                         row.spawn((
-                            Text::new("ATK (Power)"),
+                            Text::new("Công Kích (ATK)"),
                             TextFont { font_size: 11.0, ..default() },
                             TextColor(Color::srgb(1.0, 0.45, 0.3)),
                         ));
@@ -423,7 +430,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|row| {
                         row.spawn((
-                            Text::new("DEF (Armor)"),
+                            Text::new("Phòng Thủ (DEF)"),
                             TextFont { font_size: 11.0, ..default() },
                             TextColor(Color::srgb(0.4, 0.65, 1.0)),
                         ));
@@ -461,7 +468,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|row| {
                         row.spawn((
-                            Text::new("SPD (Agility)"),
+                            Text::new("Tốc Độ (SPD)"),
                             TextFont { font_size: 11.0, ..default() },
                             TextColor(Color::srgb(0.95, 0.85, 0.3)),
                         ));
@@ -524,7 +531,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|title_row| {
                         title_row.spawn((
-                            Text::new("Iron Bulwark & Cleave"),
+                            Text::new("Long Đao Trảm"),
                             TextFont {
                                 font_size: 12.5,
                                 ..default()
@@ -533,7 +540,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                             InspectSkill(InspectSkillField::Name),
                         ));
                         title_row.spawn((
-                            Text::new("[Melee]"),
+                            Text::new("[Cận Chiến]"),
                             TextFont {
                                 font_size: 10.0,
                                 ..default()
@@ -544,7 +551,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     });
 
                     skill_box.spawn((
-                        Text::new("Leaps forward with heavy shield bash, slashing with luminous steel blade. Mitigates high damage through fortified defense."),
+                        Text::new("Lao lên phía trước gây sát thương, giảm lượng sát thương gánh chịu nhờ giáp kiên cố."),
                         TextFont {
                             font_size: 11.0,
                             ..default()
@@ -576,7 +583,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ..default()
                     }).with_children(|title_row| {
                         title_row.spawn((
-                            Text::new("Aegis Fortress"),
+                            Text::new("Kim Cang Bất Hoại"),
                             TextFont {
                                 font_size: 12.0,
                                 ..default()
@@ -585,7 +592,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                             InspectSkill(InspectSkillField::UltName),
                         ));
                         title_row.spawn((
-                            Text::new("[ULTIMATE]"),
+                            Text::new("[TUYỆT KỸ]"),
                             TextFont {
                                 font_size: 9.5,
                                 ..default()
@@ -595,7 +602,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     });
 
                     ult_box.spawn((
-                        Text::new("Leaps into enemy frontline with massive bash, granting +80 shield and disrupting enemy action."),
+                        Text::new("Tạo lá chắn lớn hấp thụ sát thương, giảm tốc độ đánh của kẻ địch xung quanh."),
                         TextFont {
                             font_size: 10.5,
                             ..default()
@@ -606,19 +613,22 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                 });
         });
 
-    // 3. Tooltip Banner above the bench
+    // 3. Tooltip Banner above the bench (Placement Mode Only)
     commands
-        .spawn((Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(138.0),
-            left: Val::Px(0.0),
-            right: Val::Px(0.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(3.0),
-            ..default()
-        },))
+        .spawn((
+            PlacementUiRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(138.0),
+                left: Val::Px(0.0),
+                right: Val::Px(0.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(3.0),
+                ..default()
+            },
+        ))
         .with_children(|b| {
             b.spawn((
                 Text::new(""),
@@ -632,7 +642,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
             ));
             b.spawn((
                 Text::new(
-                    "[1-4] Mua | [S] Bán | [D] Đổi (2G) | [E] Khóa | [Space] Chiến | [H] Hướng Dẫn",
+                    "[1-4] Mua Tướng | [S] Bán | [D] Đổi (2G) | [E] Khóa | [Space] Xuất Trận | [H] Hướng Dẫn",
                 ),
                 TextFont {
                     font: fonts.regular.clone(),
@@ -707,18 +717,28 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                                 },
                             ));
 
-                            // Avatar thumbnail
+                            // Avatar icon image
                             btn.spawn((
-                                ImageNode {
-                                    image: textures.knight.clone(),
-                                    ..default()
-                                },
                                 Node {
-                                    width: Val::Px(44.0),
-                                    height: Val::Px(44.0),
+                                    width: Val::Px(42.0),
+                                    height: Val::Px(42.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    overflow: Overflow::clip(),
+                                    border: UiRect::all(Val::Px(1.0)),
                                     ..default()
                                 },
-                                BorderRadius::all(Val::Px(4.0)),
+                                BorderColor(Color::srgba(1.0, 1.0, 1.0, 0.15)),
+                                BackgroundColor(Color::srgba(0.08, 0.10, 0.16, 0.9)),
+                                BorderRadius::all(Val::Px(6.0)),
+                            ))
+                            .with_child((
+                                ImageNode::new(textures.knight.clone()),
+                                Node {
+                                    width: Val::Px(36.0),
+                                    height: Val::Px(36.0),
+                                    ..default()
+                                },
                                 ShopCardAvatar(i),
                             ));
 
@@ -730,7 +750,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                             })
                             .with_children(|txt_col| {
                                 txt_col.spawn((
-                                    Text::new("Hero"),
+                                    Text::new("Triệu Vân"),
                                     TextFont {
                                         font_size: 13.0,
                                         ..default()
@@ -739,7 +759,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                                     ShopCardName(i),
                                 ));
                                 txt_col.spawn((
-                                    Text::new("2G"),
+                                    Text::new("2 Vàng | TANK"),
                                     TextFont {
                                         font_size: 10.5,
                                         ..default()
@@ -765,7 +785,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(120.0),
+                            width: Val::Px(130.0),
                             height: Val::Px(36.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -778,7 +798,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ShopRerollButton,
                     ))
                     .with_child((
-                        Text::new("🎲 Roll 2G [D]"),
+                        Text::new("🎲 Đổi Tướng [D] (2G)"),
                         TextFont {
                             font_size: 12.0,
                             ..default()
@@ -790,7 +810,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(110.0),
+                            width: Val::Px(120.0),
                             height: Val::Px(36.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -803,7 +823,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ShopLockToggle,
                     ))
                     .with_child((
-                        Text::new("🔓 Lock [E]"),
+                        Text::new("🔒 Khóa Shop [E]"),
                         TextFont {
                             font_size: 12.0,
                             ..default()
@@ -827,7 +847,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         PresetButton,
                     ))
                     .with_child((
-                        Text::new("Preset Squad"),
+                        Text::new("📋 Đội Hình Mẫu"),
                         TextFont {
                             font_size: 12.5,
                             ..default()
@@ -839,7 +859,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(190.0),
+                            width: Val::Px(180.0),
                             height: Val::Px(38.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -852,7 +872,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         StartBattleButton,
                     ))
                     .with_child((
-                        Text::new("⚔️ ĐẤU AI VỚI ĐỘI HÌNH LƯU"),
+                        Text::new("⚔️ Xuất Trận [Space]"),
                         TextFont {
                             font_size: 14.0,
                             ..default()
@@ -865,7 +885,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                     row.spawn((
                         Button,
                         Node {
-                            width: Val::Px(105.0),
+                            width: Val::Px(110.0),
                             height: Val::Px(36.0),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -876,7 +896,7 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                         ClearBoardButton,
                     ))
                     .with_child((
-                        Text::new("Clear Board"),
+                        Text::new("🧹 Thu Hồi Hết"),
                         TextFont {
                             font_size: 12.5,
                             ..default()

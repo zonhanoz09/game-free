@@ -1,5 +1,28 @@
 use super::*;
 
+pub fn to_clob_expr(s: &str) -> String {
+    if s.is_empty() {
+        return "EMPTY_CLOB()".to_string();
+    }
+    let escaped = s.replace('\'', "''");
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    for ch in escaped.chars() {
+        current.push(ch);
+        if current.len() >= 2000 {
+            chunks.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
+        .into_iter()
+        .map(|c| format!("TO_CLOB('{}')", c))
+        .collect::<Vec<_>>()
+        .join(" || ")
+}
+
 #[derive(Clone, Debug)]
 pub struct OracleAdbClient {
     pub client: reqwest::Client,
@@ -320,6 +343,7 @@ impl OracleAdbClient {
                     matches,
                     gold,
                     gems,
+                    battle_slots: 1,
                     rank_tier: if rank_tier.is_empty() {
                         "Đồng".to_string()
                     } else {
@@ -461,6 +485,126 @@ impl OracleAdbClient {
         self.execute_sql(&sql_users).await.map(|_| ())
     }
 
+    pub async fn delete_user(&self, username: &str) -> Result<(), String> {
+        let clean = username.replace('\'', "''");
+        let user_id = format!("p_{}", clean);
+        let sql = format!(
+            "BEGIN \
+                DELETE FROM player_cards WHERE player_id = '{user_id}'; \
+                DELETE FROM player_decks WHERE player_id = '{user_id}'; \
+                DELETE FROM player_ratings WHERE player_id = '{user_id}'; \
+                DELETE FROM player_formations WHERE username = '{clean}' OR player_id = '{user_id}'; \
+                DELETE FROM players WHERE username = '{clean}' OR id = '{user_id}'; \
+                DELETE FROM users WHERE username = '{clean}'; \
+            END;",
+            clean = clean,
+            user_id = user_id
+        );
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+
+    pub async fn delete_deck(&self, deck_id: &str) -> Result<(), String> {
+        let did = deck_id.replace('\'', "''");
+        let sql = format!("DELETE FROM player_decks WHERE id = '{}'", did);
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+
+    pub async fn delete_card(&self, player_id: &str, card_id: &str) -> Result<(), String> {
+        let pid = player_id.replace('\'', "''");
+        let cid = card_id.replace('\'', "''");
+        let sql = format!(
+            "DELETE FROM player_cards WHERE player_id = '{}' AND card_id = '{}'",
+            pid, cid
+        );
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+
+    pub async fn save_formation(
+        &self,
+        username: &str,
+        formation: &game_data_schema::PlayerFormationRow,
+    ) -> Result<(), String> {
+        let u = username.replace('\'', "''");
+        let pid = format!("p_{}", u);
+        let f_type = formation.formation_type.replace('\'', "''");
+        let fid = format!("{}_{}", u, f_type);
+        let f_data = serde_json::to_string(formation).unwrap_or_else(|_| "{}".to_string());
+        let clob_expr = to_clob_expr(&f_data);
+
+        let sql = format!(
+            "MERGE INTO player_formations f USING (SELECT '{fid}' AS formation_id, '{pid}' AS player_id, '{u}' AS username, '{ftype}' AS formation_type, {clob_expr} AS formation_data FROM DUAL) s ON (f.formation_id = s.formation_id) WHEN MATCHED THEN UPDATE SET f.formation_data = s.formation_data, f.updated_at = CURRENT_TIMESTAMP WHEN NOT MATCHED THEN INSERT (formation_id, player_id, username, formation_type, formation_data, updated_at) VALUES (s.formation_id, s.player_id, s.username, s.formation_type, s.formation_data, CURRENT_TIMESTAMP)",
+            fid = fid,
+            pid = pid,
+            u = u,
+            ftype = f_type,
+            clob_expr = clob_expr
+        );
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+
+    pub async fn load_all_formations(
+        &self,
+    ) -> Result<HashMap<String, Vec<game_data_schema::PlayerFormationRow>>, String> {
+        let sql = "SELECT username, formation_type, formation_data FROM player_formations";
+        let val = self.execute_sql(sql).await?;
+        let mut map: HashMap<String, Vec<game_data_schema::PlayerFormationRow>> = HashMap::new();
+        if let Some(items) = val["items"][0]["resultSet"]["items"].as_array() {
+            for row in items {
+                let u = row
+                    .get("username")
+                    .or_else(|| row.get("USERNAME"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let f_data = row
+                    .get("formation_data")
+                    .or_else(|| row.get("FORMATION_DATA"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("{}");
+                if let Ok(form) =
+                    serde_json::from_str::<game_data_schema::PlayerFormationRow>(f_data)
+                {
+                    map.entry(u.to_lowercase()).or_default().push(form);
+                }
+            }
+        }
+        Ok(map)
+    }
+
+    pub async fn save_master_config(&self, key: &str, data_json: &str) -> Result<(), String> {
+        let k = key.replace('\'', "''");
+        let clob_expr = to_clob_expr(data_json);
+        let sql = format!(
+            "MERGE INTO master_configs m USING (SELECT '{k}' AS config_key, {clob_expr} AS config_data FROM DUAL) s ON (m.config_key = s.config_key) WHEN MATCHED THEN UPDATE SET m.config_data = s.config_data, m.updated_at = CURRENT_TIMESTAMP WHEN NOT MATCHED THEN INSERT (config_key, config_data, updated_at) VALUES (s.config_key, s.config_data, CURRENT_TIMESTAMP)",
+            k = k,
+            clob_expr = clob_expr
+        );
+        self.execute_sql(&sql).await.map(|_| ())
+    }
+
+    pub async fn load_all_master_configs(&self) -> Result<HashMap<String, String>, String> {
+        let sql = "SELECT config_key, config_data FROM master_configs";
+        let val = self.execute_sql(sql).await?;
+        let mut configs = HashMap::new();
+        if let Some(items) = val["items"][0]["resultSet"]["items"].as_array() {
+            for row in items {
+                let k = row
+                    .get("config_key")
+                    .or_else(|| row.get("CONFIG_KEY"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let d = row
+                    .get("config_data")
+                    .or_else(|| row.get("CONFIG_DATA"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !k.is_empty() {
+                    configs.insert(k.to_string(), d.to_string());
+                }
+            }
+        }
+        Ok(configs)
+    }
+
     pub async fn record_match(&self, m: &MatchRecord) -> Result<(), String> {
         let match_id = m.match_id.replace('\'', "''");
         let host = m.host.replace('\'', "''");
@@ -481,5 +625,3 @@ impl OracleAdbClient {
         self.execute_sql(&sql).await.map(|_| ())
     }
 }
-
-// ==========================================

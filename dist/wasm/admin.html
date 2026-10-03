@@ -1,0 +1,3305 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Trị Hệ Thống - 3v3 Tactical Arena</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+            gold: '#f59e0b',
+            gem: '#06b6d4',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="glass sticky top-0 z-40 border-b border-slate-800 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-amber-500 flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-500/20">
+        ⚔️
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-amber-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent">
+          3v3 Tactical Arena Admin Portal
+        </h1>
+        <p class="text-xs text-slate-400">Quản trị toàn diện: Người chơi, Tướng, Kỹ năng, Hiệu ứng, Ô Bàn cờ 3x3, Phẩm cấp</p>
+      </div>
+    </div>
+
+    <!-- Admin Key Setting & Actions -->
+    <div class="flex items-center space-x-3">
+      <div class="relative flex items-center">
+        <span class="text-xs text-slate-400 mr-2"><i class="fa-solid fa-key text-amber-400"></i> Admin Key:</span>
+        <input id="adminKeyInput" type="password" value="admin_secret_2026"
+               class="bg-slate-900 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 w-36 focus:w-48 transition-all focus:outline-none focus:border-indigo-500 text-slate-200"
+               placeholder="Nhập Admin Key..." onchange="saveAdminKey(this.value)">
+      </div>
+      <button onclick="refreshCurrentTab()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 flex items-center space-x-1.5 transition">
+        <i class="fa-solid fa-rotate"></i>
+        <span>Làm mới</span>
+      </button>
+      <a href="/" target="_blank" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-indigo-600/30 flex items-center space-x-1.5 transition">
+        <i class="fa-solid fa-gamepad"></i>
+        <span>Vào Game</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="bg-slate-900/80 border-b border-slate-800 px-6 py-2 flex space-x-2 overflow-x-auto custom-scrollbar">
+    <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition bg-indigo-600 text-white shadow whitespace-nowrap">
+      <i class="fa-solid fa-chart-pie"></i><span>Tổng Quan</span>
+    </button>
+    <button onclick="switchTab('users')" id="tab-users" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-users"></i><span>Người Chơi</span>
+    </button>
+    <button onclick="switchTab('shop')" id="tab-shop" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-store"></i><span>Cửa Hàng Thẻ</span>
+    </button>
+    <button onclick="switchTab('templates')" id="tab-templates" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-id-card"></i><span>Mẫu Tướng</span>
+    </button>
+    <button onclick="switchTab('template-skills')" id="tab-template-skills" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-link text-indigo-400"></i><span>Tướng & Kỹ Năng</span>
+    </button>
+    <button onclick="switchTab('synergies')" id="tab-synergies" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-diagram-project text-amber-400"></i><span>Kích Duyên Đội Hình</span>
+    </button>
+    <button onclick="switchTab('skills')" id="tab-skills" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-wand-magic-sparkles"></i><span>Kỹ Năng</span>
+    </button>
+    <button onclick="switchTab('effects')" id="tab-effects" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-fire-flame-curved"></i><span>Hiệu Ứng (Buff/Debuff)</span>
+    </button>
+    <button onclick="switchTab('cells')" id="tab-cells" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-chess-board"></i><span>9 Ô Bàn Cờ 3x3</span>
+    </button>
+    <button onclick="switchTab('lines')" id="tab-lines" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-border-all"></i><span>Buff Hàng & Phẩm Cấp</span>
+    </button>
+    <button onclick="switchTab('matches')" id="tab-matches" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-trophy"></i><span>Lịch Sử Đấu</span>
+    </button>
+    <button onclick="switchTab('system')" id="tab-system" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800 whitespace-nowrap">
+      <i class="fa-solid fa-database"></i><span>Cài Đặt & DB</span>
+    </button>
+  </nav>
+
+  <!-- Notification Banner -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+    <div id="toastContent" class="glass px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-sm border-l-4"></div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+
+    <!-- 1. OVERVIEW TAB -->
+    <section id="view-overview" class="space-y-6">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Người Chơi</span><i class="fa-solid fa-user-group text-indigo-400"></i>
+          </div>
+          <div id="statUsers" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-emerald-400 mt-0.5">Hoạt động</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Trận Đấu</span><i class="fa-solid fa-gamepad text-amber-400"></i>
+          </div>
+          <div id="statMatches" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Đã lưu</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Cửa Hàng</span><i class="fa-solid fa-store text-amber-400"></i>
+          </div>
+          <div id="statShopCards" class="text-xl font-bold text-amber-400">-</div>
+          <div class="text-[10px] text-amber-400/80 mt-0.5">Thẻ Mở Bán</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Mẫu Tướng</span><i class="fa-solid fa-shield-halved text-cyan-400"></i>
+          </div>
+          <div id="statTemplates" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-indigo-400 mt-0.5">Hero Cards</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Kỹ Năng</span><i class="fa-solid fa-bolt text-yellow-400"></i>
+          </div>
+          <div id="statSkills" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-cyan-400 mt-0.5">Skills</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Hiệu Ứng</span><i class="fa-solid fa-fire text-rose-400"></i>
+          </div>
+          <div id="statEffects" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-rose-400 mt-0.5">Buff/Debuff</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Ô Bàn Cờ</span><i class="fa-solid fa-border-none text-emerald-400"></i>
+          </div>
+          <div id="statCells" class="text-xl font-bold text-white">9</div>
+          <div class="text-[10px] text-emerald-400 mt-0.5">3x3 Grid</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Phẩm Cấp</span><i class="fa-solid fa-crown text-purple-400"></i>
+          </div>
+          <div id="statRarities" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-purple-400 mt-0.5">Rarities</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Tướng-Skill</span><i class="fa-solid fa-link text-indigo-400"></i>
+          </div>
+          <div id="statTemplateSkills" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-indigo-400 mt-0.5">Hero Skills</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Kích Duyên</span><i class="fa-solid fa-diagram-project text-amber-400"></i>
+          </div>
+          <div id="statSynergies" class="text-xl font-bold text-white">-</div>
+          <div class="text-[10px] text-amber-400 mt-0.5">Synergies</div>
+        </div>
+        <div class="glass p-3.5 rounded-2xl border border-slate-800">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <span>Server</span><i class="fa-solid fa-circle-check text-emerald-400"></i>
+          </div>
+          <div class="text-lg font-bold text-emerald-400">ONLINE</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Rust 8080</div>
+        </div>
+      </div>
+
+      <!-- Quick Action Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="glass p-5 rounded-2xl border border-slate-800 space-y-2">
+          <h3 class="font-semibold text-sm text-indigo-300 flex items-center space-x-2">
+            <i class="fa-solid fa-user-plus"></i><span>Tạo Người Chơi</span>
+          </h3>
+          <p class="text-xs text-slate-400">Tạo tài khoản kiểm thử với vàng, gem và battle slot.</p>
+          <button onclick="openModal('modalCreateUser')" class="w-full py-2 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/40 rounded-xl text-xs font-semibold transition">
+            + Thêm Người Chơi
+          </button>
+        </div>
+
+        <div class="glass p-5 rounded-2xl border border-slate-800 space-y-2">
+          <h3 class="font-semibold text-sm text-rose-300 flex items-center space-x-2">
+            <i class="fa-solid fa-wand-magic"></i><span>Thêm Hiệu Ứng Mới</span>
+          </h3>
+          <p class="text-xs text-slate-400">Đăng ký Buff, Debuff, Choáng, Thiêu Đốt, Khiên, Hồi Máu.</p>
+          <button onclick="openEffectModal()" class="w-full py-2 bg-rose-600/30 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/40 rounded-xl text-xs font-semibold transition">
+            + Đăng Ký Hiệu Ứng
+          </button>
+        </div>
+
+        <div class="glass p-5 rounded-2xl border border-slate-800 space-y-2">
+          <h3 class="font-semibold text-sm text-emerald-300 flex items-center space-x-2">
+            <i class="fa-solid fa-chess-board"></i><span>Cấu Hình Ô Bàn Cờ</span>
+          </h3>
+          <p class="text-xs text-slate-400">Gán Buff môi trường, địa hình cao/dung nham/thánh địa cho 9 ô.</p>
+          <button onclick="switchTab('cells')" class="w-full py-2 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 hover:text-white border border-emerald-500/40 rounded-xl text-xs font-semibold transition">
+            Chỉnh Sửa 9 Ô Bàn Cờ
+          </button>
+        </div>
+
+        <div class="glass p-5 rounded-2xl border border-slate-800 space-y-2">
+          <h3 class="font-semibold text-sm text-amber-300 flex items-center space-x-2">
+            <i class="fa-solid fa-calculator"></i><span>Live Stat Calculator</span>
+          </h3>
+          <p class="text-xs text-slate-400">Mô phỏng công thức tính chỉ số cuối theo vị trí hàng và phẩm.</p>
+          <button onclick="switchTab('lines')" class="w-full py-2 bg-amber-600/30 hover:bg-amber-600 text-amber-200 hover:text-white border border-amber-500/40 rounded-xl text-xs font-semibold transition">
+            Mở Trình Tính Chỉ Số
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. USERS TAB -->
+    <section id="view-users" class="space-y-4 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div class="flex items-center space-x-3 w-full sm:w-auto">
+          <div class="relative w-full sm:w-72">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="userSearchInput" oninput="filterUsersTable()" placeholder="Tìm kiếm theo username, display name..."
+                   class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <button onclick="openModal('modalCreateUser')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+          <i class="fa-solid fa-plus"></i><span>Tạo Người Chơi Mới</span>
+        </button>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Người Chơi</th>
+                <th class="p-3.5">Level / Rank</th>
+                <th class="p-3.5">Vàng & Gem</th>
+                <th class="p-3.5">Trận / Tỷ Lệ Thắng</th>
+                <th class="p-3.5">Battle Slots</th>
+                <th class="p-3.5">Số Tướng</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="7" class="text-center p-8 text-slate-500">Đang tải danh sách người chơi...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2.5 SHOP TAB -->
+    <section id="view-shop" class="space-y-4 hidden">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Cửa Hàng Thẻ Bài (Shop Cards & Items)</h2>
+          <p class="text-xs text-slate-400">Quản lý danh tướng bán trong Cửa Hàng, điều chỉnh giá vàng, bật/tắt trạng thái mở bán</p>
+        </div>
+        <button onclick="openShopCardModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+          <i class="fa-solid fa-plus"></i><span>Thêm Thẻ Vào Shop</span>
+        </button>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Tướng / Thẻ Bài</th>
+                <th class="p-3.5">Phe Phái</th>
+                <th class="p-3.5">Phẩm Cấp</th>
+                <th class="p-3.5">Vai Trò</th>
+                <th class="p-3.5">Kỹ Năng & Mô Tả</th>
+                <th class="p-3.5">Giá Bán (🪙 Vàng)</th>
+                <th class="p-3.5">Trạng Thái</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="shopTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="8" class="text-center p-8 text-slate-500">Đang tải danh sách thẻ cửa hàng...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. TEMPLATES TAB -->
+    <section id="view-templates" class="space-y-4 hidden">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Mẫu Thẻ Tướng Gốc (Card Templates)</h2>
+          <p class="text-xs text-slate-400">Dữ liệu thẻ gốc được lưu trữ theo schema `card_templates`</p>
+        </div>
+        <button onclick="openTemplateModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+          <i class="fa-solid fa-plus"></i><span>Thêm Tướng Mới</span>
+        </button>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">ID / Tên Tướng</th>
+                <th class="p-3.5">Phe Phái</th>
+                <th class="p-3.5">Phẩm Cấp</th>
+                <th class="p-3.5">Vai Trò</th>
+                <th class="p-3.5">Chỉ Số Gốc (HP / ATK / DEF / SPD)</th>
+                <th class="p-3.5">Bạo Kích</th>
+                <th class="p-3.5">Sĩ Khí</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="templatesTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="8" class="text-center p-8 text-slate-500">Đang tải danh sách mẫu tướng...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3.1 TEMPLATE SKILLS TAB (NEW) -->
+    <section id="view-template-skills" class="space-y-4 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Gán Kỹ Năng Cho Tướng (Hero Skills Mapping)</h2>
+          <p class="text-xs text-slate-400">Quản lý kỹ năng thường, kỹ năng nộ (Ultimate), nội tại (Passive) và số sao mở khóa cho từng tướng</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <select id="templateSkillFilter" onchange="filterTemplateSkillsTable()" class="bg-slate-900 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200">
+            <option value="ALL">Tất cả tướng</option>
+          </select>
+          <button onclick="openTemplateSkillModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+            <i class="fa-solid fa-plus"></i><span>Gán Kỹ Năng Mới</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Tướng (Card Template)</th>
+                <th class="p-3.5">Kỹ Năng (Skill)</th>
+                <th class="p-3.5">Vị Trí Slot</th>
+                <th class="p-3.5">Mở Khóa (Unlock Star)</th>
+                <th class="p-3.5">Thông Tin Kỹ Năng</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="templateSkillsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="6" class="text-center p-8 text-slate-500">Đang tải danh sách kỹ năng của tướng...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3.2 FORMATION SYNERGIES TAB (NEW) -->
+    <section id="view-synergies" class="space-y-4 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Kích Duyên Đội Hình (Formation Synergies & Team Buffs)</h2>
+          <p class="text-xs text-slate-400">Quản lý duyên phận hệ phái (Thiết Vệ, Thần Xạ, Kỳ Môn...), phe phái (Thục, Ngụy, Ngô) và hiệu ứng chỉ số</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <select id="synergyFilterType" onchange="filterSynergiesTable()" class="bg-slate-900 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200">
+            <option value="ALL">Tất cả loại kích duyên</option>
+            <option value="CLASS">Hệ Phái (Class)</option>
+            <option value="FACTION">Phe Phái (Faction)</option>
+            <option value="SPECIAL">Đặc Biệt (Special)</option>
+          </select>
+          <button onclick="openSynergyModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+            <i class="fa-solid fa-plus"></i><span>Thêm Kích Duyên Mới</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Biểu Tượng & Tên Duyên</th>
+                <th class="p-3.5">Phân Loại</th>
+                <th class="p-3.5">Số Tướng Kích Hoạt</th>
+                <th class="p-3.5">Tướng Áp Dụng (Hero IDs)</th>
+                <th class="p-3.5">Buff Chỉ Số Toàn Đội</th>
+                <th class="p-3.5">Trạng Thái</th>
+                <th class="p-3.5">Mô Tả</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="synergiesTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="8" class="text-center p-8 text-slate-500">Đang tải danh sách kích duyên đội hình...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SKILLS TAB -->
+    <section id="view-skills" class="space-y-4 hidden">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Kỹ Năng & Hiệu Ứng (Skills Table)</h2>
+          <p class="text-xs text-slate-400">Danh mục kỹ năng nộ, đòn đánh thường, hiệu ứng khống chế</p>
+        </div>
+        <button onclick="openSkillModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+          <i class="fa-solid fa-plus"></i><span>Thêm Kỹ Năng Mới</span>
+        </button>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Skill ID / Tên</th>
+                <th class="p-3.5">Loại Kích Hoạt</th>
+                <th class="p-3.5">Phạm Vi (Pattern)</th>
+                <th class="p-3.5">Mục Tiêu (Rule)</th>
+                <th class="p-3.5">Cost Sĩ Khí</th>
+                <th class="p-3.5">Hệ Số Sát Thương</th>
+                <th class="p-3.5">Hiệu Ứng Áp Dụng</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="skillsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="8" class="text-center p-8 text-slate-500">Đang tải danh mục kỹ năng...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. STATUS EFFECTS TAB (NEW) -->
+    <section id="view-effects" class="space-y-4 hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Kho Quản Lý Hiệu Ứng (Status Effects / Buffs / Debuffs)</h2>
+          <p class="text-xs text-slate-400">Quản lý hiệu ứng khống chế (Stun, Freeze), Buff/Debuff chỉ số, DoT (Burn, Bleed), HoT (Regen), Khiên</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <select id="effectFilterCategory" onchange="filterEffectsTable()" class="bg-slate-900 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200">
+            <option value="ALL">Tất cả phân loại</option>
+            <option value="BUFF">BUFF</option>
+            <option value="DEBUFF">DEBUFF</option>
+            <option value="CROWD_CONTROL">CROWD_CONTROL</option>
+            <option value="DOT">DOT (Damage Over Time)</option>
+            <option value="HOT">HOT (Heal Over Time)</option>
+            <option value="TRIGGER_PASSIVE">TRIGGER_PASSIVE</option>
+          </select>
+          <button onclick="openEffectModal()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+            <i class="fa-solid fa-plus"></i><span>Thêm Hiệu Ứng Mới</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">ID / Tên Hiệu Ứng</th>
+                <th class="p-3.5">Phân Loại</th>
+                <th class="p-3.5">Thuộc Tính Tác Động</th>
+                <th class="p-3.5">Giá Trị / Cách Tính</th>
+                <th class="p-3.5">Số Tầng / Thời Gian</th>
+                <th class="p-3.5">Thời Điểm (Trigger)</th>
+                <th class="p-3.5">Thanh Tẩy</th>
+                <th class="p-3.5">Mô Tả</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="effectsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="9" class="text-center p-8 text-slate-500">Đang tải danh sách hiệu ứng...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 9 BOARD CELLS TAB (NEW) -->
+    <section id="view-cells" class="space-y-6 hidden">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Cấu Hình 9 Ô Bàn Cờ 3x3 (Board Cell Configs & Terrain)</h2>
+          <p class="text-xs text-slate-400">Quản lý ma trận 3x3: vị trí cột/hàng, địa hình, buff nội tại ô cờ, sát thương môi trường, vai trò ưu tiên/phạt</p>
+        </div>
+        <button onclick="openCellModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+          <i class="fa-solid fa-plus"></i><span>Thêm/Sửa Ô Cờ</span>
+        </button>
+      </div>
+
+      <!-- Visual 3x3 Grid Display -->
+      <div class="glass p-5 rounded-2xl border border-slate-800 space-y-3">
+        <h3 class="text-xs font-bold text-slate-300 flex items-center space-x-2">
+          <i class="fa-solid fa-border-all text-emerald-400"></i><span>Sơ Đồ Trực Quan Bàn Cờ 3x3 (Bấm vào ô để chỉnh sửa nhanh)</span>
+        </h3>
+        <div id="board3x3VisualGrid" class="grid grid-cols-3 gap-3 max-w-2xl mx-auto">
+          <!-- Filled via JS -->
+        </div>
+      </div>
+
+      <!-- Cell Table -->
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Slot / Tọa Độ</th>
+                <th class="p-3.5">Hàng (Line Type)</th>
+                <th class="p-3.5">Địa Hình (Terrain)</th>
+                <th class="p-3.5">Buff Gán Vào Ô (Tile Buff)</th>
+                <th class="p-3.5">ST Môi Trường</th>
+                <th class="p-3.5">Vai Trò Ưu Tiên</th>
+                <th class="p-3.5">Vai Trò Bị Phạt</th>
+                <th class="p-3.5">Ghi Chú</th>
+                <th class="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="cellsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="9" class="text-center p-8 text-slate-500">Đang tải danh sách ô bàn cờ...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. 3X3 LINES & RARITIES TAB -->
+    <section id="view-lines" class="space-y-6 hidden">
+      <!-- Rarities Section CRUD -->
+      <div class="glass p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-sm font-bold text-purple-300 flex items-center space-x-2">
+              <i class="fa-solid fa-crown"></i><span>Cấu Hình Phẩm Cấp (Rarities CRUD)</span>
+            </h3>
+            <p class="text-xs text-slate-400">Hệ số nhân chỉ số cơ bản và tốc độ tăng trưởng chỉ số theo cấp</p>
+          </div>
+          <button onclick="openRarityModal()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-plus"></i><span>Thêm Phẩm Cấp</span>
+          </button>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-2.5">Mã (Rarity ID)</th>
+                <th class="p-2.5">Tên Hiển Thị</th>
+                <th class="p-2.5">Hệ Số Multiplier</th>
+                <th class="p-2.5">Tăng Trưởng / Level</th>
+                <th class="p-2.5">Số Sao Tối Đa</th>
+                <th class="p-2.5">Kỹ Năng Cho Phép</th>
+                <th class="p-2.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="raritiesTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="7" class="text-center p-4 text-slate-500">Đang tải danh sách phẩm cấp...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Line Configs Section -->
+      <div class="glass p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-sm font-bold text-indigo-300 flex items-center space-x-2">
+              <i class="fa-solid fa-layer-group"></i><span>Buff Hàng Trận (Front, Mid, Back)</span>
+            </h3>
+            <p class="text-xs text-slate-400">Cấu hình buff tự động áp dụng và quy tắc phạt vị trí sai vai trò</p>
+          </div>
+          <button onclick="openLineModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-plus"></i><span>Thêm/Sửa Cấu Hình Hàng</span>
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="lineConfigsCards">
+          <!-- Filled via JS -->
+        </div>
+      </div>
+
+      <!-- Live Simulator -->
+      <div class="glass p-6 rounded-2xl border border-indigo-900/40 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="font-bold text-sm text-indigo-300 flex items-center space-x-2">
+              <i class="fa-solid fa-microchip"></i><span>Bộ Tính Chỉ Số Thực Chiến Thời Gian Thực (Runtime Formula)</span>
+            </h3>
+            <p class="text-xs text-slate-400">Gửi request trực tiếp tới API `/api/formation/calculate_stats` để kiểm thử công thức</p>
+          </div>
+          <span class="text-xs bg-indigo-900/50 text-indigo-300 px-3 py-1 rounded-full border border-indigo-700/50">Section 5 Pipeline</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Mẫu Tướng</label>
+            <select id="calcTemplateSelect" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+              <option value="hero_guan_yu">Quan Vũ (SSR - WARRIOR)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Phẩm Cấp (Rarity)</label>
+            <select id="calcRaritySelect" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+              <option value="R">R (x1.00 - Growth 0.050)</option>
+              <option value="SR">SR (x1.20 - Growth 0.075)</option>
+              <option value="SSR" selected>SSR (x1.50 - Growth 0.100)</option>
+              <option value="UR">UR (x1.85 - Growth 0.135)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Level (1 - 100)</label>
+            <input type="number" id="calcLevelInput" value="10" min="1" max="100" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Số Sao (1 - 7)</label>
+            <input type="number" id="calcStarInput" value="2" min="1" max="7" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+          </div>
+        </div>
+
+        <!-- Slot Selection Grid 3x3 -->
+        <div>
+          <label class="text-[11px] text-slate-400 block mb-2">Chọn Vị Trí Slot Bàn Cờ 3x3 (1..9):</label>
+          <div class="grid grid-cols-3 gap-3 max-w-md">
+            <button onclick="selectCalcSlot(1)" id="calc-slot-1" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">1: Hàng Đầu</button>
+            <button onclick="selectCalcSlot(2)" id="calc-slot-2" class="calc-slot-btn p-3 bg-indigo-600 border border-indigo-500 rounded-xl text-xs text-center font-bold text-white shadow">2: Hàng Đầu ⭐</button>
+            <button onclick="selectCalcSlot(3)" id="calc-slot-3" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">3: Hàng Đầu</button>
+            <button onclick="selectCalcSlot(4)" id="calc-slot-4" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">4: Hàng Giữa</button>
+            <button onclick="selectCalcSlot(5)" id="calc-slot-5" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">5: Hàng Giữa</button>
+            <button onclick="selectCalcSlot(6)" id="calc-slot-6" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">6: Hàng Giữa</button>
+            <button onclick="selectCalcSlot(7)" id="calc-slot-7" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">7: Hàng Sau</button>
+            <button onclick="selectCalcSlot(8)" id="calc-slot-8" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">8: Hàng Sau</button>
+            <button onclick="selectCalcSlot(9)" id="calc-slot-9" class="calc-slot-btn p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs text-center font-bold">9: Hàng Sau</button>
+          </div>
+        </div>
+
+        <button onclick="runLiveCalc()" class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition">
+          <i class="fa-solid fa-play mr-1.5"></i> Chạy Tính Toán Chỉ Số
+        </button>
+
+        <!-- Result Box -->
+        <div id="calcResultBox" class="mt-4 p-4 bg-slate-900/90 border border-slate-800 rounded-2xl hidden">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div><span class="text-slate-400">HP Cuối Cùng:</span> <strong id="resHp" class="text-emerald-400 text-sm block">-</strong></div>
+            <div><span class="text-slate-400">Tấn Công (ATK):</span> <strong id="resAtk" class="text-amber-400 text-sm block">-</strong></div>
+            <div><span class="text-slate-400">Phòng Thủ (DEF):</span> <strong id="resDef" class="text-blue-400 text-sm block">-</strong></div>
+            <div><span class="text-slate-400">Tốc Độ (SPD):</span> <strong id="resSpd" class="text-cyan-400 text-sm block">-</strong></div>
+            <div><span class="text-slate-400">Tỷ Lệ Bạo:</span> <strong id="resCrit" class="text-rose-400 block">-</strong></div>
+            <div><span class="text-slate-400">Sĩ Khí Khởi Đầu:</span> <strong id="resMorale" class="text-indigo-300 block">-</strong></div>
+            <div><span class="text-slate-400">Phạt Vị Trí:</span> <strong id="resPenalty" class="block">-</strong></div>
+            <div><span class="text-slate-400">Line Type:</span> <strong id="resLineType" class="text-purple-300 block">-</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. MATCHES TAB -->
+    <section id="view-matches" class="space-y-4 hidden">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-semibold text-slate-200">Lịch Sử Trận Đấu (PvP & PvE)</h2>
+          <p class="text-xs text-slate-400">Các kết quả trận đấu được ghi nhận chính thức</p>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl border border-slate-800 overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Match ID</th>
+                <th class="p-3.5">Host</th>
+                <th class="p-3.5">Guest</th>
+                <th class="p-3.5">Người Thắng (Winner)</th>
+                <th class="p-3.5">Số Round</th>
+                <th class="p-3.5">Thời Gian</th>
+              </tr>
+            </thead>
+            <tbody id="matchesTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+              <tr><td colspan="6" class="text-center p-8 text-slate-500">Đang tải lịch sử đấu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. SYSTEM & DB TAB -->
+    <section id="view-system" class="space-y-6 hidden">
+      <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4">
+        <h3 class="font-bold text-sm text-slate-200 flex items-center space-x-2">
+          <i class="fa-solid fa-server"></i><span>Bảo Trì Dữ Liệu & Hạt Giống (Database Seeds)</span>
+        </h3>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Tùy chọn thiết lập lại dữ liệu master theo đúng tài liệu <code class="text-amber-400">docs/game_design/schema_game.md</code> (Rarities, 3x3 Line Buffs, Guan Yu, Status Effects, 9 Ô Bàn Cờ).
+          Dữ liệu thẻ bài và đội hình người chơi sẽ được bảo lưu.
+        </p>
+
+        <div class="flex flex-wrap gap-4 pt-2">
+          <button onclick="resetDefaultSeeds()" class="px-5 py-2.5 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 rounded-xl text-xs font-semibold flex items-center space-x-2 transition">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Khôi Phục Toàn Bộ Master Seeds Ban Đầu</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS -->
+  <!-- ========================================================================= -->
+
+  <!-- Modal: Create User -->
+  <div id="modalCreateUser" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-white">Tạo Người Chơi Mới</h3>
+        <button onclick="closeModal('modalCreateUser')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitCreateUser(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Tên Đăng Nhập (Username)</label>
+          <input type="text" id="newUsername" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Mật Khẩu</label>
+          <input type="password" id="newPassword" required value="1234" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Tên Hiển Thị (Display Name)</label>
+          <input type="text" id="newDisplayName" placeholder="Mặc định như username" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Vàng</label>
+            <input type="number" id="newGold" value="1000" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Gems</label>
+            <input type="number" id="newGems" value="100" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Battle Slots (1-5)</label>
+            <input type="number" id="newSlots" value="3" min="1" max="5" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalCreateUser')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl">Tạo Người Chơi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit User -->
+  <div id="modalEditUser" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-white">Chỉnh Sửa Người Chơi</h3>
+        <button onclick="closeModal('modalEditUser')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitEditUser(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="editUsername">
+        <div>
+          <label class="block text-slate-400 mb-1">Tài Khoản</label>
+          <input type="text" id="editUsernameDisplay" disabled class="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-400">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Tên Hiển Thị</label>
+          <input type="text" id="editDisplayName" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Vàng (Gold)</label>
+            <input type="number" id="editGold" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Gems</label>
+            <input type="number" id="editGems" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Level</label>
+            <input type="number" id="editLevel" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Điểm ELO</label>
+            <input type="number" id="editElo" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Battle Slots (1-5)</label>
+            <input type="number" id="editSlots" min="1" max="5" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Đặt Lại Mật Khẩu (Để trống nếu giữ nguyên)</label>
+          <input type="password" id="editPassword" placeholder="Mật khẩu mới..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalEditUser')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl">Lưu Thay Đổi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Grant Card -->
+  <div id="modalGrantCard" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-white">Cấp Thẻ Tướng Cho Người Chơi</h3>
+        <button onclick="closeModal('modalGrantCard')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitGrantCard(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="grantUsername">
+        <div>
+          <label class="block text-slate-400 mb-1">Tài Khoản Nhận</label>
+          <input type="text" id="grantUsernameDisplay" disabled class="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-400">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Chọn Tướng Tam Quốc</label>
+          <select id="grantHeroClass" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+            <option value="zhao_yun">Triệu Vân (Shu - SSR)</option>
+            <option value="huang_zhong">Hoàng Trung (Shu - SSR)</option>
+            <option value="zhuge_liang">Gia Cát Lượng (Shu - SSR)</option>
+            <option value="cao_cao">Tào Tháo (Wei - SSR)</option>
+            <option value="dian_wei">Điển Vi (Wei - SSR)</option>
+            <option value="guo_jia">Quách Gia (Wei - SSR)</option>
+            <option value="sun_ce">Tôn Sách (Wu - SSR)</option>
+            <option value="lu_xun">Lục Tốn (Wu - SSR)</option>
+            <option value="da_qiao_xiao_qiao">Đại Kiều & Tiểu Kiều (Wu - SSR)</option>
+            <option value="zhang_he_yan_liang">Trương Cáp & Nhan Lương (Qun - SSR)</option>
+            <option value="hua_tuo">Hoa Đà (Qun - SSR)</option>
+            <option value="jia_xu">Giả Hủ (Qun - SSR)</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Số Sao (1 - 7)</label>
+            <input type="number" id="grantStarLevel" value="1" min="1" max="7" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Level (1 - 100)</label>
+            <input type="number" id="grantLevel" value="1" min="1" max="100" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 pt-2">
+          <input type="checkbox" id="grantFoil" class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+          <label for="grantFoil" class="text-slate-300">Thẻ Lấp Lánh (Foil Card ⭐)</label>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalGrantCard')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl">Cấp Thẻ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Shop Card -->
+  <div id="modalShopCard" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="shopCardModalTitle" class="font-bold text-sm text-white">Cấu Hình Thẻ Cửa Hàng</h3>
+        <button onclick="closeModal('modalShopCard')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveShopCard(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Mã Thẻ (Card ID / Class)</label>
+            <input type="text" id="shopCardId" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="zhao_yun">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tên Tướng</label>
+            <input type="text" id="shopCardName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Triệu Vân">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Icon Đại Diện</label>
+            <input type="text" id="shopCardIcon" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="🐉">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Phe Phái</label>
+            <select id="shopCardFaction" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="SHU">Thục (SHU)</option>
+              <option value="WEI">Ngụy (WEI)</option>
+              <option value="WU">Ngô (WU)</option>
+              <option value="QUN">Quần (QUN)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Phẩm Cấp</label>
+            <select id="shopCardRarity" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="Rare">Rare (Hiếm)</option>
+              <option value="Epic">Epic (Sử Thi)</option>
+              <option value="Legendary">Legendary (Huyền Thoại)</option>
+              <option value="Common">Common (Phổ Thông)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Vai Trò</label>
+            <input type="text" id="shopCardRole" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Đấu Sĩ Cơ Động">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Giá Bán (🪙 Vàng)</label>
+            <input type="number" id="shopCardPrice" required min="1" max="9999" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-amber-400 font-bold" placeholder="55">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Tên Kỹ Năng Nổi Bật</label>
+          <input type="text" id="shopCardSkill" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Thất Tiến Thất Xuất">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Mô Tả Hiệu Quả / Chiến Thuật</label>
+          <textarea id="shopCardDesc" rows="2" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 custom-scrollbar" placeholder="Mô tả kỹ năng..."></textarea>
+        </div>
+        <div class="flex items-center space-x-2 pt-2">
+          <input type="checkbox" id="shopCardAvailable" checked class="rounded bg-slate-900 border-slate-700 text-amber-500">
+          <label for="shopCardAvailable" class="text-slate-300">Đang Mở Bán trong Cửa Hàng (Người chơi có thể mua)</label>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalShopCard')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl">Lưu Cấu Hình</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Template -->
+  <div id="modalTemplate" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="templateModalTitle" class="font-bold text-sm text-white">Mẫu Thẻ Tướng</h3>
+        <button onclick="closeModal('modalTemplate')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveTemplate(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Template ID</label>
+            <input type="text" id="tplId" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="hero_guan_yu">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tên Tướng</label>
+            <input type="text" id="tplName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Quan Vũ">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Phe Phái</label>
+            <select id="tplFaction" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="SHU">Thục (SHU)</option>
+              <option value="WEI">Ngụy (WEI)</option>
+              <option value="WU">Ngô (WU)</option>
+              <option value="QUN">Quần (QUN)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Phẩm Cấp</label>
+            <select id="tplRarity" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="R">R</option>
+              <option value="SR">SR</option>
+              <option value="SSR">SSR</option>
+              <option value="UR">UR</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Vai Trò</label>
+            <select id="tplRole" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="WARRIOR">Chiến Binh (WARRIOR)</option>
+              <option value="VANGUARD">Tiên Phong (VANGUARD)</option>
+              <option value="ASSASSIN">Thích Khách (ASSASSIN)</option>
+              <option value="MARKSMAN">Xạ Thủ (MARKSMAN)</option>
+              <option value="MAGE">Pháp Sư (MAGE)</option>
+              <option value="TACTICIAN">Mưu Sĩ (TACTICIAN)</option>
+              <option value="SUPPORT">Hỗ Trợ (SUPPORT)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Máu Gốc (HP)</label>
+            <input type="number" id="tplHp" required value="4000" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Công Gốc (ATK)</label>
+            <input type="number" id="tplAtk" required value="600" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Thủ Gốc (DEF)</label>
+            <input type="number" id="tplDef" required value="300" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tốc Độ (SPD)</label>
+            <input type="number" id="tplSpeed" required value="100" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Tỷ Lệ Bạo (Crit Rate)</label>
+            <input type="number" step="0.01" id="tplCritRate" value="0.05" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">ST Bạo (Crit DMG)</label>
+            <input type="number" step="0.01" id="tplCritDmg" value="1.50" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalTemplate')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl">Lưu Mẫu Tướng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Skill -->
+  <div id="modalSkill" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="skillModalTitle" class="font-bold text-sm text-white">Kỹ Năng</h3>
+        <button onclick="closeModal('modalSkill')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveSkill(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Skill ID</label>
+            <input type="text" id="sklId" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="skill_custom_1">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tên Kỹ Năng</label>
+            <input type="text" id="sklName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Phẩm Kỹ Năng</label>
+            <select id="sklQuality" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="COMMON">COMMON</option>
+              <option value="RARE">RARE</option>
+              <option value="EPIC">EPIC</option>
+              <option value="LEGENDARY">LEGENDARY</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Kích Hoạt (Trigger)</label>
+            <select id="sklTrigger" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="NORMAL_ATTACK">NORMAL_ATTACK</option>
+              <option value="ULTIMATE">ULTIMATE</option>
+              <option value="ACTIVE_CD">ACTIVE_CD</option>
+              <option value="PASSIVE">PASSIVE</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Hệ Số Sát Thương</label>
+            <input type="number" step="0.1" id="sklMult" value="1.0" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Phạm Vi (Target Pattern)</label>
+            <select id="sklPattern" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="DIRECT_LANE">DIRECT_LANE</option>
+              <option value="PIERCE_ROW">PIERCE_ROW</option>
+              <option value="FRONT_ROW">FRONT_ROW</option>
+              <option value="CROSS_PLUS">CROSS_PLUS</option>
+              <option value="ALL_BOARD">ALL_BOARD</option>
+              <option value="BACKLINE_ASSASSIN">BACKLINE_ASSASSIN</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Mục Tiêu (Target Rule)</label>
+            <select id="sklRule" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="ENEMY_NEAREST">ENEMY_NEAREST</option>
+              <option value="ENEMY_LOWEST_HP">ENEMY_LOWEST_HP</option>
+              <option value="ENEMY_HIGHEST_ATK">ENEMY_HIGHEST_ATK</option>
+              <option value="SELF_ALLY">SELF_ALLY</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Cost Sĩ Khí</label>
+            <input type="number" id="sklMorale" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Cooldown Lượt</label>
+            <input type="number" id="sklCd" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Hiệu Ứng JSON (Effects Applied)</label>
+          <textarea id="sklEffects" rows="3" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-mono text-[11px]" placeholder='[{"status_type":"Stun","target":"PrimaryTarget","chance":0.4,"duration_turns":1}]'></textarea>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalSkill')\" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl">Lưu Kỹ Năng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Template Skill (NEW) -->
+  <div id="modalTemplateSkill" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="templateSkillModalTitle" class="font-bold text-sm text-white">Gán Kỹ Năng Cho Tướng</h3>
+        <button onclick="closeModal('modalTemplateSkill')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveTemplateSkill(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Mẫu Tướng (Hero Template)</label>
+          <select id="tsTemplateSelect" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Kỹ Năng (Skill)</label>
+          <select id="tsSkillSelect" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Vị Trí Slot Kỹ Năng</label>
+            <select id="tsSlotType" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="NORMAL">NORMAL (Đánh Thường)</option>
+              <option value="ULTIMATE">ULTIMATE (Kỹ Năng Nộ)</option>
+              <option value="PASSIVE">PASSIVE (Kỹ Năng Nội Tại)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Số Sao Mở Khóa (1 - 7 ⭐)</label>
+            <input type="number" id="tsUnlockStar" min="1" max="7" value="1" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalTemplateSkill')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl">Lưu Gán Kỹ Năng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Synergy (NEW) -->
+  <div id="modalSynergy" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="synergyModalTitle" class="font-bold text-sm text-white">Cấu Hình Kích Duyên Đội Hình</h3>
+        <button onclick="closeModal('modalSynergy')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveSynergy(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Synergy ID (Mã duyên)</label>
+            <input type="text" id="synId" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-mono" placeholder="synergy_vanguard">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tên Duyên Phận</label>
+            <input type="text" id="synName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Thiết Vệ">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Biểu Tượng (Icon)</label>
+            <input type="text" id="synIcon" value="🔰" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="🔰">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Loại Duyên</label>
+            <select id="synType" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="CLASS">CLASS (Hệ Phái)</option>
+              <option value="FACTION">FACTION (Phe Phái)</option>
+              <option value="SPECIAL">SPECIAL (Đặc Biệt)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Số Tướng Yêu Cầu</label>
+            <input type="number" id="synTriggerCount" min="1" max="6" value="2" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="flex items-center space-x-1.5 py-1 text-base">
+          <span class="text-xs text-slate-400 mr-1">Icon gợi ý:</span>
+          <button type="button" onclick="document.getElementById('synIcon').value='🔰'" class="hover:scale-125 transition">🔰</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🏹'" class="hover:scale-125 transition">🏹</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='⚡'" class="hover:scale-125 transition">⚡</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🗡️'" class="hover:scale-125 transition">🗡️</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='⚕️'" class="hover:scale-125 transition">⚕️</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🐉'" class="hover:scale-125 transition">🐉</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🦅'" class="hover:scale-125 transition">🦅</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🐅'" class="hover:scale-125 transition">🐅</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🛡️'" class="hover:scale-125 transition">🛡️</button>
+          <button type="button" onclick="document.getElementById('synIcon').value='🔥'" class="hover:scale-125 transition">🔥</button>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Danh Sách Hero IDs (Cách nhau bởi dấu phẩy)</label>
+          <input type="text" id="synHeroIds" placeholder="zhao_yun, sun_ce, dian_wei" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Stat Buffs JSON (Chỉ số buff toàn đội)</label>
+          <textarea id="synStatBuffs" rows="3" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-mono text-[11px]" placeholder='{"def": 35.0, "hp": 150.0}'></textarea>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Mô Tả Hiệu Ứng</label>
+          <input type="text" id="synDescription" placeholder="Tăng 35 Thủ và 150 Máu cho toàn đội khi có từ 2 tướng Thiết Vệ" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div class="flex items-center space-x-2 pt-1">
+          <input type="checkbox" id="synActive" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+          <label for="synActive" class="text-slate-300">Kích hoạt kích duyên này trong trận đấu</label>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalSynergy')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl">Lưu Kích Duyên</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Status Effect (NEW) -->
+  <div id="modalEffect" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="effectModalTitle" class="font-bold text-sm text-white">Hiệu Ứng (Buff / Debuff)</h3>
+        <button onclick="closeModal('modalEffect')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveEffect(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Effect ID (Mã hiệu ứng)</label>
+            <input type="text" id="effId" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="eff_bleed_heavy">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tên Hiển Thị</label>
+            <input type="text" id="effName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Xuất Huyết Nặng">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Phân Loại (Category)</label>
+            <select id="effCategory" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="BUFF">BUFF</option>
+              <option value="DEBUFF">DEBUFF</option>
+              <option value="CROWD_CONTROL">CROWD_CONTROL</option>
+              <option value="DOT">DOT</option>
+              <option value="HOT">HOT</option>
+              <option value="TRIGGER_PASSIVE">TRIGGER_PASSIVE</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Thuộc Tính Tác Động</label>
+            <select id="effStatTarget" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="ATK">ATK (Công)</option>
+              <option value="DEF">DEF (Thủ)</option>
+              <option value="HP">HP (Máu)</option>
+              <option value="SPEED">SPEED (Tốc độ)</option>
+              <option value="CRIT_RATE">CRIT_RATE (Tỷ lệ bạo)</option>
+              <option value="CRIT_DMG">CRIT_DMG (ST bạo)</option>
+              <option value="MORALE">MORALE (Sĩ khí)</option>
+              <option value="SHIELD">SHIELD (Khiên)</option>
+              <option value="ACTION_LOCK">ACTION_LOCK (Khóa hành động)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Cách Tính</label>
+            <select id="effCalcType" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="PERCENTAGE">PERCENTAGE (%)</option>
+              <option value="FLAT">FLAT (Cố định)</option>
+              <option value="ABSOLUTE_STATE">ABSOLUTE_STATE</option>
+              <option value="CUSTOM_FORMULA">CUSTOM_FORMULA</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Giá Trị Gốc (Base Value)</label>
+            <input type="number" step="0.01" id="effBaseValue" value="0.2" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Cộng Dồn Tối Đa (Stacks)</label>
+            <input type="number" id="effMaxStacks" value="1" min="1" max="10" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Số Hiệp Duy Trì</label>
+            <input type="number" id="effDuration" value="2" min="1" max="20" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Thời Điểm Hiệu Lực</label>
+            <select id="effTrigger" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="TURN_START">TURN_START</option>
+              <option value="TURN_END">TURN_END</option>
+              <option value="ON_HIT">ON_HIT</option>
+              <option value="ON_DAMAGED">ON_DAMAGED</option>
+              <option value="ON_DEATH">ON_DEATH</option>
+              <option value="INSTANT">INSTANT</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Biểu Tượng (Icon)</label>
+            <input type="text" id="effIcon" value="✨" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="🔥, ❄️, 🛡️">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">VFX Prefab</label>
+            <input type="text" id="effVfx" value="vfx_default_glow" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="flex items-center space-x-1.5 py-1 text-base">
+          <span class="text-xs text-slate-400 mr-1">Icon hiệu ứng nhanh:</span>
+          <button type="button" onclick="document.getElementById('effIcon').value='🛡️'" class="hover:scale-125 transition">🛡️</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='🔥'" class="hover:scale-125 transition">🔥</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='☠️'" class="hover:scale-125 transition">☠️</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='❄️'" class="hover:scale-125 transition">❄️</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='💫'" class="hover:scale-125 transition">💫</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='⚔️'" class="hover:scale-125 transition">⚔️</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='🔰'" class="hover:scale-125 transition">🔰</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='⚕️'" class="hover:scale-125 transition">⚕️</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='🩸'" class="hover:scale-125 transition">🩸</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='🌿'" class="hover:scale-125 transition">🌿</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='⚡'" class="hover:scale-125 transition">⚡</button>
+          <button type="button" onclick="document.getElementById('effIcon').value='🏹'" class="hover:scale-125 transition">🏹</button>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Mô Tả Hiệu Ứng</label>
+          <input type="text" id="effDesc" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Chi tiết tác dụng và điều kiện kích hoạt...">
+        </div>
+        <div class="flex items-center space-x-2 pt-1">
+          <input type="checkbox" id="effDispellable" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+          <label for="effDispellable" class="text-slate-300">Có Thể Thanh Tẩy / Giải Trừ (Cleanse / Dispellable)</label>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalEffect')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl">Lưu Hiệu Ứng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Board Cell (NEW) -->
+  <div id="modalCell" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="cellModalTitle" class="font-bold text-sm text-white">Cấu Hình Ô Bàn Cờ 3x3</h3>
+        <button onclick="closeModal('modalCell')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveCell(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Slot ID (1..9)</label>
+            <input type="number" id="cellSlotId" required min="1" max="9" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Cột (Col: 0..2)</label>
+            <input type="number" id="cellCol" required min="0" max="2" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Hàng (Row: 0..2)</label>
+            <input type="number" id="cellRow" required min="0" max="2" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Hàng Trận (Line Type)</label>
+            <select id="cellLineType" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="FRONT">FRONT (Hàng Đầu: Slot 1, 2, 3)</option>
+              <option value="MID">MID (Hàng Giữa: Slot 4, 5, 6)</option>
+              <option value="BACK">BACK (Hàng Sau: Slot 7, 8, 9)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Địa Hình (Terrain Type)</label>
+            <select id="cellTerrain" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="NORMAL">NORMAL (Bình Thường)</option>
+              <option value="HIGH_GROUND">HIGH_GROUND (Cao Điểm)</option>
+              <option value="LAVA_ZONE">LAVA_ZONE (Vùng Dung Nham)</option>
+              <option value="HOLY_SANCTUARY">HOLY_SANCTUARY (Thánh Địa)</option>
+              <option value="SHADOW_VEIL">SHADOW_VEIL (Màn Sương Đêm)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Buff Gán Vào Ô (Từ Kho Hiệu Ứng)</label>
+            <select id="cellTileBuff" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="">-- Không có buff nội tại --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Sát Thương Môi Trường (% HP/Hiệp)</label>
+            <input type="number" step="0.01" id="cellHazard" value="0.0" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Vai Trò Ưu Tiên (Preferred Roles, cách nhau dấu phẩy)</label>
+          <input type="text" id="cellPrefRoles" placeholder="VANGUARD, WARRIOR" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Vai Trò Bị Phạt (Penalty Roles, cách nhau dấu phẩy)</label>
+          <input type="text" id="cellPenRoles" placeholder="MARKSMAN, SUPPORT" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Ghi Chú Ô Bàn Cờ</label>
+          <input type="text" id="cellDesc" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Tiền tuyến góc trái - Cao điểm phòng hộ">
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalCell')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl">Lưu Cấu Hình Ô</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Rarity (NEW) -->
+  <div id="modalRarity" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="rarityModalTitle" class="font-bold text-sm text-white">Cấu Hình Phẩm Cấp</h3>
+        <button onclick="closeModal('modalRarity')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveRarity(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Mã Phẩm Cấp (ID: R, SR, SSR, UR...)</label>
+          <input type="text" id="rarityId" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="UR">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Tên Hiển Thị</label>
+          <input type="text" id="rarityName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Thần Tướng">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Base Stat Multiplier</label>
+            <input type="number" step="0.05" id="rarityMult" value="1.50" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tăng Trưởng / Level</label>
+            <input type="number" step="0.005" id="rarityGrowth" value="0.100" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Sao Tối Đa (Max Stars)</label>
+            <input type="number" id="rarityMaxStar" value="7" min="1" max="10" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Kỹ Năng Tối Đa</label>
+            <input type="number" id="rarityMaxSkills" value="4" min="1" max="6" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalRarity')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl">Lưu Phẩm Cấp</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit / Create Line Config (NEW) -->
+  <div id="modalLine" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="lineModalTitle" class="font-bold text-sm text-white">Cấu Hình Hàng Trận (Line Config)</h3>
+        <button onclick="closeModal('modalLine')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitSaveLine(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Loại Hàng Trận</label>
+            <select id="lineTypeSelect" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+              <option value="FRONT">FRONT (Hàng Đầu)</option>
+              <option value="MID">MID (Hàng Giữa)</option>
+              <option value="BACK">BACK (Hàng Sau)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Tên Hiển Thị</label>
+            <input type="text" id="lineDisplayName" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200" placeholder="Hàng Đầu">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Vai Trò Cho Phép (Allowed Roles, cách nhau dấu phẩy)</label>
+          <input type="text" id="lineAllowedRoles" placeholder="VANGUARD, WARRIOR" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Vai Trò Bị Phạt (Penalty Roles, cách nhau dấu phẩy)</label>
+          <input type="text" id="linePenaltyRoles" placeholder="MARKSMAN, SUPPORT" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Line Buffs JSON</label>
+          <textarea id="lineBuffsJson" rows="3" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-mono text-[11px]" placeholder='{"hp_pct": 0.15, "def_pct": 0.12}'></textarea>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Penalty Stats JSON</label>
+          <textarea id="linePenaltyStatsJson" rows="2" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-mono text-[11px]" placeholder='{"damage_taken_pct": 0.20}'></textarea>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModal('modalLine')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Hủy</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl">Lưu Cấu Hình Hàng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT APP LOGIC -->
+  <!-- ========================================================================= -->
+  <script>
+    let currentAdminKey = localStorage.getItem('admin_key') || 'admin_secret_2026';
+    let currentTab = 'overview';
+    let cachedUsers = [];
+    let cachedShopCards = [];
+    let cachedTemplates = [];
+    let cachedSkills = [];
+    let cachedEffects = [];
+    let cachedTemplateSkills = [];
+    let cachedSynergies = [];
+    let cachedCells = [];
+    let cachedRarities = {};
+    let cachedLines = [];
+    let selectedSlot = 2;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('adminKeyInput').value = currentAdminKey;
+      loadOverview();
+      loadEffectsList(); // preload effects for selectors
+    });
+
+    function saveAdminKey(val) {
+      currentAdminKey = val.trim();
+      localStorage.setItem('admin_key', currentAdminKey);
+      showToast('Đã lưu Admin Key mới!', 'success');
+      refreshCurrentTab();
+    }
+
+    function getHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': currentAdminKey
+      };
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const content = document.getElementById('toastContent');
+      let border = type === 'success' ? 'border-emerald-500 text-emerald-300' :
+                   type === 'error' ? 'border-rose-500 text-rose-300' : 'border-indigo-500 text-indigo-300';
+      content.className = `glass px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-xs border-l-4 ${border}`;
+      content.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-circle-exclamation' : 'fa-bell'}"></i><span>${msg}</span>`;
+      toast.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+      }, 3500);
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+        btn.classList.add('text-slate-400', 'hover:text-slate-200', 'hover:bg-slate-800');
+      });
+      const activeBtn = document.getElementById(`tab-${tab}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400', 'hover:text-slate-200', 'hover:bg-slate-800');
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+      }
+
+      ['overview', 'users', 'shop', 'templates', 'template-skills', 'synergies', 'skills', 'effects', 'cells', 'lines', 'matches', 'system'].forEach(id => {
+        const el = document.getElementById(`view-${id}`);
+        if (el) el.classList.toggle('hidden', id !== tab);
+      });
+
+      refreshCurrentTab();
+    }
+
+    function refreshCurrentTab() {
+      if (currentTab === 'overview') loadOverview();
+      else if (currentTab === 'users') loadUsers();
+      else if (currentTab === 'shop') loadShopCards();
+      else if (currentTab === 'templates') loadTemplates();
+      else if (currentTab === 'template-skills') { loadTemplateSkills(); loadSkills(); loadTemplates(); }
+      else if (currentTab === 'synergies') loadSynergies();
+      else if (currentTab === 'skills') loadSkills();
+      else if (currentTab === 'effects') loadEffects();
+      else if (currentTab === 'cells') loadCells();
+      else if (currentTab === 'lines') { loadRarities(); loadLines(); loadLinesAndTemplates(); }
+      else if (currentTab === 'matches') loadMatches();
+    }
+
+    // --- OVERVIEW ---
+    async function loadOverview() {
+      try {
+        const res = await fetch('/api/admin/overview', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('statUsers').innerText = data.counts.total_users;
+          document.getElementById('statMatches').innerText = data.counts.total_matches;
+          if (document.getElementById('statShopCards')) document.getElementById('statShopCards').innerText = data.counts.total_shop_cards || 0;
+          if (document.getElementById('statTemplateSkills')) document.getElementById('statTemplateSkills').innerText = data.counts.total_template_skills || 0;
+          if (document.getElementById('statSynergies')) document.getElementById('statSynergies').innerText = data.counts.total_synergies || 0;
+          document.getElementById('statTemplates').innerText = data.counts.total_templates;
+          document.getElementById('statSkills').innerText = data.counts.total_skills;
+          document.getElementById('statEffects').innerText = data.counts.total_effects || 0;
+          document.getElementById('statCells').innerText = data.counts.total_cells || 9;
+          document.getElementById('statRarities').innerText = data.counts.total_rarities;
+        } else {
+          showToast(data.error || 'Lỗi tải tổng quan', 'error');
+        }
+      } catch (err) {
+        showToast('Không kết nối được tới server', 'error');
+      }
+    }
+
+    // --- USERS CRUD ---
+    async function loadUsers() {
+      const tbody = document.getElementById('usersTableBody');
+      try {
+        const res = await fetch('/api/admin/users', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedUsers = data.users || [];
+          renderUsersTable(cachedUsers);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-rose-400">Lỗi tải dữ liệu người chơi</td></tr>`;
+      }
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('usersTableBody');
+      if (users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-slate-500">Chưa có người chơi nào</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = users.map(u => {
+        const winrate = u.matches > 0 ? Math.round((u.wins / u.matches) * 100) : 0;
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5 flex items-center space-x-2.5">
+              <div class="w-8 h-8 rounded-full bg-indigo-900/60 border border-indigo-700/50 flex items-center justify-center font-bold text-indigo-300">
+                ${(u.username || 'P')[0].toUpperCase()}
+              </div>
+              <div>
+                <div class="font-semibold text-slate-200">${u.display_name || u.username}</div>
+                <div class="text-[11px] text-slate-500">@${u.username}</div>
+              </div>
+            </td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded text-[11px] bg-slate-800 text-indigo-300 border border-slate-700">Lv.${u.level}</span>
+              <span class="text-[11px] text-slate-400 ml-1">ELO ${u.elo} (${u.rank_tier || 'Đồng'})</span>
+            </td>
+            <td class="p-3.5">
+              <span class="text-amber-400 font-semibold"><i class="fa-solid fa-coins mr-1"></i>${u.gold}</span>
+              <span class="text-cyan-400 font-semibold ml-2"><i class="fa-solid fa-gem mr-1"></i>${u.gems}</span>
+            </td>
+            <td class="p-3.5">
+              <span>${u.wins}W / ${u.losses}L (${winrate}%)</span>
+            </td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded text-[11px] bg-indigo-950 text-indigo-400 border border-indigo-800">${u.battle_slots || 1} Slots</span>
+            </td>
+            <td class="p-3.5">
+              <span class="text-slate-300">${(u.cards || []).length} thẻ</span>
+            </td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="openGrantModal('${u.username}')" class="px-2 py-1 bg-emerald-900/40 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded border border-emerald-700/50 transition" title="Cấp tướng">
+                <i class="fa-solid fa-id-card-clip"></i>
+              </button>
+              <button onclick="openEditUserModal('${u.username}')" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition" title="Sửa người chơi">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteUser('${u.username}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition" title="Xóa người chơi">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterUsersTable() {
+      const q = document.getElementById('userSearchInput').value.toLowerCase().trim();
+      const filtered = cachedUsers.filter(u =>
+        u.username.toLowerCase().includes(q) ||
+        (u.display_name && u.display_name.toLowerCase().includes(q))
+      );
+      renderUsersTable(filtered);
+    }
+
+    async function submitCreateUser(e) {
+      e.preventDefault();
+      const body = {
+        username: document.getElementById('newUsername').value.trim(),
+        password: document.getElementById('newPassword').value,
+        display_name: document.getElementById('newDisplayName').value.trim() || undefined,
+        gold: parseInt(document.getElementById('newGold').value) || 1000,
+        gems: parseInt(document.getElementById('newGems').value) || 100,
+        battle_slots: parseInt(document.getElementById('newSlots').value) || 3
+      };
+      try {
+        const res = await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Tạo người chơi @${body.username} thành công!`, 'success');
+          closeModal('modalCreateUser');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Lỗi tạo người chơi', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    function openEditUserModal(username) {
+      const u = cachedUsers.find(x => x.username.toLowerCase() === username.toLowerCase());
+      if (!u) return;
+      document.getElementById('editUsername').value = u.username;
+      document.getElementById('editUsernameDisplay').value = u.username;
+      document.getElementById('editDisplayName').value = u.display_name || u.username;
+      document.getElementById('editGold').value = u.gold;
+      document.getElementById('editGems').value = u.gems;
+      document.getElementById('editLevel').value = u.level;
+      document.getElementById('editElo').value = u.elo;
+      document.getElementById('editSlots').value = u.battle_slots || 1;
+      document.getElementById('editPassword').value = '';
+      openModal('modalEditUser');
+    }
+
+    async function submitEditUser(e) {
+      e.preventDefault();
+      const username = document.getElementById('editUsername').value;
+      const pwd = document.getElementById('editPassword').value.trim();
+      const body = {
+        username,
+        display_name: document.getElementById('editDisplayName').value.trim(),
+        gold: parseInt(document.getElementById('editGold').value),
+        gems: parseInt(document.getElementById('editGems').value),
+        level: parseInt(document.getElementById('editLevel').value),
+        elo: parseInt(document.getElementById('editElo').value),
+        battle_slots: parseInt(document.getElementById('editSlots').value),
+        password: pwd ? pwd : undefined
+      };
+      try {
+        const res = await fetch('/api/admin/users/update', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Cập nhật người chơi @${username} thành công!`, 'success');
+          closeModal('modalEditUser');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Lỗi cập nhật', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteUser(username) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản @${username}? Thao tác không thể hoàn tác.`)) return;
+      try {
+        const res = await fetch('/api/admin/users/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ username })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Đã xóa tài khoản @${username}`, 'success');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    function openGrantModal(username) {
+      document.getElementById('grantUsername').value = username;
+      document.getElementById('grantUsernameDisplay').value = username;
+      openModal('modalGrantCard');
+    }
+
+    async function submitGrantCard(e) {
+      e.preventDefault();
+      const body = {
+        username: document.getElementById('grantUsername').value,
+        hero_class: document.getElementById('grantHeroClass').value,
+        star_level: parseInt(document.getElementById('grantStarLevel').value) || 1,
+        level: parseInt(document.getElementById('grantLevel').value) || 1,
+        is_foil: document.getElementById('grantFoil').checked
+      };
+      try {
+        const res = await fetch('/api/admin/users/grant_card', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          closeModal('modalGrantCard');
+          loadUsers();
+        } else {
+          showToast(data.error || 'Lỗi cấp thẻ', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- SHOP CARDS CRUD ---
+    async function loadShopCards() {
+      const tbody = document.getElementById('shopTableBody');
+      if (!tbody) return;
+      try {
+        const res = await fetch('/api/admin/shop/cards', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedShopCards = data.cards || [];
+          renderShopTable(cachedShopCards);
+          updateGrantDropdown();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">Lỗi tải dữ liệu thẻ cửa hàng</td></tr>`;
+      }
+    }
+
+    function renderShopTable(cards) {
+      const tbody = document.getElementById('shopTableBody');
+      if (!tbody) return;
+      if (cards.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-slate-500">Chưa có thẻ nào trong Cửa Hàng</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = cards.map(c => {
+        let fBadge = c.faction === 'SHU' ? 'bg-emerald-900/40 text-emerald-400 border-emerald-800' :
+                     c.faction === 'WEI' ? 'bg-blue-900/40 text-blue-400 border-blue-800' :
+                     c.faction === 'WU' ? 'bg-red-900/40 text-red-400 border-red-800' : 'bg-amber-900/40 text-amber-400 border-amber-800';
+
+        let rBadge = c.rarity === 'Legendary' ? 'bg-purple-900/40 text-purple-300 border-purple-700' :
+                     c.rarity === 'Epic' ? 'bg-cyan-900/40 text-cyan-300 border-cyan-700' :
+                     c.rarity === 'Rare' ? 'bg-blue-900/40 text-blue-300 border-blue-700' : 'bg-slate-800 text-slate-300 border-slate-700';
+
+        let statusBadge = c.is_available ?
+          `<button onclick="quickToggleShop('${c.card_id}', false)" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-900/40 text-emerald-400 border border-emerald-700/60 hover:bg-rose-900/40 hover:text-rose-300 hover:border-rose-700 transition" title="Nhấn để tạm ngưng bán">Đang Bán <i class="fa-solid fa-check ml-1"></i></button>` :
+          `<button onclick="quickToggleShop('${c.card_id}', true)" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-900/40 text-rose-400 border border-rose-700/60 hover:bg-emerald-900/40 hover:text-emerald-300 hover:border-emerald-700 transition" title="Nhấn để mở bán lại">Tạm Ngưng <i class="fa-solid fa-ban ml-1"></i></button>`;
+
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5">
+              <div class="flex items-center space-x-2.5">
+                <span class="text-2xl">${c.icon || '⚔️'}</span>
+                <div>
+                  <div class="font-bold text-slate-200 text-sm">${c.name}</div>
+                  <div class="text-[10px] text-slate-500 font-mono">${c.card_id}</div>
+                </div>
+              </div>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${fBadge}">${c.faction}</span></td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${rBadge}">${c.rarity}</span></td>
+            <td class="p-3.5 text-slate-300">${c.role}</td>
+            <td class="p-3.5 max-w-xs">
+              <div class="text-indigo-300 font-semibold text-[11px]">${c.skill_name || '--'}</div>
+              <div class="text-[10px] text-slate-400 truncate" title="${c.description}">${c.description || '--'}</div>
+            </td>
+            <td class="p-3.5">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-950/60 text-amber-400 border border-amber-800/80 shadow-sm flex items-center w-fit space-x-1">
+                <span>${c.price}</span> <span>🪙</span>
+              </span>
+            </td>
+            <td class="p-3.5">${statusBadge}</td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="editShopCard('${c.card_id}')" class="px-2.5 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg border border-indigo-700/50 transition" title="Sửa Thẻ">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteShopCard('${c.card_id}')" class="px-2.5 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded-lg border border-rose-700/50 transition" title="Xóa Thẻ">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openShopCardModal(card = null) {
+      document.getElementById('shopCardModalTitle').innerText = card ? 'Sửa Thẻ Cửa Hàng' : 'Thêm Thẻ Mới Vào Shop';
+      document.getElementById('shopCardId').value = card ? card.card_id : '';
+      document.getElementById('shopCardId').disabled = !!card;
+      document.getElementById('shopCardName').value = card ? card.name : '';
+      document.getElementById('shopCardIcon').value = card ? card.icon : '⚔️';
+      document.getElementById('shopCardFaction').value = card ? card.faction : 'SHU';
+      document.getElementById('shopCardRarity').value = card ? card.rarity : 'Rare';
+      document.getElementById('shopCardRole').value = card ? card.role : 'Đấu Sĩ';
+      document.getElementById('shopCardPrice').value = card ? card.price : 60;
+      document.getElementById('shopCardSkill').value = card ? (card.skill_name || '') : '';
+      document.getElementById('shopCardDesc').value = card ? (card.description || '') : '';
+      document.getElementById('shopCardAvailable').checked = card ? card.is_available : true;
+      openModal('modalShopCard');
+    }
+
+    function editShopCard(id) {
+      const card = cachedShopCards.find(c => c.card_id === id);
+      if (card) openShopCardModal(card);
+    }
+
+    async function submitSaveShopCard(e) {
+      e.preventDefault();
+      const body = {
+        card_id: document.getElementById('shopCardId').value.trim(),
+        name: document.getElementById('shopCardName').value.trim(),
+        icon: document.getElementById('shopCardIcon').value.trim() || '⚔️',
+        faction: document.getElementById('shopCardFaction').value,
+        rarity: document.getElementById('shopCardRarity').value,
+        role: document.getElementById('shopCardRole').value.trim(),
+        price: parseInt(document.getElementById('shopCardPrice').value) || 60,
+        skill_name: document.getElementById('shopCardSkill').value.trim(),
+        description: document.getElementById('shopCardDesc').value.trim(),
+        is_available: document.getElementById('shopCardAvailable').checked
+      };
+
+      try {
+        const res = await fetch('/api/admin/shop/cards', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã lưu thông tin thẻ cửa hàng thành công!', 'success');
+          closeModal('modalShopCard');
+          loadShopCards();
+        } else {
+          showToast(data.error || 'Lỗi lưu thẻ cửa hàng', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng khi lưu thẻ cửa hàng', 'error');
+      }
+    }
+
+    async function quickToggleShop(cardId, newStatus) {
+      const card = cachedShopCards.find(c => c.card_id === cardId);
+      if (!card) return;
+      const updated = { ...card, is_available: newStatus };
+      try {
+        const res = await fetch('/api/admin/shop/cards', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(updated)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(newStatus ? `Đã mở bán lại thẻ ${card.name}!` : `Đã tạm ngưng bán thẻ ${card.name}!`, 'info');
+          loadShopCards();
+        } else {
+          showToast(data.error || 'Lỗi cập nhật trạng thái', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteShopCard(id) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa thẻ [${id}] khỏi Cửa Hàng?`)) return;
+      try {
+        const res = await fetch('/api/admin/shop/cards/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          loadShopCards();
+        } else {
+          showToast(data.error || 'Lỗi xóa thẻ', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    function updateGrantDropdown() {
+      const select = document.getElementById('grantHeroClass');
+      if (!select) return;
+      if (cachedShopCards.length > 0) {
+        select.innerHTML = cachedShopCards.map(c =>
+          `<option value="${c.card_id}">${c.icon || '⚔️'} ${c.name} (${c.faction} - ${c.rarity})</option>`
+        ).join('');
+      }
+    }
+
+    // --- TEMPLATES CRUD ---
+    async function loadTemplates() {
+      const tbody = document.getElementById('templatesTableBody');
+      try {
+        const res = await fetch('/api/admin/templates', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedTemplates = data.templates || [];
+          renderTemplatesTable(cachedTemplates);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">Lỗi tải mẫu tướng</td></tr>`;
+      }
+    }
+
+    function renderTemplatesTable(templates) {
+      const tbody = document.getElementById('templatesTableBody');
+      if (templates.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-slate-500">Chưa có mẫu tướng nào trong DB</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = templates.map(t => {
+        let fBadge = t.faction === 'SHU' ? 'bg-emerald-900/40 text-emerald-400 border-emerald-800' :
+                     t.faction === 'WEI' ? 'bg-blue-900/40 text-blue-400 border-blue-800' :
+                     t.faction === 'WU' ? 'bg-red-900/40 text-red-400 border-red-800' : 'bg-amber-900/40 text-amber-400 border-amber-800';
+        let rBadge = t.rarity_id === 'UR' ? 'bg-purple-900/40 text-purple-300 border-purple-700' :
+                     t.rarity_id === 'SSR' ? 'bg-amber-900/40 text-amber-300 border-amber-700' : 'bg-slate-800 text-slate-300 border-slate-700';
+
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5">
+              <div class="font-bold text-slate-200">${t.name}</div>
+              <div class="text-[10px] text-slate-500 font-mono">${t.card_template_id}</div>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${fBadge}">${t.faction}</span></td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${rBadge}">${t.rarity_id}</span></td>
+            <td class="p-3.5"><span class="text-slate-300">${t.recommended_role}</span></td>
+            <td class="p-3.5 font-mono text-[11px] text-slate-300">
+              <span class="text-emerald-400">${t.base_hp}</span> /
+              <span class="text-amber-400">${t.base_atk}</span> /
+              <span class="text-blue-400">${t.base_def}</span> /
+              <span class="text-cyan-400">${t.base_speed}</span>
+            </td>
+            <td class="p-3.5 font-mono text-[11px] text-slate-300">${Math.round(t.base_crit_rate * 100)}% (${t.base_crit_dmg}x)</td>
+            <td class="p-3.5 font-mono text-[11px] text-indigo-300">${t.initial_morale} / ${t.max_morale}</td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="editTemplate('${t.card_template_id}')" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteTemplate('${t.card_template_id}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openTemplateModal(tpl = null) {
+      document.getElementById('templateModalTitle').innerText = tpl ? 'Sửa Mẫu Tướng' : 'Thêm Mẫu Tướng Mới';
+      document.getElementById('tplId').value = tpl ? tpl.card_template_id : '';
+      document.getElementById('tplId').disabled = !!tpl;
+      document.getElementById('tplName').value = tpl ? tpl.name : '';
+      document.getElementById('tplFaction').value = tpl ? tpl.faction : 'SHU';
+      document.getElementById('tplRarity').value = tpl ? tpl.rarity_id : 'SSR';
+      document.getElementById('tplRole').value = tpl ? tpl.recommended_role : 'WARRIOR';
+      document.getElementById('tplHp').value = tpl ? tpl.base_hp : 4200;
+      document.getElementById('tplAtk').value = tpl ? tpl.base_atk : 780;
+      document.getElementById('tplDef').value = tpl ? tpl.base_def : 360;
+      document.getElementById('tplSpeed').value = tpl ? tpl.base_speed : 105;
+      document.getElementById('tplCritRate').value = tpl ? tpl.base_crit_rate : 0.05;
+      document.getElementById('tplCritDmg').value = tpl ? tpl.base_crit_dmg : 1.50;
+      openModal('modalTemplate');
+    }
+
+    function editTemplate(id) {
+      const t = cachedTemplates.find(x => x.card_template_id === id);
+      if (t) openTemplateModal(t);
+    }
+
+    async function submitSaveTemplate(e) {
+      e.preventDefault();
+      const body = {
+        card_template_id: document.getElementById('tplId').value.trim(),
+        name: document.getElementById('tplName').value.trim(),
+        title: null,
+        faction: document.getElementById('tplFaction').value,
+        rarity_id: document.getElementById('tplRarity').value,
+        recommended_role: document.getElementById('tplRole').value,
+        base_hp: parseInt(document.getElementById('tplHp').value),
+        base_atk: parseInt(document.getElementById('tplAtk').value),
+        base_def: parseInt(document.getElementById('tplDef').value),
+        base_speed: parseInt(document.getElementById('tplSpeed').value),
+        base_crit_rate: parseFloat(document.getElementById('tplCritRate').value),
+        base_crit_dmg: parseFloat(document.getElementById('tplCritDmg').value),
+        base_block_rate: 0.0,
+        base_dodge_rate: 0.05,
+        initial_morale: 50,
+        max_morale: 100
+      };
+      try {
+        const res = await fetch('/api/admin/templates/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu mẫu tướng ${body.name} thành công!`, 'success');
+          closeModal('modalTemplate');
+          loadTemplates();
+        } else {
+          showToast(data.error || 'Lỗi lưu template', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteTemplate(id) {
+      if (!confirm(`Xóa mẫu tướng ${id}?`)) return;
+      try {
+        const res = await fetch('/api/admin/templates/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa mẫu tướng', 'success');
+          loadTemplates();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+
+    // --- TEMPLATE SKILLS CRUD (NEW) ---
+    async function loadTemplateSkills() {
+      const tbody = document.getElementById('templateSkillsTableBody');
+      try {
+        const res = await fetch('/api/admin/template_skills', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedTemplateSkills = data.template_skills || [];
+          populateTemplateSkillFilter();
+          filterTemplateSkillsTable();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-rose-400">Lỗi tải liên kết kỹ năng tướng</td></tr>`;
+      }
+    }
+
+    function populateTemplateSkillFilter() {
+      const sel = document.getElementById('templateSkillFilter');
+      if (!sel) return;
+      const cur = sel.value;
+      const tIds = [...new Set(cachedTemplateSkills.map(x => x.card_template_id))];
+      sel.innerHTML = '<option value="ALL">Tất cả tướng (' + cachedTemplateSkills.length + ' liên kết)</option>' +
+        tIds.map(id => {
+          const tmpl = cachedTemplates.find(t => t.card_template_id === id);
+          return `<option value="${id}">${tmpl ? tmpl.name : id} (${id})</option>`;
+        }).join('');
+      if (cur) sel.value = cur;
+    }
+
+    function filterTemplateSkillsTable() {
+      const filter = document.getElementById('templateSkillFilter').value;
+      const list = filter === 'ALL' ? cachedTemplateSkills : cachedTemplateSkills.filter(x => x.card_template_id === filter);
+      renderTemplateSkillsTable(list);
+    }
+
+    function renderTemplateSkillsTable(list) {
+      const tbody = document.getElementById('templateSkillsTableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">Chưa có liên kết kỹ năng nào</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(ts => {
+        const tmpl = cachedTemplates.find(t => t.card_template_id === ts.card_template_id);
+        const skl = cachedSkills.find(s => s.skill_id === ts.skill_id);
+
+        let slotBadge = ts.slot_type === 'ULTIMATE' ? 'bg-amber-900/40 text-amber-300 border-amber-700' :
+                        ts.slot_type === 'PASSIVE' ? 'bg-purple-900/40 text-purple-300 border-purple-700' :
+                        'bg-blue-900/40 text-blue-300 border-blue-700';
+
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5">
+              <div class="font-bold text-slate-200">${tmpl ? tmpl.name : ts.card_template_id}</div>
+              <div class="text-[10px] text-slate-500 font-mono">${ts.card_template_id}</div>
+            </td>
+            <td class="p-3.5">
+              <div class="font-bold text-indigo-300">${skl ? skl.name : ts.skill_id}</div>
+              <div class="text-[10px] text-slate-500 font-mono">${ts.skill_id}</div>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${slotBadge}">${ts.slot_type}</span></td>
+            <td class="p-3.5 font-bold text-amber-400">⭐ ${ts.unlock_at_star} sao</td>
+            <td class="p-3.5 text-slate-400 text-[11px]">
+              ${skl ? `${skl.trigger_type} | Dame: ${skl.damage_multiplier}x | Sĩ khí: ${skl.cost_morale}` : '--'}
+            </td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="openTemplateSkillModal({card_template_id: '${ts.card_template_id}', skill_id: '${ts.skill_id}', slot_type: '${ts.slot_type}', unlock_at_star: ${ts.unlock_at_star}})" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition" title="Sửa">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteTemplateSkill('${ts.card_template_id}', '${ts.skill_id}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition" title="Xóa">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openTemplateSkillModal(ts = null) {
+      document.getElementById('templateSkillModalTitle').innerText = ts ? 'Chỉnh Sửa Kỹ Năng Tướng' : 'Gán Kỹ Năng Mới Cho Tướng';
+
+      const tSelect = document.getElementById('tsTemplateSelect');
+      tSelect.innerHTML = cachedTemplates.map(t => `<option value="${t.card_template_id}">${t.name} (${t.card_template_id})</option>`).join('');
+
+      const sSelect = document.getElementById('tsSkillSelect');
+      sSelect.innerHTML = cachedSkills.map(s => `<option value="${s.skill_id}">${s.name} (${s.skill_id})</option>`).join('');
+
+      if (ts) {
+        tSelect.value = ts.card_template_id;
+        tSelect.disabled = true;
+        sSelect.value = ts.skill_id;
+        sSelect.disabled = true;
+        document.getElementById('tsSlotType').value = ts.slot_type || 'NORMAL';
+        document.getElementById('tsUnlockStar').value = ts.unlock_at_star || 1;
+      } else {
+        tSelect.disabled = false;
+        sSelect.disabled = false;
+        document.getElementById('tsSlotType').value = 'NORMAL';
+        document.getElementById('tsUnlockStar').value = 1;
+      }
+      openModal('modalTemplateSkill');
+    }
+
+    async function submitSaveTemplateSkill(e) {
+      e.preventDefault();
+      const body = {
+        card_template_id: document.getElementById('tsTemplateSelect').value,
+        skill_id: document.getElementById('tsSkillSelect').value,
+        slot_type: document.getElementById('tsSlotType').value,
+        unlock_at_star: parseInt(document.getElementById('tsUnlockStar').value) || 1
+      };
+      try {
+        const res = await fetch('/api/admin/template_skills/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu kỹ năng cho tướng ${body.card_template_id} thành công!`, 'success');
+          closeModal('modalTemplateSkill');
+          loadTemplateSkills();
+        } else {
+          showToast(data.error || 'Lỗi lưu liên kết kỹ năng', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteTemplateSkill(card_template_id, skill_id) {
+      if (!confirm(`Xóa kỹ năng ${skill_id} khỏi tướng ${card_template_id}?`)) return;
+      try {
+        const res = await fetch('/api/admin/template_skills/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ card_template_id, skill_id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa liên kết kỹ năng', 'success');
+          loadTemplateSkills();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- FORMATION SYNERGIES CRUD (NEW) ---
+    async function loadSynergies() {
+      const tbody = document.getElementById('synergiesTableBody');
+      try {
+        const res = await fetch('/api/admin/synergies', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedSynergies = data.synergies || [];
+          filterSynergiesTable();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">Lỗi tải danh sách kích duyên</td></tr>`;
+      }
+    }
+
+    function filterSynergiesTable() {
+      const filter = document.getElementById('synergyFilterType').value;
+      const list = filter === 'ALL' ? cachedSynergies : cachedSynergies.filter(x => x.synergy_type === filter);
+      renderSynergiesTable(list);
+    }
+
+    function renderSynergiesTable(list) {
+      const tbody = document.getElementById('synergiesTableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-slate-500">Chưa có kích duyên đội hình nào</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(s => {
+        let typeBadge = s.synergy_type === 'CLASS' ? 'bg-indigo-900/40 text-indigo-300 border-indigo-700' :
+                        s.synergy_type === 'FACTION' ? 'bg-amber-900/40 text-amber-300 border-amber-700' :
+                        'bg-purple-900/40 text-purple-300 border-purple-700';
+
+        let statusBadge = s.is_active ?
+          '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-900/40 text-emerald-400 border border-emerald-700">Hoạt động</span>' :
+          '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">Tạm tắt</span>';
+
+        let buffsText = typeof s.stat_buffs === 'object' ? JSON.stringify(s.stat_buffs) : (s.stat_buffs || '{}');
+        let heroListText = (s.hero_ids || []).join(', ');
+
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5">
+              <div class="font-bold text-slate-200 flex items-center space-x-1.5">
+                <span class="text-base">${s.icon || '✨'}</span>
+                <span>${s.name}</span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">${s.synergy_id}</div>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${typeBadge}">${s.synergy_type}</span></td>
+            <td class="p-3.5 font-bold text-amber-400">≥ ${s.trigger_count} Tướng</td>
+            <td class="p-3.5 text-slate-300 text-[11px] font-mono max-w-xs truncate" title="${heroListText}">${heroListText}</td>
+            <td class="p-3.5 text-cyan-300 text-[11px] font-mono max-w-xs truncate" title="${buffsText}">${buffsText}</td>
+            <td class="p-3.5">${statusBadge}</td>
+            <td class="p-3.5 text-slate-400 text-[11px] max-w-xs truncate" title="${s.description || ''}">${s.description || '--'}</td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="editSynergy('${s.synergy_id}')" class="px-2 py-1 bg-amber-900/40 hover:bg-amber-600 text-amber-300 hover:text-white rounded border border-amber-700/50 transition" title="Sửa">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteSynergy('${s.synergy_id}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition" title="Xóa">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openSynergyModal(syn = null) {
+      document.getElementById('synergyModalTitle').innerText = syn ? 'Chỉnh Sửa Kích Duyên Đội Hình' : 'Thêm Kích Duyên Mới';
+      const idInput = document.getElementById('synId');
+      idInput.value = syn ? syn.synergy_id : '';
+      idInput.disabled = !!syn;
+      document.getElementById('synName').value = syn ? syn.name : '';
+      document.getElementById('synIcon').value = syn ? (syn.icon || '🔰') : '🔰';
+      document.getElementById('synType').value = syn ? syn.synergy_type : 'CLASS';
+      document.getElementById('synTriggerCount').value = syn ? syn.trigger_count : 2;
+      document.getElementById('synHeroIds').value = syn ? (syn.hero_ids || []).join(', ') : '';
+      document.getElementById('synStatBuffs').value = syn ? JSON.stringify(syn.stat_buffs, null, 2) : '{\n  "def": 35.0,\n  "hp": 150.0\n}';
+      document.getElementById('synDescription').value = syn ? (syn.description || '') : '';
+      document.getElementById('synActive').checked = syn ? syn.is_active : true;
+      openModal('modalSynergy');
+    }
+
+    function editSynergy(id) {
+      const syn = cachedSynergies.find(x => x.synergy_id === id);
+      if (syn) openSynergyModal(syn);
+    }
+
+    async function submitSaveSynergy(e) {
+      e.preventDefault();
+      let buffs = {};
+      try {
+        buffs = JSON.parse(document.getElementById('synStatBuffs').value.trim() || '{}');
+      } catch (err) {
+        showToast('JSON Stat Buffs không hợp lệ', 'error');
+        return;
+      }
+      const rawHeroIds = document.getElementById('synHeroIds').value.trim();
+      const heroIds = rawHeroIds ? rawHeroIds.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+
+      const body = {
+        synergy_id: document.getElementById('synId').value.trim(),
+        name: document.getElementById('synName').value.trim(),
+        synergy_type: document.getElementById('synType').value,
+        trigger_count: parseInt(document.getElementById('synTriggerCount').value) || 2,
+        icon: document.getElementById('synIcon').value.trim() || '🔰',
+        description: document.getElementById('synDescription').value.trim() || null,
+        hero_ids: heroIds,
+        stat_buffs: buffs,
+        is_active: document.getElementById('synActive').checked
+      };
+      try {
+        const res = await fetch('/api/admin/synergies/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu kích duyên ${body.name} thành công!`, 'success');
+          closeModal('modalSynergy');
+          loadSynergies();
+        } else {
+          showToast(data.error || 'Lỗi lưu kích duyên', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteSynergy(id) {
+      if (!confirm(`Xóa kích duyên ${id}?`)) return;
+      try {
+        const res = await fetch('/api/admin/synergies/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa kích duyên', 'success');
+          loadSynergies();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- SKILLS CRUD ---
+    async function loadSkills() {
+      const tbody = document.getElementById('skillsTableBody');
+      try {
+        const res = await fetch('/api/admin/skills', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedSkills = data.skills || [];
+          renderSkillsTable(cachedSkills);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-rose-400">Lỗi tải kỹ năng</td></tr>`;
+      }
+    }
+
+    function renderSkillsTable(skills) {
+      const tbody = document.getElementById('skillsTableBody');
+      if (skills.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-slate-500">Chưa có kỹ năng nào</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = skills.map(s => {
+        let tBadge = s.trigger_type === 'ULTIMATE' ? 'bg-amber-900/40 text-amber-300 border-amber-700' :
+                     s.trigger_type === 'ACTIVE_CD' ? 'bg-indigo-900/40 text-indigo-300 border-indigo-700' : 'bg-slate-800 text-slate-300 border-slate-700';
+
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5">
+              <div class="font-bold text-slate-200">${s.name}</div>
+              <div class="text-[10px] text-slate-500 font-mono">${s.skill_id}</div>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${tBadge}">${s.trigger_type}</span></td>
+            <td class="p-3.5 font-mono text-[11px] text-slate-300">${s.target_pattern}</td>
+            <td class="p-3.5 font-mono text-[11px] text-slate-400">${s.target_rule}</td>
+            <td class="p-3.5 font-mono text-[11px] text-indigo-300">${s.cost_morale} Sĩ Khí</td>
+            <td class="p-3.5 font-mono text-[11px] text-amber-400 font-bold">${s.damage_multiplier}x</td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">${(s.effects_applied || []).length} hiệu ứng</span>
+            </td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="editSkill('${s.skill_id}')" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteSkill('${s.skill_id}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openSkillModal(skl = null) {
+      document.getElementById('skillModalTitle').innerText = skl ? 'Sửa Kỹ Năng' : 'Thêm Kỹ Năng Mới';
+      document.getElementById('sklId').value = skl ? skl.skill_id : '';
+      document.getElementById('sklId').disabled = !!skl;
+      document.getElementById('sklName').value = skl ? skl.name : '';
+      document.getElementById('sklQuality').value = skl ? skl.skill_quality : 'LEGENDARY';
+      document.getElementById('sklTrigger').value = skl ? skl.trigger_type : 'ULTIMATE';
+      document.getElementById('sklMult').value = skl ? skl.damage_multiplier : 1.0;
+      document.getElementById('sklPattern').value = skl ? skl.target_pattern : 'DIRECT_LANE';
+      document.getElementById('sklRule').value = skl ? skl.target_rule : 'ENEMY_NEAREST';
+      document.getElementById('sklMorale').value = skl ? skl.cost_morale : 100;
+      document.getElementById('sklCd').value = skl ? skl.cooldown_turns : 0;
+      document.getElementById('sklEffects').value = skl ? JSON.stringify(skl.effects_applied, null, 2) : '[]';
+      openModal('modalSkill');
+    }
+
+    function editSkill(id) {
+      const s = cachedSkills.find(x => x.skill_id === id);
+      if (s) openSkillModal(s);
+    }
+
+    async function submitSaveSkill(e) {
+      e.preventDefault();
+      let effects = [];
+      try {
+        effects = JSON.parse(document.getElementById('sklEffects').value.trim() || '[]');
+      } catch (err) {
+        showToast('JSON Effects không hợp lệ', 'error');
+        return;
+      }
+      const body = {
+        skill_id: document.getElementById('sklId').value.trim(),
+        name: document.getElementById('sklName').value.trim(),
+        skill_quality: document.getElementById('sklQuality').value,
+        is_skill_common: false,
+        trigger_type: document.getElementById('sklTrigger').value,
+        execution_priority: 1,
+        cost_morale: parseInt(document.getElementById('sklMorale').value) || 0,
+        cooldown_turns: parseInt(document.getElementById('sklCd').value) || 0,
+        target_pattern: document.getElementById('sklPattern').value,
+        target_rule: document.getElementById('sklRule').value,
+        damage_type: 'PHYSICAL',
+        damage_multiplier: parseFloat(document.getElementById('sklMult').value) || 1.0,
+        can_crit: true,
+        effects_applied: effects,
+        description: null
+      };
+      try {
+        const res = await fetch('/api/admin/skills/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu kỹ năng ${body.name} thành công!`, 'success');
+          closeModal('modalSkill');
+          loadSkills();
+        } else {
+          showToast(data.error || 'Lỗi lưu skill', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteSkill(id) {
+      if (!confirm(`Xóa kỹ năng ${id}?`)) return;
+      try {
+        const res = await fetch('/api/admin/skills/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa kỹ năng', 'success');
+          loadSkills();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- STATUS EFFECTS CRUD (NEW) ---
+    async function loadEffects() {
+      const tbody = document.getElementById('effectsTableBody');
+      try {
+        const res = await fetch('/api/admin/effects', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedEffects = data.effects || [];
+          filterEffectsTable();
+          populateTileBuffDropdown();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-rose-400">Lỗi tải danh sách hiệu ứng</td></tr>`;
+      }
+    }
+
+    async function loadEffectsList() {
+      try {
+        const res = await fetch('/api/admin/effects', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedEffects = data.effects || [];
+          populateTileBuffDropdown();
+        }
+      } catch (err) {}
+    }
+
+    function populateTileBuffDropdown() {
+      const sel = document.getElementById('cellTileBuff');
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">-- Không có buff nội tại --</option>' +
+        cachedEffects.map(e => `<option value="${e.effect_id}">${e.icon || '✨'} ${e.name} (${e.effect_id})</option>`).join('');
+      if (cur) sel.value = cur;
+    }
+
+    function filterEffectsTable() {
+      const cat = document.getElementById('effectFilterCategory').value;
+      const list = cat === 'ALL' ? cachedEffects : cachedEffects.filter(e => e.effect_category === cat);
+      renderEffectsTable(list);
+    }
+
+    function renderEffectsTable(effects) {
+      const tbody = document.getElementById('effectsTableBody');
+      if (effects.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-slate-500">Chưa có hiệu ứng nào phù hợp</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = effects.map(e => {
+        let catBadge = e.effect_category === 'BUFF' ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700' :
+                       e.effect_category === 'DEBUFF' ? 'bg-amber-900/40 text-amber-300 border-amber-700' :
+                       e.effect_category === 'CROWD_CONTROL' ? 'bg-purple-900/40 text-purple-300 border-purple-700' :
+                       e.effect_category === 'DOT' ? 'bg-rose-900/40 text-rose-300 border-rose-700' :
+                       e.effect_category === 'HOT' ? 'bg-cyan-900/40 text-cyan-300 border-cyan-700' : 'bg-slate-800 text-slate-300 border-slate-700';
+
+        let valStr = e.calculation_type === 'PERCENTAGE' ? `${(e.base_value * 100).toFixed(0)}%` : `${e.base_value}`;
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5">
+              <div class="font-bold text-slate-200 flex items-center space-x-1.5">
+                <span>${e.icon || '✨'}</span>
+                <span>${e.name}</span>
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">${e.effect_id}</div>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${catBadge}">${e.effect_category}</span></td>
+            <td class="p-3.5 font-mono text-[11px] text-indigo-300">${e.stat_target}</td>
+            <td class="p-3.5 font-mono text-[11px] text-amber-300 font-bold">${valStr} (${e.calculation_type})</td>
+            <td class="p-3.5 font-mono text-[11px] text-slate-300">${e.max_stacks} stack / ${e.duration_turns} hiệp</td>
+            <td class="p-3.5 font-mono text-[11px] text-slate-400">${e.tick_trigger}</td>
+            <td class="p-3.5">
+              ${e.is_dispellable ? '<span class="text-emerald-400 font-bold">Có</span>' : '<span class="text-rose-400 font-bold">Không</span>'}
+            </td>
+            <td class="p-3.5 text-slate-400 text-[11px] max-w-xs truncate">${e.description || '--'}</td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="editEffect('${e.effect_id}')" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteEffect('${e.effect_id}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openEffectModal(eff = null) {
+      document.getElementById('effectModalTitle').innerText = eff ? 'Sửa Hiệu Ứng' : 'Thêm Hiệu Ứng Mới';
+      document.getElementById('effId').value = eff ? eff.effect_id : '';
+      document.getElementById('effId').disabled = !!eff;
+      document.getElementById('effName').value = eff ? eff.name : '';
+      document.getElementById('effCategory').value = eff ? eff.effect_category : 'BUFF';
+      document.getElementById('effStatTarget').value = eff ? eff.stat_target : 'ATK';
+      document.getElementById('effCalcType').value = eff ? eff.calculation_type : 'PERCENTAGE';
+      document.getElementById('effBaseValue').value = eff ? eff.base_value : 0.2;
+      document.getElementById('effMaxStacks').value = eff ? eff.max_stacks : 1;
+      document.getElementById('effDuration').value = eff ? eff.duration_turns : 2;
+      document.getElementById('effTrigger').value = eff ? eff.tick_trigger : 'TURN_START';
+      document.getElementById('effIcon').value = eff ? (eff.icon || '✨') : '✨';
+      document.getElementById('effVfx').value = eff ? (eff.vfx_prefab || 'vfx_default') : 'vfx_default';
+      document.getElementById('effDesc').value = eff ? (eff.description || '') : '';
+      document.getElementById('effDispellable').checked = eff ? eff.is_dispellable : true;
+      openModal('modalEffect');
+    }
+
+    function editEffect(id) {
+      const e = cachedEffects.find(x => x.effect_id === id);
+      if (e) openEffectModal(e);
+    }
+
+    async function submitSaveEffect(e) {
+      e.preventDefault();
+      const body = {
+        effect_id: document.getElementById('effId').value.trim(),
+        name: document.getElementById('effName').value.trim(),
+        effect_category: document.getElementById('effCategory').value,
+        stat_target: document.getElementById('effStatTarget').value,
+        calculation_type: document.getElementById('effCalcType').value,
+        base_value: parseFloat(document.getElementById('effBaseValue').value) || 0.0,
+        max_stacks: parseInt(document.getElementById('effMaxStacks').value) || 1,
+        duration_turns: parseInt(document.getElementById('effDuration').value) || 1,
+        tick_trigger: document.getElementById('effTrigger').value,
+        is_dispellable: document.getElementById('effDispellable').checked,
+        icon: document.getElementById('effIcon').value.trim() || '✨',
+        vfx_prefab: document.getElementById('effVfx').value.trim() || 'vfx_default',
+        description: document.getElementById('effDesc').value.trim() || null
+      };
+      try {
+        const res = await fetch('/api/admin/effects/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu hiệu ứng ${body.name} thành công!`, 'success');
+          closeModal('modalEffect');
+          loadEffects();
+        } else {
+          showToast(data.error || 'Lỗi lưu hiệu ứng', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteEffect(id) {
+      if (!confirm(`Xóa hiệu ứng ${id}?`)) return;
+      try {
+        const res = await fetch('/api/admin/effects/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa hiệu ứng', 'success');
+          loadEffects();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- BOARD CELLS CRUD (NEW) ---
+    async function loadCells() {
+      const tbody = document.getElementById('cellsTableBody');
+      try {
+        const res = await fetch('/api/admin/cells', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedCells = data.cells || [];
+          renderCellsGrid(cachedCells);
+          renderCellsTable(cachedCells);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-rose-400">Lỗi tải danh sách ô bàn cờ</td></tr>`;
+      }
+    }
+
+    function renderCellsGrid(cells) {
+      const container = document.getElementById('board3x3VisualGrid');
+      // Create slots 1..9 map
+      const slotMap = {};
+      cells.forEach(c => slotMap[c.slot_id] = c);
+
+      let html = '';
+      for (let slot = 1; slot <= 9; slot++) {
+        const c = slotMap[slot];
+        const line = slot <= 3 ? 'FRONT' : slot <= 6 ? 'MID' : 'BACK';
+        const lineCol = slot <= 3 ? 'border-red-600/50 bg-red-950/20' : slot <= 6 ? 'border-amber-600/50 bg-amber-950/20' : 'border-blue-600/50 bg-blue-950/20';
+        const terr = c ? c.terrain_type : 'NORMAL';
+        const buff = c && c.tile_buff_effect_id ? `<span class="text-emerald-400 text-[10px] block mt-1"><i class="fa-solid fa-sparkles"></i> ${c.tile_buff_effect_id}</span>` : '';
+
+        html += `
+          <div onclick="editCell(${slot})" class="cursor-pointer p-3.5 rounded-xl border ${lineCol} hover:border-indigo-400 transition hover:scale-[1.02] flex flex-col justify-between min-h-[105px]">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-white">Slot ${slot}</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-300">${line}</span>
+            </div>
+            <div class="text-[11px] text-slate-300 font-semibold my-1">
+              ${terr}
+            </div>
+            ${buff}
+            <div class="text-[9px] text-slate-500 truncate">${c && c.description ? c.description : '(Trống)'}</div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    function renderCellsTable(cells) {
+      const tbody = document.getElementById('cellsTableBody');
+      if (cells.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-slate-500">Chưa có ô cờ nào trong cấu hình</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = cells.map(c => {
+        let lineBadge = c.line_type === 'FRONT' ? 'bg-red-900/40 text-red-300 border-red-700' :
+                        c.line_type === 'MID' ? 'bg-amber-900/40 text-amber-300 border-amber-700' : 'bg-blue-900/40 text-blue-300 border-blue-700';
+
+        return `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3.5 font-bold text-slate-200">
+              Slot ${c.slot_id} <span class="text-[10px] font-mono text-slate-500">(${c.col}, ${c.row})</span>
+            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${lineBadge}">${c.line_type}</span></td>
+            <td class="p-3.5 font-mono text-[11px] text-amber-300">${c.terrain_type}</td>
+            <td class="p-3.5">
+              ${c.tile_buff_effect_id ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">${c.tile_buff_effect_id}</span>` : '<span class="text-slate-600">--</span>'}
+            </td>
+            <td class="p-3.5 font-mono text-[11px] text-rose-300">${(c.hazard_damage_pct * 100).toFixed(0)}%</td>
+            <td class="p-3.5 text-slate-300 text-[10px]">${(c.preferred_roles || []).join(', ') || '--'}</td>
+            <td class="p-3.5 text-rose-400 text-[10px]">${(c.penalty_roles || []).join(', ') || '--'}</td>
+            <td class="p-3.5 text-slate-400 text-[11px] max-w-xs truncate">${c.description || '--'}</td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="editCell(${c.slot_id})" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteCell(${c.slot_id})" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openCellModal(cell = null) {
+      populateTileBuffDropdown();
+      document.getElementById('cellModalTitle').innerText = cell ? `Sửa Ô Bàn Cờ Slot ${cell.slot_id}` : 'Thêm/Sửa Cấu Hình Ô Cờ';
+      document.getElementById('cellSlotId').value = cell ? cell.slot_id : 1;
+      document.getElementById('cellCol').value = cell ? cell.col : 0;
+      document.getElementById('cellRow').value = cell ? cell.row : 0;
+      document.getElementById('cellLineType').value = cell ? cell.line_type : 'FRONT';
+      document.getElementById('cellTerrain').value = cell ? cell.terrain_type : 'NORMAL';
+      document.getElementById('cellTileBuff').value = cell ? (cell.tile_buff_effect_id || '') : '';
+      document.getElementById('cellHazard').value = cell ? cell.hazard_damage_pct : 0.0;
+      document.getElementById('cellPrefRoles').value = cell ? (cell.preferred_roles || []).join(', ') : '';
+      document.getElementById('cellPenRoles').value = cell ? (cell.penalty_roles || []).join(', ') : '';
+      document.getElementById('cellDesc').value = cell ? (cell.description || '') : '';
+      openModal('modalCell');
+    }
+
+    function editCell(slot) {
+      const c = cachedCells.find(x => x.slot_id === slot);
+      if (c) {
+        openCellModal(c);
+      } else {
+        openCellModal({
+          slot_id: slot,
+          col: (slot - 1) % 3,
+          row: Math.floor((slot - 1) / 3),
+          line_type: slot <= 3 ? 'FRONT' : slot <= 6 ? 'MID' : 'BACK',
+          terrain_type: 'NORMAL',
+          tile_buff_effect_id: null,
+          hazard_damage_pct: 0.0,
+          preferred_roles: [],
+          penalty_roles: [],
+          description: ''
+        });
+      }
+    }
+
+    async function submitSaveCell(e) {
+      e.preventDefault();
+      const prefRoles = document.getElementById('cellPrefRoles').value.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+      const penRoles = document.getElementById('cellPenRoles').value.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+      const tileBuff = document.getElementById('cellTileBuff').value.trim() || null;
+
+      const body = {
+        slot_id: parseInt(document.getElementById('cellSlotId').value),
+        col: parseInt(document.getElementById('cellCol').value),
+        row: parseInt(document.getElementById('cellRow').value),
+        line_type: document.getElementById('cellLineType').value,
+        terrain_type: document.getElementById('cellTerrain').value,
+        tile_buff_effect_id: tileBuff,
+        hazard_damage_pct: parseFloat(document.getElementById('cellHazard').value) || 0.0,
+        preferred_roles: prefRoles,
+        penalty_roles: penRoles,
+        description: document.getElementById('cellDesc').value.trim() || null
+      };
+
+      try {
+        const res = await fetch('/api/admin/cells/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu cấu hình ô Slot ${body.slot_id} thành công!`, 'success');
+          closeModal('modalCell');
+          loadCells();
+        } else {
+          showToast(data.error || 'Lỗi lưu ô cờ', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteCell(slot) {
+      if (!confirm(`Xóa cấu hình ô Slot ${slot}?`)) return;
+      try {
+        const res = await fetch('/api/admin/cells/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id: slot.toString() })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Đã xóa ô Slot ${slot}`, 'success');
+          loadCells();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- RARITIES & LINE CONFIGS CRUD ---
+    async function loadRarities() {
+      const tbody = document.getElementById('raritiesTableBody');
+      try {
+        const res = await fetch('/api/admin/rarities', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedRarities = data.rarities || {};
+          renderRaritiesTable(cachedRarities);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-rose-400">Lỗi tải phẩm cấp</td></tr>`;
+      }
+    }
+
+    function renderRaritiesTable(rarities) {
+      const tbody = document.getElementById('raritiesTableBody');
+      const list = Object.values(rarities);
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-slate-500">Chưa có phẩm cấp nào</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(r => `
+        <tr class="hover:bg-slate-900/40 transition">
+          <td class="p-2.5 font-bold text-purple-300">${r.rarity_id}</td>
+          <td class="p-2.5 font-semibold text-slate-200">${r.display_name}</td>
+          <td class="p-2.5 font-mono text-amber-300 font-bold">x${r.base_stat_multiplier.toFixed(2)}</td>
+          <td class="p-2.5 font-mono text-cyan-300">+${(r.growth_rate_per_level * 100).toFixed(1)}%</td>
+          <td class="p-2.5 font-mono text-slate-300">${r.max_star_rating} ⭐</td>
+          <td class="p-2.5 font-mono text-indigo-300">${r.max_skills_allowed} skills</td>
+          <td class="p-2.5 text-right space-x-1.5 whitespace-nowrap">
+            <button onclick="editRarity('${r.rarity_id}')" class="px-2 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-700/50 transition">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="deleteRarity('${r.rarity_id}')" class="px-2 py-1 bg-rose-900/40 hover:bg-rose-600 text-rose-300 hover:text-white rounded border border-rose-700/50 transition">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openRarityModal(r = null) {
+      document.getElementById('rarityModalTitle').innerText = r ? `Sửa Phẩm Cấp ${r.rarity_id}` : 'Thêm Phẩm Cấp Mới';
+      document.getElementById('rarityId').value = r ? r.rarity_id : '';
+      document.getElementById('rarityId').disabled = !!r;
+      document.getElementById('rarityName').value = r ? r.display_name : '';
+      document.getElementById('rarityMult').value = r ? r.base_stat_multiplier : 1.50;
+      document.getElementById('rarityGrowth').value = r ? r.growth_rate_per_level : 0.100;
+      document.getElementById('rarityMaxStar').value = r ? r.max_star_rating : 7;
+      document.getElementById('rarityMaxSkills').value = r ? r.max_skills_allowed : 4;
+      openModal('modalRarity');
+    }
+
+    function editRarity(id) {
+      const r = cachedRarities[id];
+      if (r) openRarityModal(r);
+    }
+
+    async function submitSaveRarity(e) {
+      e.preventDefault();
+      const body = {
+        rarity_id: document.getElementById('rarityId').value.trim(),
+        display_name: document.getElementById('rarityName').value.trim(),
+        base_stat_multiplier: parseFloat(document.getElementById('rarityMult').value),
+        growth_rate_per_level: parseFloat(document.getElementById('rarityGrowth').value),
+        max_star_rating: parseInt(document.getElementById('rarityMaxStar').value),
+        max_skills_allowed: parseInt(document.getElementById('rarityMaxSkills').value)
+      };
+      try {
+        const res = await fetch('/api/admin/rarities/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu phẩm cấp ${body.rarity_id} thành công!`, 'success');
+          closeModal('modalRarity');
+          loadRarities();
+        } else {
+          showToast(data.error || 'Lỗi lưu phẩm cấp', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    async function deleteRarity(id) {
+      if (!confirm(`Xóa phẩm cấp ${id}?`)) return;
+      try {
+        const res = await fetch('/api/admin/rarities/delete', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa phẩm cấp', 'success');
+          loadRarities();
+        } else {
+          showToast(data.error || 'Lỗi xóa', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- LINES CONFIGS CRUD ---
+    async function loadLines() {
+      try {
+        const res = await fetch('/api/admin/lines', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          cachedLines = data.line_configs || [];
+          renderLinesCards(cachedLines);
+        }
+      } catch (err) {}
+    }
+
+    function renderLinesCards(lines) {
+      const container = document.getElementById('lineConfigsCards');
+      if (!container) return;
+      container.innerHTML = lines.map(l => {
+        let bCol = l.line_type === 'Front' || l.line_type === 'FRONT' ? 'border-red-800/60 bg-red-950/20' :
+                   l.line_type === 'Mid' || l.line_type === 'MID' ? 'border-amber-800/60 bg-amber-950/20' : 'border-blue-800/60 bg-blue-950/20';
+
+        const buffs = Object.entries(l.line_buffs || {}).filter(([_, v]) => v != null).map(([k, v]) => `${k}: ${v}`).join(', ') || 'None';
+        const penalties = Object.entries(l.penalty_stats || {}).filter(([_, v]) => v != null).map(([k, v]) => `${k}: ${v}`).join(', ') || 'None';
+
+        return `
+          <div class="glass p-5 rounded-2xl border ${bCol} space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold px-2 py-1 bg-slate-900 text-slate-200 border border-slate-700 rounded">${l.line_type} - ${l.display_name}</span>
+              <span class="text-xs text-slate-400">Slots: ${(l.slot_indices || []).join(', ')}</span>
+            </div>
+            <div class="text-xs text-slate-300 space-y-1">
+              <div><strong class="text-emerald-400">Line Buffs:</strong> ${buffs}</div>
+              <div><strong class="text-cyan-400">Allowed Roles:</strong> ${(l.allowed_roles || []).join(', ') || '--'}</div>
+              <div><strong class="text-rose-400">Penalties:</strong> ${(l.penalty_roles || []).join(', ') || 'None'} (${penalties})</div>
+            </div>
+            <div class="flex justify-end pt-2">
+              <button onclick="editLine('${l.line_type}')" class="px-2.5 py-1 bg-indigo-900/40 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded text-xs border border-indigo-700/50 transition">
+                <i class="fa-solid fa-pen-to-square mr-1"></i>Sửa
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openLineModal(line = null) {
+      document.getElementById('lineModalTitle').innerText = line ? `Sửa Cấu Hình Hàng ${line.line_type}` : 'Thêm/Sửa Cấu Hình Hàng';
+      document.getElementById('lineTypeSelect').value = line ? (typeof line.line_type === 'string' ? line.line_type.toUpperCase() : 'FRONT') : 'FRONT';
+      document.getElementById('lineDisplayName').value = line ? line.display_name : 'Hàng Đầu';
+      document.getElementById('lineAllowedRoles').value = line ? (line.allowed_roles || []).join(', ') : '';
+      document.getElementById('linePenaltyRoles').value = line ? (line.penalty_roles || []).join(', ') : '';
+      document.getElementById('lineBuffsJson').value = line ? JSON.stringify(line.line_buffs, null, 2) : '{}';
+      document.getElementById('linePenaltyStatsJson').value = line ? JSON.stringify(line.penalty_stats, null, 2) : '{}';
+      openModal('modalLine');
+    }
+
+    function editLine(type) {
+      const l = cachedLines.find(x => (x.line_type.toUpperCase() === type.toUpperCase()));
+      if (l) openLineModal(l);
+    }
+
+    async function submitSaveLine(e) {
+      e.preventDefault();
+      const type = document.getElementById('lineTypeSelect').value;
+      const allowed = document.getElementById('lineAllowedRoles').value.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+      const penalty = document.getElementById('linePenaltyRoles').value.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+      let buffs = {};
+      let penalties = {};
+      try {
+        buffs = JSON.parse(document.getElementById('lineBuffsJson').value.trim() || '{}');
+        penalties = JSON.parse(document.getElementById('linePenaltyStatsJson').value.trim() || '{}');
+      } catch (err) {
+        showToast('JSON Buffs hoặc Penalty không hợp lệ', 'error');
+        return;
+      }
+
+      const body = {
+        line_type: type,
+        display_name: document.getElementById('lineDisplayName').value.trim(),
+        slot_indices: type === 'FRONT' ? [1, 2, 3] : type === 'MID' ? [4, 5, 6] : [7, 8, 9],
+        allowed_roles: allowed,
+        penalty_roles: penalty,
+        penalty_stats: penalties,
+        line_buffs: buffs
+      };
+
+      try {
+        const res = await fetch('/api/admin/lines/save', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Lưu cấu hình hàng ${type} thành công!`, 'success');
+          closeModal('modalLine');
+          loadLines();
+        } else {
+          showToast(data.error || 'Lỗi lưu line config', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- 3X3 & LIVE CALCULATOR ---
+    async function loadLinesAndTemplates() {
+      try {
+        const res = await fetch('/api/schema/master_data');
+        const data = await res.json();
+        if (data.success && data.templates) {
+          const sel = document.getElementById('calcTemplateSelect');
+          sel.innerHTML = data.templates.map(t =>
+            `<option value="${t.card_template_id}">${t.name} (${t.rarity_id} - ${t.recommended_role})</option>`
+          ).join('');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function selectCalcSlot(slot) {
+      selectedSlot = slot;
+      document.querySelectorAll('.calc-slot-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+        btn.classList.add('bg-slate-900');
+      });
+      const activeBtn = document.getElementById(`calc-slot-${slot}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-900');
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+      }
+    }
+
+    async function runLiveCalc() {
+      const templateId = document.getElementById('calcTemplateSelect').value;
+      const rarityId = document.getElementById('calcRaritySelect').value;
+      const level = parseInt(document.getElementById('calcLevelInput').value) || 1;
+      const star = parseInt(document.getElementById('calcStarInput').value) || 1;
+
+      try {
+        const res = await fetch('/api/formation/calculate_stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template_id: templateId,
+            rarity_id: rarityId,
+            level,
+            star,
+            slot_id: selectedSlot
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.stats) {
+          const s = data.stats;
+          document.getElementById('calcResultBox').classList.remove('hidden');
+          document.getElementById('resHp').innerText = s.max_hp.toLocaleString();
+          document.getElementById('resAtk').innerText = s.attack.toLocaleString();
+          document.getElementById('resDef').innerText = s.defense.toLocaleString();
+          document.getElementById('resSpd').innerText = s.speed;
+          document.getElementById('resCrit').innerText = `${Math.round(s.crit_rate * 100)}% (${s.crit_dmg}x)`;
+          document.getElementById('resMorale').innerText = `${s.initial_morale} / ${s.max_morale}`;
+          document.getElementById('resLineType').innerText = `${s.line_type} (Slot ${s.slot_id})`;
+          document.getElementById('resPenalty').innerHTML = s.is_role_penalized
+            ? `<span class="text-rose-400 font-bold">CÓ PHẠT (${Math.round((s.damage_taken_mult - 1) * 100)}% ST nhận thêm)</span>`
+            : `<span class="text-emerald-400">Không phạt</span>`;
+          showToast('Đã tính toán chỉ số thành công!', 'success');
+        } else {
+          showToast(data.error || 'Lỗi tính toán', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- MATCHES ---
+    async function loadMatches() {
+      const tbody = document.getElementById('matchesTableBody');
+      try {
+        const res = await fetch('/api/admin/matches', { headers: getHeaders() });
+        const data = await res.json();
+        if (data.success) {
+          const matches = data.matches || [];
+          if (matches.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">Chưa có trận đấu nào được lưu</td></tr>`;
+            return;
+          }
+          tbody.innerHTML = matches.map(m => `
+            <tr class="hover:bg-slate-900/40 transition">
+              <td class="p-3.5 font-mono text-[11px] text-slate-400">${m.match_id}</td>
+              <td class="p-3.5 font-semibold text-slate-200">${m.host}</td>
+              <td class="p-3.5 text-slate-300">${m.guest}</td>
+              <td class="p-3.5 font-bold text-amber-400">${m.winner || 'Hòa / Bỏ cuộc'}</td>
+              <td class="p-3.5 font-mono text-slate-400">${m.rounds} rounds</td>
+              <td class="p-3.5 text-slate-500 text-[11px]">${m.timestamp}</td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-rose-400">${data.error}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-rose-400">Lỗi tải lịch sử</td></tr>`;
+      }
+    }
+
+    // --- SYSTEM RESET SEEDS ---
+    async function resetDefaultSeeds() {
+      if (!confirm('Khôi phục toàn bộ Master Seeds gốc cho Rarities, Lines, Skills, Templates, Effects và Ô Bàn Cờ?')) return;
+      try {
+        const res = await fetch('/api/admin/db/reset_seeds', {
+          method: 'POST',
+          headers: getHeaders()
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          loadOverview();
+        } else {
+          showToast(data.error || 'Lỗi khôi phục seeds', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi mạng', 'error');
+      }
+    }
+
+    // --- MODAL UTILS ---
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

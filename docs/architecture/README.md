@@ -1,5 +1,8 @@
 # Architecture
 
-`apps/client` chạy Bevy và giao tiếp với server qua WebSocket. `apps/server` phục vụ
-HTTP/WebSocket và static web artifact từ `dist/wasm`. Các schema/rule dùng chung đặt
-trong `crates/`.
+Tài liệu kiến trúc chính là [`game-architecture.md`](game-architecture.md).
+
+Hệ thống phát triển theo một hướng: data schema → headless simulation → server
+authority → client rendering → content expansion → release hardening. Mọi thay
+đổi boundary hoặc protocol phải cập nhật tài liệu kiến trúc và API trong cùng
+phase.

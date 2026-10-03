@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3v3 Tactical Arena - Đấu Trường Đối Kháng Online (Rust Server & OCI Database)</title>
+    <title>3v3 Tactical Arena - Đấu Trường Chiến Thuật</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>⚔️</text></svg>">
     <style>
         * {
@@ -621,27 +621,19 @@
         }
 
         .battle-top-bar {
-            height: 70px;
-            background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.75) 70%, transparent 100%);
-            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            height: 56px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.80) 70%, transparent 100%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(51, 65, 85, 0.6);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 16px;
             pointer-events: auto;
         }
 
-        .battle-bottom-bar {
-            min-height: 105px;
-            background: linear-gradient(0deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.85) 70%, transparent 100%);
-            border-top: 1px solid rgba(51, 65, 85, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 24px;
-            pointer-events: auto;
-            gap: 20px;
-        }
+
 
         .battle-speed-group {
             display: flex;
@@ -917,12 +909,13 @@
             border-radius: 11px;
             border: 1px solid #334155;
             background: #131c31;
-            padding: 8px;
+            padding: 11px;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
             position: relative;
             transition: all 0.2s ease;
+            min-height: 268px;
         }
 
         .ccg-card:hover {
@@ -933,6 +926,30 @@
         .ccg-card.in-deck {
             border-color: #4ade80 !important;
             box-shadow: 0 0 15px rgba(74, 222, 128, 0.25);
+        }
+
+        .ccg-card .deck-card-stats {
+            margin-top: auto;
+            padding: 7px 8px;
+            border: 1px solid rgba(71, 85, 105, 0.8);
+            border-radius: 7px;
+            background: rgba(15, 23, 42, 0.72);
+        }
+
+        .ccg-card .deck-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px;
+        }
+
+        .ccg-card .deck-actions-grid .btn,
+        .ccg-card .deck-actions-grid button {
+            min-width: 0;
+            min-height: 28px;
+            padding: 4px 5px !important;
+            border-radius: 6px;
+            font-size: 0.64rem !important;
+            line-height: 1.15;
         }
 
         /* Active Deck Dock on Right */
@@ -975,52 +992,63 @@
 
         .formation-editor {
             display: grid;
-            grid-template-columns: minmax(0, 1.3fr) minmax(250px, 0.7fr);
-            gap: 14px;
+            grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.65fr);
+            gap: 18px;
+            align-items: stretch;
         }
         .formation-board {
             display: grid;
-            grid-template-columns: 72px repeat(3, minmax(72px, 1fr));
-            gap: 7px;
-            padding: 10px;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            background: radial-gradient(circle at center, rgba(49, 46, 129, 0.32), rgba(15, 23, 42, 0.95));
+            grid-template-columns: 92px repeat(3, minmax(0, 1fr));
+            gap: 9px;
+            padding: 16px;
+            border: 1px solid rgba(99, 102, 241, 0.55);
+            border-radius: 16px;
+            background:
+                linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+                linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+                radial-gradient(circle at center, rgba(49, 46, 129, 0.40), rgba(2, 6, 23, 0.98));
+            background-size: 25% 25%, 25% 25%, auto;
+            box-shadow: inset 0 0 30px rgba(15, 23, 42, 0.8), 0 12px 30px rgba(0, 0, 0, 0.35);
         }
         .formation-row-label {
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
-            border-radius: 8px;
-            font-size: 0.65rem;
+            min-height: 112px;
+            border-radius: 10px;
+            font-size: 0.62rem;
             font-weight: 900;
             letter-spacing: 0.4px;
             writing-mode: vertical-rl;
             transform: rotate(180deg);
+            border: 1px solid currentColor;
+            opacity: 0.9;
         }
         .formation-row-label.front { color: #fca5a5; background: rgba(127, 29, 29, 0.32); }
         .formation-row-label.middle { color: #fcd34d; background: rgba(120, 53, 15, 0.32); }
         .formation-row-label.back { color: #7dd3fc; background: rgba(7, 89, 133, 0.32); }
         .formation-cell {
             min-height: 112px;
-            padding: 7px;
+            padding: 10px 7px;
             border: 2px dashed #475569;
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.72);
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.78), rgba(15, 23, 42, 0.92));
             color: #64748b;
             cursor: pointer;
-            transition: border-color 0.15s, transform 0.15s, background 0.15s;
+            transition: border-color 0.15s, transform 0.15s, background 0.15s, box-shadow 0.15s;
         }
         .formation-cell:hover, .formation-cell.drag-over {
             border-color: #a5b4fc;
-            background: rgba(49, 46, 129, 0.48);
+            background: rgba(49, 46, 129, 0.58);
             transform: translateY(-1px);
+            box-shadow: 0 0 18px rgba(99, 102, 241, 0.32);
         }
         .formation-cell.filled {
             border-style: solid;
             border-color: #818cf8;
             color: #fff;
+            box-shadow: inset 0 0 18px rgba(99, 102, 241, 0.16);
         }
         .formation-cell .formation-card-icon { font-size: 1.8rem; text-align: center; }
         .formation-cell .formation-card-name {
@@ -1037,30 +1065,101 @@
             text-align: center;
         }
         .formation-collection {
-            max-height: 355px;
+            max-height: 394px;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: 1fr;
             gap: 7px;
+            padding-right: 4px;
         }
         .formation-card {
-            padding: 8px;
+            min-height: 76px;
+            padding: 9px 12px;
             border: 1px solid #334155;
             border-radius: 9px;
             background: #131c31;
             color: #fff;
             cursor: grab;
+            display: grid;
+            grid-template-columns: 34px minmax(0, 1fr) auto;
+            align-items: center;
+            column-gap: 9px;
+            text-align: left;
+        }
+        .formation-card > div:first-child {
+            grid-row: 1 / span 2;
             text-align: center;
+        }
+        .formation-card > div:nth-child(4) {
+            grid-column: 2 / -1;
         }
         .formation-card:hover, .formation-card.selected {
             border-color: #a5b4fc;
             box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
         }
         .formation-card.assigned { opacity: 0.55; }
+        .formation-editor > div:last-child {
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid rgba(71, 85, 105, 0.8);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.88));
+        }
+        .formation-editor > div:last-child > div:first-child {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 9px;
+            margin-bottom: 9px !important;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.65);
+            color: #f8fafc !important;
+            letter-spacing: 0.6px;
+        }
+        #active-lineup-panel .ccg-deck-dock {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.97), rgba(2, 6, 23, 0.98));
+            border: 1px solid rgba(129, 140, 248, 0.65);
+            border-radius: 18px;
+            padding: 18px;
+            gap: 16px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px rgba(255, 255, 255, 0.04);
+        }
+        #active-lineup-panel .ccg-deck-dock > div:first-child {
+            min-height: 54px;
+        }
+        #active-lineup-panel .ccg-deck-dock > div:first-child::before {
+            content: 'ĐỘI HÌNH CHIẾN ĐẤU';
+            display: block;
+            color: #818cf8;
+            font-size: 0.62rem;
+            font-weight: 900;
+            letter-spacing: 1.4px;
+            margin-bottom: 3px;
+        }
+        #active-lineup-panel .ccg-deck-dock > div:nth-last-of-type(1) {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+            background: rgba(15, 23, 42, 0.82) !important;
+        }
+        #btn-save-lineup {
+            min-height: 46px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            border-color: #818cf8;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.32);
+        }
+        @media (min-width: 1100px) {
+            #deck-modal .modal-card { max-width: 1280px !important; }
+            #deck-modal .modal-body { max-height: calc(100vh - 128px) !important; }
+        }
         @media (max-width: 820px) {
             .formation-editor { grid-template-columns: 1fr; }
-            .formation-board { grid-template-columns: 54px repeat(3, minmax(64px, 1fr)); }
-            .formation-cell { min-height: 96px; }
+            .formation-board { grid-template-columns: 68px repeat(3, minmax(0, 1fr)); padding: 10px; gap: 6px; }
+            .formation-cell, .formation-row-label { min-height: 94px; }
+            .formation-row-label { font-size: 0.55rem; }
+        }
+        @media (max-width: 520px) {
+            .formation-board { grid-template-columns: 1fr; }
+            .formation-row-label { min-height: 26px; writing-mode: horizontal-tb; transform: none; }
+            .formation-cell { min-height: 86px; }
         }
 
         .dock-slot {
@@ -2242,11 +2341,11 @@
                             <div>
                                 <label style="font-size:0.72rem; color:#94a3b8; display:block; margin-bottom:4px;">Chọn Avatar:</label>
                                 <select id="profile-avatar-select" class="form-input" style="padding:6px; font-size:0.8rem;">
-                                    <option value="avatar_knight">🛡️ Hiệp Sĩ Hoàng Gia</option>
-                                    <option value="avatar_mage">🔮 Pháp Sư Băng Hỏa</option>
-                                    <option value="avatar_archer">🏹 Cung Thủ Thần Nhãn</option>
-                                    <option value="avatar_assassin">🗡️ Sát Thủ Bóng Đêm</option>
-                                    <option value="avatar_cleric">✝️ Mục Sư Thánh Quang</option>
+                                    <option value="avatar_knight">🐉 Triệu Vân</option>
+                                    <option value="avatar_mage">🪶 Gia Cát Lượng</option>
+                                    <option value="avatar_archer">🏹 Hoàng Trung</option>
+                                    <option value="avatar_assassin">⚔️ Trương Hợp</option>
+                                    <option value="avatar_cleric">🌿 Hoa Đà</option>
                                     <option value="avatar_dragon">🐲 Long Thần Thức Tỉnh</option>
                                 </select>
                             </div>
@@ -2392,86 +2491,11 @@
 
             <div class="modal-body" style="padding: 18px; overflow-y:auto; max-height:72vh; display:flex; flex-direction:column; gap:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#1e1b4b; padding:8px 14px; border-radius:8px; border:1px solid #3730a3; font-size:0.8rem; color:#c7d2fe;">
-                    <span>✨ Thẻ bài sau khi mua sẽ lưu vĩnh viễn vào tài khoản OCI và sẵn sàng ra trận!</span>
+                    <span>✨ Thẻ bài sau khi mua sẽ được lưu vào bộ sưu tập và sẵn sàng ra trận!</span>
                     <button onclick="window.openDeckModal()" class="btn btn-sm" style="background:#4338ca; border-color:#6366f1;">🎴 Xem Kho Thẻ</button>
                 </div>
 
-                <div class="shop-grid">
-                    <!-- Knight -->
-                    <div class="shop-item-card rarity-common">
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                            <span class="rarity-tag common">⚪ Phổ Thông</span>
-                            <span class="role-tag" style="color:#60a5fa;">🛡️ Đỡ Đòn</span>
-                        </div>
-                        <div class="shop-item-icon">🛡️</div>
-                        <div class="shop-item-name">Hiệp Sĩ Hoàng Gia</div>
-                        <div class="shop-item-desc">Máu dày, giáp kiên cố, tạo khiên chắn bảo hộ toàn đội trước đòn đánh.</div>
-                        <div class="shop-item-stats">❤️ 400 HP | ⚔️ 45 ATK | 🛡️ 35 DEF</div>
-                        <button class="shop-buy-btn" id="btn-buy-knight" onclick="window.buyCard('Knight')">
-                            <span>Chiêu Mộ 50</span> <span>🪙</span>
-                        </button>
-                    </div>
-
-                    <!-- Archer -->
-                    <div class="shop-item-card rarity-rare">
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                            <span class="rarity-tag rare">🔵 Hiếm</span>
-                            <span class="role-tag" style="color:#4ade80;">🏹 Xạ Thủ</span>
-                        </div>
-                        <div class="shop-item-icon">🏹</div>
-                        <div class="shop-item-name">Cung Thủ Thần Nhãn</div>
-                        <div class="shop-item-desc">Tầm xa bắn xuyên thấu, tốc đánh cao và độ chính xác tuyệt đối.</div>
-                        <div class="shop-item-stats">❤️ 260 HP | ⚔️ 55 ATK | 🛡️ 12 DEF</div>
-                        <button class="shop-buy-btn" id="btn-buy-archer" onclick="window.buyCard('Archer')">
-                            <span>Chiêu Mộ 50</span> <span>🪙</span>
-                        </button>
-                    </div>
-
-                    <!-- Mage -->
-                    <div class="shop-item-card rarity-epic">
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                            <span class="rarity-tag epic">🟣 Sử Thi</span>
-                            <span class="role-tag" style="color:#a855f7;">🔮 Pháp Sư</span>
-                        </div>
-                        <div class="shop-item-icon">🔮</div>
-                        <div class="shop-item-name">Pháp Sư Băng Hoả</div>
-                        <div class="shop-item-desc">Chưởng pháp nguyên tố bùng nổ, thiêu đốt diện rộng cả chiến trường.</div>
-                        <div class="shop-item-stats">❤️ 280 HP | ⚔️ 60 ATK | 🛡️ 15 DEF</div>
-                        <button class="shop-buy-btn" id="btn-buy-mage" onclick="window.buyCard('Mage')">
-                            <span>Chiêu Mộ 60</span> <span>🪙</span>
-                        </button>
-                    </div>
-
-                    <!-- Assassin -->
-                    <div class="shop-item-card rarity-epic">
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                            <span class="rarity-tag epic">🟣 Sử Thi</span>
-                            <span class="role-tag" style="color:#f87171;">🗡️ Sát Thủ</span>
-                        </div>
-                        <div class="shop-item-icon">🗡️</div>
-                        <div class="shop-item-name">Sát Thủ Bóng Đêm</div>
-                        <div class="shop-item-desc">Ám sát hàng sau chớp nhoáng, tỉ lệ chí mạng và sát thương cực đại.</div>
-                        <div class="shop-item-stats">❤️ 240 HP | ⚔️ 65 ATK | 🛡️ 10 DEF</div>
-                        <button class="shop-buy-btn" id="btn-buy-assassin" onclick="window.buyCard('Assassin')">
-                            <span>Chiêu Mộ 60</span> <span>🪙</span>
-                        </button>
-                    </div>
-
-                    <!-- Cleric -->
-                    <div class="shop-item-card rarity-legendary">
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                            <span class="rarity-tag legendary">🟡 Huyền Thoại</span>
-                            <span class="role-tag" style="color:#fde047;">✨ Hỗ Trợ</span>
-                        </div>
-                        <div class="shop-item-icon">✨</div>
-                        <div class="shop-item-name">Mục Sư Thánh Quang</div>
-                        <div class="shop-item-desc">Thánh quang chữa lành vết thương, hồi phục HP và thanh tẩy đồng đội.</div>
-                        <div class="shop-item-stats">❤️ 340 HP | ⚔️ 35 ATK | 🛡️ 20 DEF</div>
-                        <button class="shop-buy-btn" id="btn-buy-cleric" onclick="window.buyCard('Cleric')">
-                            <span>Chiêu Mộ 55</span> <span>🪙</span>
-                        </button>
-                    </div>
-                </div>
+                <div class="shop-grid" id="general-shop-grid"></div>
             </div>
         </div>
     </div>
@@ -2493,7 +2517,7 @@
                 </div>
                 <div id="acquired-card-icon" style="font-size: 4.8rem; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.7));">🏹</div>
                 <div style="text-align:center;">
-                    <div id="acquired-card-name" style="font-size: 1.1rem; font-weight: 800; color: #fff;">Cung Thủ Thần Nhãn</div>
+                    <div id="acquired-card-name" style="font-size: 1.1rem; font-weight: 800; color: #fff;">Triệu Vân</div>
                     <div id="acquired-card-stars" style="color: #facc15; font-size: 1rem; margin-top: 2px;">★☆☆</div>
                 </div>
                 <div id="acquired-card-stats" style="width:100%; background:rgba(0,0,0,0.6); border-radius:8px; padding:8px 12px; font-size:0.75rem; color:#cbd5e1; display:flex; justify-content:space-around;">
@@ -2542,11 +2566,11 @@
                     <div class="ccg-filter-bar">
                         <div class="filter-tab-group" id="deck-role-filters">
                             <button class="filter-tab-btn active" data-role="all">Tất Cả</button>
-                            <button class="filter-tab-btn" data-role="Đỡ Đòn">🛡️ Đỡ Đòn</button>
+                            <button class="filter-tab-btn" data-role="Đấu Sĩ">⚔️ Đấu Sĩ</button>
                             <button class="filter-tab-btn" data-role="Xạ Thủ">🏹 Xạ Thủ</button>
                             <button class="filter-tab-btn" data-role="Pháp Sư">🔮 Pháp Sư</button>
                             <button class="filter-tab-btn" data-role="Sát Thủ">🗡️ Sát Thủ</button>
-                            <button class="filter-tab-btn" data-role="Hỗ Trợ">✨ Hỗ Trợ</button>
+                            <button class="filter-tab-btn" data-role="Hồi Phục">✨ Hồi Phục</button>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
                             <select id="deck-rarity-select" style="background:#1e293b; color:#e2e8f0; border:1px solid #475569; border-radius:8px; padding:6px 10px; font-size:0.78rem; font-weight:700;">
@@ -2571,22 +2595,23 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3730a3; padding-bottom:8px;">
                             <div>
                                 <div style="font-weight:800; font-size:0.95rem; color:#f8fafc;">⚔️ ĐỘI HÌNH RA TRẬN</div>
-                                <div style="font-size:0.72rem; color:#94a3b8;">Chọn tối đa 3 chiến binh xuất chiến</div>
+                                <div style="font-size:0.72rem; color:#94a3b8;">Đội hình theo 9 ô • Đang mở <span id="battle-slot-count">1/5</span> ô</div>
                             </div>
                             <div style="text-align:right;">
                                 <div id="deck-total-power" style="font-weight:800; font-size:0.92rem; color:#facc15;">⚡ 0</div>
                                 <div style="font-size:0.68rem; color:#94a3b8;">Tổng Lực Chiến</div>
+                                <button class="btn btn-gold" style="font-size:0.62rem; padding:3px 7px; margin-top:4px;" onclick="window.buyBattleSlot()">🛒 Mở thêm ô</button>
                             </div>
                         </div>
 
                         <div class="formation-editor">
                             <div>
-                                <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:7px;">Kéo thẻ vào ô hoặc chọn thẻ rồi bấm ô trống. Tối đa 3 thẻ xuất trận.</div>
+                                <div style="font-size:0.75rem; color:#cbd5e1; margin-bottom:7px;">BÀN ĐẤU 3 × 3 · Kéo thẻ vào vị trí chiến thuật hoặc chọn thẻ rồi chọn ô.</div>
                                 <div class="formation-board" id="formation-board" aria-label="Bàn xếp đội hình 3 x 3"></div>
                                 <div style="display:flex; justify-content:space-between; gap:8px; margin-top:8px; color:#94a3b8; font-size:0.66rem;">
-                                    <span>🛡️ Đầu: Đỡ Đòn · +25% HP</span>
-                                    <span>⚔️ Giữa: Sát Thủ/Xạ Thủ · +20% ATK</span>
-                                    <span>✨ Cuối: Hỗ Trợ/Pháp Sư · +30 Tiên Cơ</span>
+                                    <span>🛡️ TIỀN TUYẾN</span>
+                                    <span>⚔️ TRUNG TUYẾN</span>
+                                    <span>✨ HẬU PHƯƠNG</span>
                                 </div>
                             </div>
                             <div>
@@ -2613,7 +2638,7 @@
         </div>
     </div>
 
-    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ (OCI DATABASE) -->
+    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->
     <div id="auth-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="auth-banner-header">
@@ -2622,7 +2647,6 @@
                 <h1 class="auth-main-title">Tactical Arena</h1>
                 <div class="auth-subtitle">
                     <span id="auth-title">Đấu Trường Chiến Thuật Đối Kháng</span>
-                    <span class="auth-cloud-badge">OCI CLOUD</span>
                 </div>
             </div>
 
@@ -2697,10 +2721,10 @@
                     </div>
                 </div>
 
-                <!-- Info Cloud Banner -->
+                <!-- Info Banner -->
                 <div class="auth-info-banner">
-                    <span class="auth-info-banner-icon">☁️</span>
-                    <span>Tài khoản, điểm xếp hạng ELO và lịch sử đấu được lưu trữ bảo mật vĩnh viễn trên cơ sở dữ liệu <strong>OCI Free Tier</strong>.</span>
+                    <span class="auth-info-banner-icon">🛡️</span>
+                    <span>Tài khoản, điểm xếp hạng và lịch sử đấu được lưu trữ bảo mật để bạn tiếp tục hành trình trong game.</span>
                 </div>
 
                 <!-- Error Message -->
@@ -2764,7 +2788,7 @@
                         <button id="btn-refresh-rooms" class="btn" style="padding:3px 8px; font-size:0.75rem;">🔄 Làm mới</button>
                     </div>
                     <div id="hub-rooms-container" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto;">
-                        <p style="color: #64748b; font-style: italic; font-size: 0.85rem;">Đang quét phòng chờ trên Rust Server...</p>
+                        <p style="color: #64748b; font-style: italic; font-size: 0.85rem;">Đang tìm phòng chờ...</p>
                     </div>
                 </div>
             </div>
@@ -2775,7 +2799,7 @@
     <div id="leaderboard-modal" class="modal-overlay">
         <div class="modal-card" style="max-width: 680px;">
             <div class="modal-header">
-                <h2>🏆 BẢNG VÀNG CAO THỦ (OCI DATABASE)</h2>
+                <h2>🏆 BẢNG VÀNG CAO THỦ</h2>
                 <button class="modal-close-btn" id="btn-close-leaderboard">✕</button>
             </div>
             <div class="modal-body">
@@ -2785,13 +2809,13 @@
                             <th>Hạng</th>
                             <th>Tướng</th>
                             <th>Người Chơi</th>
-                            <th>Điểm ELO</th>
+                            <th>Điểm hạng</th>
                             <th>Thắng / Thua</th>
                             <th>Tỷ Lệ Thắng</th>
                         </tr>
                     </thead>
                     <tbody id="leaderboard-tbody">
-                        <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng xếp hạng từ Rust Server...</td></tr>
+                        <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng xếp hạng...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2802,36 +2826,55 @@
     <div id="guide-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <h2>⚔️ HƯỚNG DẪN CHIẾN ĐẤU & LUẬT CHƠI (AUTO-BATTLER)</h2>
+                <h2>⚔️ HƯỚNG DẪN CHIẾN ĐẤU & LUẬT CHƠI</h2>
                 <button class="modal-close-btn" id="btn-close-guide" title="Đóng (Esc)">✕</button>
             </div>
             <div class="modal-body">
                 <div class="guide-section">
-                    <div class="guide-section-title">⌨️ DANH SÁCH PHÍM TẮT NHANH (SHORTCUTS)</div>
+                    <div class="guide-section-title">🎯 MỤC TIÊU TRẬN ĐẤU</div>
+                    <p style="font-size: 0.88rem; line-height: 1.55; color: #cbd5e1;">
+                        Xây dựng đội hình 3 tướng, sắp xếp đúng vai trò và đánh bại toàn bộ đội đối thủ.
+                        Mỗi hiệp gồm ba bước: mua hoặc nâng cấp tướng, bố trí đội hình, rồi khóa trận để giao chiến.
+                        Chế độ Luyện Tập phù hợp để thử đội hình; Đấu Online dùng đội hình đã lưu để so tài với người chơi khác.
+                    </p>
+                </div>
+
+                <div class="guide-section">
+                    <div class="guide-section-title">🧭 CÁCH XẾP ĐỘI HÌNH</div>
+                    <ul style="margin-left: 20px; font-size: 0.88rem; line-height: 1.6; color: #cbd5e1;">
+                        <li><strong>Tiền Phong:</strong> đặt tướng Đỡ Đòn ở hàng đầu để nhận thêm Máu.</li>
+                        <li><strong>Chủ Lực:</strong> đặt Xạ Thủ hoặc Sát Thủ ở hàng giữa để tăng Sức Đánh.</li>
+                        <li><strong>Hỗ Trợ:</strong> đặt Pháp Sư hoặc Hỗ Trợ ở hàng sau để tăng Tiên Cơ.</li>
+                        <li>Trong Kho Thẻ, chọn thẻ rồi chọn ô trống hoặc kéo thẻ vào vị trí mong muốn. Bấm lại vào ô đã dùng để gỡ tướng.</li>
+                    </ul>
+                </div>
+
+                <div class="guide-section">
+                    <div class="guide-section-title">⌨️ PHÍM TẮT VÀ THAO TÁC</div>
                     <div class="hotkey-grid">
-                        <div class="hotkey-item"><span class="key-badge">1 - 4</span><span>Mua nhanh thẻ tướng Shop 1 đến 4</span></div>
+                        <div class="hotkey-item"><span class="key-badge">1 - 4</span><span>Mua nhanh tướng ở các ô cửa hàng</span></div>
                         <div class="hotkey-item"><span class="key-badge">S</span><span>Bán tướng đang chọn / đang trỏ (+100% Vàng)</span></div>
                         <div class="hotkey-item"><span class="key-badge">Chuột Phải</span><span>Click chuột phải vào tướng để Bán nhanh</span></div>
-                        <div class="hotkey-item"><span class="key-badge">D</span><span>Đổi mới Cửa Hàng (Reroll) tốn 2 Vàng</span></div>
-                        <div class="hotkey-item"><span class="key-badge">E</span><span>Khóa / Mở khóa Cửa Hàng (Lock Shop)</span></div>
-                        <div class="hotkey-item"><span class="key-badge">Space</span><span>Bắt đầu hiệp đấu / Khóa bài PvP</span></div>
+                        <div class="hotkey-item"><span class="key-badge">D</span><span>Đổi hàng, tốn 2 Vàng</span></div>
+                        <div class="hotkey-item"><span class="key-badge">E</span><span>Khóa / mở khóa cửa hàng</span></div>
+                        <div class="hotkey-item"><span class="key-badge">Space</span><span>Bắt đầu hiệp đấu / xác nhận sẵn sàng</span></div>
                         <div class="hotkey-item"><span class="key-badge">H / F1</span><span>Bật / Tắt cửa sổ Hướng Dẫn</span></div>
                         <div class="hotkey-item"><span class="key-badge">Esc</span><span>Đóng tất cả cửa sổ Popup</span></div>
                     </div>
                 </div>
 
                 <div class="guide-section">
-                    <div class="guide-section-title">🎮 ĐỐI KHÁNG 2 NGƯỜI CHƠI (ONLINE REALTIME PVP)</div>
+                    <div class="guide-section-title">🎮 ĐỐI KHÁNG 2 NGƯỜI CHƠI</div>
                     <ul style="margin-left: 20px; font-size: 0.88rem; line-height: 1.6; color: #cbd5e1;">
-                        <li><strong>Không Đấu Với Máy:</strong> Khi vào phòng PvP hoặc Ghép Nhanh, toàn bộ bot máy bị xóa bỏ. Bạn sẽ chiến đấu trực tiếp với người chơi khác!</li>
-                        <li><strong>Bố trí quân:</strong> Click chuột trái vào tướng trên Bàn đấu hoặc Hàng dự bị, sau đó click vào ô muốn đặt để Di chuyển hoặc Tráo đổi vị trí.</li>
+                        <li><strong>Ghép trận:</strong> Chọn Ghép Nhanh để tìm đối thủ hoặc tạo phòng riêng để mời bạn bè.</li>
+                        <li><strong>Bố trí quân:</strong> Nhấp chuột trái vào tướng trên Bàn đấu hoặc Hàng dự bị, sau đó nhấp vào ô muốn đặt để di chuyển hoặc đổi vị trí.</li>
                         <li><strong>Khóa Trận:</strong> Nhấn <strong>[Space]</strong> hoặc nút <strong>[⚔️ KHÓA TRẬN & SẴN SÀNG]</strong>. Khi cả 2 người cùng bấm, đội hình thật của 2 người sẽ giao đấu trực tiếp!</li>
-                        <li><strong>Trừ Máu & Kết Thúc:</strong> Người thua bị trừ máu theo số lượng tướng còn sống của đối thủ. Người chơi sống sót cuối cùng giành chiến thắng và cộng +25 ELO vào Database!</li>
+                        <li><strong>Trừ Máu & Kết Thúc:</strong> Người thua bị trừ máu theo số lượng tướng còn sống của đối thủ. Người chơi sống sót cuối cùng giành chiến thắng và nhận điểm hạng!</li>
                     </ul>
                 </div>
 
                 <div class="guide-section">
-                    <div class="guide-section-title">⭐ CƠ CHẾ NÂNG CẤP SAO (STAR FUSION)</div>
+                    <div class="guide-section-title">⭐ NÂNG CẤP TƯỚNG</div>
                     <p style="font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
                         • <strong>3 Tướng 1★</strong> ➔ Tự động ghép thành <strong>1 Tướng 2★</strong> (+80% Máu, +60% Sát thương, +Giáp).<br>
                         • <strong>3 Tướng 2★</strong> ➔ Tự động ghép thành <strong>1 Tướng 3★</strong> (Max Sức Mạnh, hào quang hoàng gia).
@@ -2892,7 +2935,7 @@
                     <div>
                         <h3 style="margin:0; font-size:1.35rem; font-weight:800; color:#facc15;">ĐẤU ONLINE 2 NGƯỜI</h3>
                         <p style="margin:6px 0 0 0; font-size:0.85rem; color:#cbd5e1; line-height:1.4;">
-                            Ghép trận tự động hoặc tạo phòng riêng với bạn bè qua kết nối Rust WebSocket tốc độ cao. Tính điểm Rank OCI Cloud!
+                            Ghép trận tự động hoặc tạo phòng riêng với bạn bè. Chiến thắng để nâng hạng trên bảng vàng!
                         </p>
                     </div>
                     <button class="btn btn-gold" style="margin-top:auto; font-weight:800;">
@@ -2967,99 +3010,70 @@
     <!-- IN-GAME BATTLE SCREEN (CHỈ HIỆN KHI VÀO TRẬN) -->
     <!-- ========================================== -->
     <div id="in-game-battle-screen">
-        <!-- Top Bar: Opponent HUD, Exit Button, Round, Strikes, Speed Selector -->
+        <!-- Unified Top Battle HUD: Player Info (Left), VS & Match State (Center), Opponent & Speed (Right) -->
         <div class="battle-top-bar">
-            <!-- Left: Exit / Surrender -->
-            <button id="btn-battle-exit" class="btn btn-sm" onclick="window.confirmExitMatch()" style="background:#dc2626; border-color:#ef4444; font-weight:700; padding:6px 12px;" title="Thoát trận đấu về Sảnh Chính">
-                🏳️ Thoát Trận
-            </button>
-
-            <!-- Center: Opponent Hero & Match State -->
-            <div style="display:flex; align-items:center; gap:20px;">
-                <!-- Opponent Profile Box (Clickable to view Profile!) -->
-                <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="window.openProfileModal(window.pvpState.opponentName || 'Bot')" title="Bấm để xem Hồ Sơ của Đối Thủ">
-                    <div id="battle-opp-avatar" class="hero-hud-avatar-circle" style="width:48px; height:48px; font-size:1.8rem; border-color:#ef4444;">
-                        <span id="battle-opp-avatar-icon">👹</span>
+            <!-- Left: Exit Button & Player Info -->
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button id="btn-battle-exit" class="btn btn-sm" onclick="window.confirmExitMatch()" style="background:#dc2626; border-color:#ef4444; font-weight:700; padding:5px 10px; font-size:0.75rem;" title="Thoát trận đấu về Sảnh Chính">
+                    🏳️ Thoát
+                </button>
+                <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="window.openProfileModal()" title="Xem hồ sơ của bạn">
+                    <div id="battle-player-avatar" class="hero-hud-avatar-circle" style="width:38px; height:38px; font-size:1.5rem; border-color:#38bdf8;">
+                        <span id="battle-player-avatar-icon">🛡️</span>
                     </div>
                     <div>
                         <div style="display:flex; align-items:center; gap:6px;">
-                            <span id="battle-opp-name" style="font-weight:800; font-size:0.88rem; color:#f87171;">Đối Thủ</span>
-                            <span id="battle-opp-rank" style="font-size:0.68rem; color:#facc15; background:#0f172a; padding:1px 6px; border-radius:4px;">BẠC III</span>
+                            <span id="battle-player-name" style="font-weight:800; font-size:0.84rem; color:#38bdf8;">Bạn</span>
+                            <span id="battle-player-class" style="font-size:0.62rem; color:#818cf8; background:#1e1b4b; padding:1px 5px; border-radius:4px;">Hiệp Sĩ</span>
                         </div>
-                        <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-                            <div style="width:120px; height:8px; background:#1e293b; border-radius:4px; overflow:hidden;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                            <div style="width:90px; height:6px; background:#1e293b; border-radius:3px; overflow:hidden;">
+                                <div id="battle-player-hp-bar" style="width:100%; height:100%; background:#38bdf8; transition:width 0.3s ease;"></div>
+                            </div>
+                            <span id="battle-player-hp-text" style="font-size:0.72rem; color:#38bdf8; font-weight:800;">❤️ 100</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center: Round & Strikes Indicator -->
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span id="battle-round-badge" style="background:#1e1b4b; border:1px solid #6366f1; color:#c7d2fe; font-size:0.76rem; font-weight:800; padding:4px 10px; border-radius:8px;">VÒNG 1</span>
+                <span id="battle-strike-counter" style="background:#7c3aed; border:1px solid #a855f7; color:#fff; font-size:0.76rem; font-weight:800; padding:4px 10px; border-radius:8px; box-shadow:0 0 10px rgba(168,85,247,0.4);" title="Bộ đếm lượt đánh giao tranh trong trận">
+                    ⚔️ Lượt: #0
+                </span>
+            </div>
+
+            <!-- Right: Opponent Info & Speed Selector -->
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="window.openProfileModal(window.pvpState.opponentName || 'Bot')" title="Bấm để xem Hồ Sơ của Đối Thủ">
+                    <div style="text-align:right;">
+                        <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px;">
+                            <span id="battle-opp-name" style="font-weight:800; font-size:0.84rem; color:#f87171;">Đối Thủ</span>
+                            <span id="battle-opp-rank" style="font-size:0.62rem; color:#facc15; background:#0f172a; padding:1px 5px; border-radius:4px;">BẠC III</span>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:2px;">
+                            <span id="battle-opp-hp-text" style="font-size:0.72rem; color:#f87171; font-weight:800;">❤️ 100</span>
+                            <div style="width:90px; height:6px; background:#1e293b; border-radius:3px; overflow:hidden;">
                                 <div id="battle-opp-hp-bar" style="width:100%; height:100%; background:#ef4444; transition:width 0.3s ease;"></div>
                             </div>
-                            <span id="battle-opp-hp-text" style="font-size:0.75rem; color:#f87171; font-weight:800;">❤️ 100</span>
                         </div>
                     </div>
-                </div>
-
-                <!-- Match Indicators: Round & Strikes -->
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span id="battle-round-badge" style="background:#1e1b4b; border:1px solid #6366f1; color:#c7d2fe; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:8px;">VÒNG 1</span>
-                    <span id="battle-strike-counter" style="background:#7c3aed; border:1px solid #a855f7; color:#fff; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:8px; box-shadow:0 0 10px rgba(168,85,247,0.4);" title="Bộ đếm số lượt đánh / số đòn giao tranh trong trận">
-                        ⚔️ Lượt đánh: #0
-                    </span>
-                </div>
-            </div>
-
-            <!-- Right: Battle Speed Selector -->
-            <div class="battle-speed-group" title="Điều chỉnh tốc độ trận đấu (Làm chậm để xem kỹ chiêu thức)">
-                <span style="font-size:0.72rem; color:#94a3b8; font-weight:700; margin-right:2px;">Tốc độ:</span>
-                <button id="btn-speed-05" class="speed-btn" onclick="window.setBattleSpeed(0.5)" title="Chậm 0.5x - Xem kỹ chiêu thức và sát thương">🐌 0.5x</button>
-                <button id="btn-speed-10" class="speed-btn active" onclick="window.setBattleSpeed(1.0)" title="Chuẩn 1.0x">⚔️ 1.0x</button>
-                <button id="btn-speed-15" class="speed-btn" onclick="window.setBattleSpeed(1.5)" title="Nhanh 1.5x">⚡ 1.5x</button>
-            </div>
-        </div>
-
-        <!-- Center Arena: Pure clear view, pointer-events none -->
-        <div style="flex:1;"></div>
-
-        <!-- Bottom Bar: Player Hero, Active Battle Hand, Hero Power -->
-        <div class="battle-bottom-bar">
-            <!-- Left: Player Info -->
-            <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="window.openProfileModal()" title="Xem hồ sơ của bạn">
-                <div id="battle-player-avatar" class="hero-hud-avatar-circle" style="width:54px; height:54px; font-size:2rem; border-color:#38bdf8;">
-                    <span id="battle-player-avatar-icon">🛡️</span>
-                </div>
-                <div>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <span id="battle-player-name" style="font-weight:800; font-size:0.92rem; color:#38bdf8;">Bạn</span>
-                        <span id="battle-player-class" style="font-size:0.7rem; color:#818cf8; background:#1e1b4b; padding:1px 6px; border-radius:4px;">Hiệp Sĩ</span>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-top:3px;">
-                        <div style="width:140px; height:9px; background:#1e293b; border-radius:4px; overflow:hidden;">
-                            <div id="battle-player-hp-bar" style="width:100%; height:100%; background:#38bdf8; transition:width 0.3s ease;"></div>
-                        </div>
-                        <span id="battle-player-hp-text" style="font-size:0.78rem; color:#38bdf8; font-weight:800;">❤️ 100</span>
+                    <div id="battle-opp-avatar" class="hero-hud-avatar-circle" style="width:38px; height:38px; font-size:1.5rem; border-color:#ef4444;">
+                        <span id="battle-opp-avatar-icon">👹</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Center: Active Battle Lineup / Hand (Only deployed units in this match!) -->
-            <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-                <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
-                    ⚔️ Đội Hình Đang Tham Chiến
+                <!-- Battle Speed Selector -->
+                <div class="battle-speed-group" title="Điều chỉnh tốc độ trận đấu">
+                    <button id="btn-speed-05" class="speed-btn" onclick="window.setBattleSpeed(0.5)" title="Chậm 0.5x">0.5x</button>
+                    <button id="btn-speed-10" class="speed-btn active" onclick="window.setBattleSpeed(1.0)" title="Chuẩn 1.0x">1.0x</button>
+                    <button id="btn-speed-15" class="speed-btn" onclick="window.setBattleSpeed(1.5)" title="Nhanh 1.5x">1.5x</button>
                 </div>
-                <div id="battle-active-hand" class="battle-active-cards">
-                    <!-- Populated dynamically via JS -->
-                </div>
-            </div>
-
-            <!-- Right: Hero Power & Emotes -->
-            <div style="display:flex; align-items:center; gap:10px;">
-                <button id="btn-battle-hero-power" class="hero-power-btn" onclick="window.useHeroPower()" title="Kích hoạt kỹ năng tướng">
-                    ⚡ Kỹ Năng
-                </button>
-                <button class="btn btn-sm" onclick="window.sendHeroEmote('⚔️ Quyết chiến!')" style="background:#334155; border-radius:12px;" title="Gửi Emote">
-                    😊
-                </button>
             </div>
         </div>
     </div>
 
-    <!-- ========================================== -->
     <!-- MATCH RESULT MODAL (ĐÁNH 1 TRẬN RỒI THOÁT) -->
     <!-- ========================================== -->
     <div id="match-result-modal" class="modal-overlay">
@@ -3119,7 +3133,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261002172545-3726ccfe';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261003133316-3202f0a3';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -3170,7 +3184,8 @@
                         ...card,
                         hp_bonus: (card.hp_bonus || 0) + (rule ? info.hp * rule.hpBonus : 0),
                         atk_bonus: (card.atk_bonus || 0) + (rule ? info.atk * rule.atkBonus : 0),
-                        initiative_bonus: rule ? rule.initiativeBonus : 0
+                        initiative_bonus: rule ? rule.initiativeBonus : 0,
+                        position: slot >= 0 ? slot : null
                     };
                 });
                 console.log('[SYNC] Sending deck to Bevy engine:', cardsForEngine);
@@ -3192,7 +3207,7 @@
 
             if (avatarSpan) avatarSpan.textContent = AVATAR_ICONS[currentUser.avatar] || '🛡️';
             if (nameSpan) nameSpan.textContent = currentUser.displayName || currentUser.username;
-            if (eloSpan) eloSpan.textContent = `${currentUser.elo || 1000} ELO`;
+            if (eloSpan) eloSpan.textContent = `${currentUser.elo || 1000} điểm`;
             if (logoutBtn) logoutBtn.style.display = currentUser.isGuest ? 'none' : 'inline';
 
             const currentGold = (currentUser && currentUser.gold !== undefined) ? currentUser.gold : 100;
@@ -3228,7 +3243,7 @@
         }
         renderUserProfile();
 
-        async function syncUserProfileFromOci() {
+        async function syncUserProfile() {
             if (currentUser && !currentUser.isGuest) {
                 try {
                     const res = await fetch(`/api/user/profile?username=${encodeURIComponent(currentUser.username)}`);
@@ -3245,7 +3260,7 @@
                 }
             }
         }
-        syncUserProfileFromOci();
+        syncUserProfile();
 
         // ==========================================
         // MODALS MANAGEMENT
@@ -3270,24 +3285,51 @@
         // CARD CLASSIFICATION, CCG DECK & SHOP ENGINE
         // ==========================================
         const CARD_DEFINITIONS = {
-            Knight: { name: 'Hiệp Sĩ Hoàng Gia', icon: '🛡️', role: 'Đỡ Đòn', rarity: 'Common', rarityName: 'Phổ Thông', color: '#94a3b8', hp: 400, atk: 45, def: 35, desc: 'Tạo khiên bảo vệ toàn đội, giảm sát thương nhận vào.' },
-            Archer: { name: 'Cung Thủ Thần Nhãn', icon: '🏹', role: 'Xạ Thủ', rarity: 'Rare', rarityName: 'Hiếm', color: '#38bdf8', hp: 260, atk: 55, def: 12, desc: 'Bắn tỉa tầm xa tốc độ cao, xuyên thủng tuyến sau.' },
-            Mage: { name: 'Pháp Sư Băng Hoả', icon: '🔮', role: 'Pháp Sư', rarity: 'Epic', rarityName: 'Sử Thi', color: '#a855f7', hp: 280, atk: 60, def: 15, desc: 'Bão lửa ma thuật diện rộng thiêu đốt cả đội đối thủ.' },
-            Assassin: { name: 'Sát Thủ Bóng Đêm', icon: '🗡️', role: 'Sát Thủ', rarity: 'Epic', rarityName: 'Sử Thi', color: '#ec4899', hp: 240, atk: 65, def: 10, desc: 'Áp sát chớp nhoáng, tỉ lệ bạo kích chí mạng cực cao.' },
-            Cleric: { name: 'Mục Sư Thánh Quang', icon: '✨', role: 'Hỗ Trợ', rarity: 'Legendary', rarityName: 'Huyền Thoại', color: '#facc15', hp: 340, atk: 35, def: 20, desc: 'Hồi phục sinh lực toàn đội và ban phước hộ mệnh.' },
+            Knight: { name: "Triệu Vân", icon: "🐉", role: "Đấu Sĩ Cơ Động", rarity: "Rare", rarityName: "Hiếm", color: "#60a5fa", hp: 360, atk: 58, def: 25, skill: "Thất Tiến Thất Xuất" },
+            Archer: { name: "Hoàng Trung", icon: "🏹", role: "Xạ Thủ Tỉa Xa", rarity: "Epic", rarityName: "Sử Thi", color: "#38bdf8", hp: 270, atk: 72, def: 14, skill: "Bách Bộ Xuyên Dương" },
+            Mage: { name: "Gia Cát Lượng", icon: "🪶", role: "Pháp Sư Khống Chế", rarity: "Legendary", rarityName: "Huyền Thoại", color: "#c084fc", hp: 300, atk: 62, def: 18, skill: "Đông Phong Triệu Hoán" },
+            Assassin: { name: "Trương Cáp", icon: "🗡️", role: "Ám Ảnh Liệp Thủ", rarity: "Rare", rarityName: "Hiếm", color: "#e879f9", hp: 275, atk: 76, def: 12, skill: "Tập Kích Hậu Tuyến" },
+            Cleric: { name: "Hoa Đà", icon: "⚕️", role: "Thần Y Hồi Sinh", rarity: "Legendary", rarityName: "Huyền Thoại", color: "#fde047", hp: 360, atk: 48, def: 22, skill: "Thanh Nang Di Thư" },
+            knight: { name: "Triệu Vân", icon: "🐉", role: "Đấu Sĩ Cơ Động", rarity: "Rare", rarityName: "Hiếm", color: "#60a5fa", hp: 360, atk: 58, def: 25, skill: "Thất Tiến Thất Xuất" },
+            archer: { name: "Hoàng Trung", icon: "🏹", role: "Xạ Thủ Tỉa Xa", rarity: "Epic", rarityName: "Sử Thi", color: "#38bdf8", hp: 270, atk: 72, def: 14, skill: "Bách Bộ Xuyên Dương" },
+            mage: { name: "Gia Cát Lượng", icon: "🪶", role: "Pháp Sư Khống Chế", rarity: "Legendary", rarityName: "Huyền Thoại", color: "#c084fc", hp: 300, atk: 62, def: 18, skill: "Đông Phong Triệu Hoán" },
+            assassin: { name: "Trương Cáp", icon: "🗡️", role: "Ám Ảnh Liệp Thủ", rarity: "Rare", rarityName: "Hiếm", color: "#e879f9", hp: 275, atk: 76, def: 12, skill: "Tập Kích Hậu Tuyến" },
+            cleric: { name: "Hoa Đà", icon: "⚕️", role: "Thần Y Hồi Sinh", rarity: "Legendary", rarityName: "Huyền Thoại", color: "#fde047", hp: 360, atk: 48, def: 22, skill: "Thanh Nang Di Thư" },
+            zhang_he: { name: "Trương Cáp", icon: "🗡️", role: "Ám Ảnh Liệp Thủ", rarity: "Rare", rarityName: "Hiếm", color: "#e879f9", hp: 275, atk: 76, def: 12, skill: "Tập Kích Hậu Tuyến" },
+            zhao_yun: { name: 'Triệu Vân', icon: '🐉', role: 'Đấu Sĩ Cơ Động', rarity: 'Rare', rarityName: 'Hiếm', color: '#60a5fa', hp: 360, atk: 58, def: 25, skill: 'Thất Tiến Thất Xuất', position: 'Ô 2 / Ô 4', desc: 'Xông vào mục tiêu yếu máu nhất, tăng 40% Né đòn và phản kích khi né thành công.' },
+            huang_zhong: { name: 'Hoàng Trung', icon: '🏹', role: 'Xạ Thủ Tỉa Xa', rarity: 'Epic', rarityName: 'Sử Thi', color: '#38bdf8', hp: 270, atk: 72, def: 14, skill: 'Bách Bộ Xuyên Dương', position: 'Ô 7 / Ô 9', desc: 'Bắn xuyên mục tiêu đứng sau khiên; sát thương tăng theo khoảng cách.' },
+            zhuge_liang: { name: 'Gia Cát Lượng', icon: '🪶', role: 'Pháp Sư Khống Chế', rarity: 'Legendary', rarityName: 'Huyền Thoại', color: '#c084fc', hp: 300, atk: 62, def: 18, skill: 'Đông Phong Triệu Hoán', position: 'Ô 5 / Ô 8', desc: 'Thổi lùi hàng trước địch về hàng giữa và gây choáng 1 hiệp.' },
+            cao_cao: { name: 'Tào Tháo', icon: '👑', role: 'Chủ Lực Buffer', rarity: 'Legendary', rarityName: 'Huyền Thoại', color: '#f59e0b', hp: 340, atk: 64, def: 22, skill: 'Hiệp Thiên Tử', position: 'Ô 5', desc: 'Tăng công tướng Ngụy xung quanh và giảm Nộ của địch có công cao nhất.' },
+            dian_wei: { name: 'Điển Vi', icon: '🛡️', role: 'Siêu Đỡ Đòn', rarity: 'Epic', rarityName: 'Sử Thi', color: '#f87171', hp: 520, atk: 42, def: 42, skill: 'Thiết Kích Chắn Cửa', position: 'Ô 2', desc: 'Khiêu khích ba ô đối diện và phản lại 25% sát thương nhận vào.' },
+            guo_jia: { name: 'Quách Gia', icon: '❄️', role: 'Pháp Sư Băng', rarity: 'Epic', rarityName: 'Sử Thi', color: '#67e8f9', hp: 285, atk: 60, def: 16, skill: 'Thập Thắng Thập Bại', position: 'Ô 8', desc: 'Đóng băng địch có Nộ cao nhất và khóa thanh Nộ trong 2 lượt.' },
+            sun_ce: { name: 'Tôn Sách', icon: '⚔️', role: 'Đấu Sĩ Càn Quét', rarity: 'Rare', rarityName: 'Hiếm', color: '#fb923c', hp: 410, atk: 60, def: 28, skill: 'Bá Vương Tảo Đãng', position: 'Ô 1 / Ô 3', desc: 'Quét hình chữ T và hút 20% công của mục tiêu trúng đòn.' },
+            lu_xun: { name: 'Lục Tốn', icon: '🔥', role: 'Pháp Sư Thiêu Đốt', rarity: 'Legendary', rarityName: 'Huyền Thoại', color: '#fb7185', hp: 290, atk: 68, def: 15, skill: 'Hỏa Thiêu Liên Doanh', position: 'Ô 7 / Ô 9', desc: 'Đặt ấn lửa lên một tuyến; mục tiêu bị đánh sẽ phát nổ lan trên/dưới.' },
+            da_qiao_xiao_qiao: { name: 'Đại Kiều & Tiểu Kiều', icon: '🌸', role: 'Hồi Máu Hóa Giải', rarity: 'Legendary', rarityName: 'Huyền Thoại', color: '#f9a8d4', hp: 350, atk: 45, def: 20, skill: 'Quốc Sắc Lưu Hương', position: 'Ô 8', desc: 'Hồi máu theo công cho hàng sau và xóa mọi hiệu ứng bất lợi.' },
+            zhang_he_yan_liang: { name: 'Trương Cáp & Nhan Lương', icon: '🗡️', role: 'Sát Thủ Hậu Tuyến', rarity: 'Epic', rarityName: 'Sử Thi', color: '#e879f9', hp: 275, atk: 76, def: 12, skill: 'Tập Kích Hậu Tuyến', position: 'Hàng giữa', desc: 'Ngay hiệp 1 nhảy ra sau xạ thủ/pháp sư địch để dồn sát thương.' },
+            hua_tuo: { name: 'Hoa Đà', icon: '⚕️', role: 'Thần Y Hồi Sinh', rarity: 'Legendary', rarityName: 'Huyền Thoại', color: '#fde047', hp: 360, atk: 48, def: 22, skill: 'Thanh Nang Di Thư', position: 'Ô 9', desc: 'Hồi máu diện rộng và có 30% cơ hội hồi sinh đồng minh vừa tử trận với 40% HP.' },
+            jia_xu: { name: 'Giả Hủ', icon: '☠️', role: 'Thuật Sĩ Độc', rarity: 'Epic', rarityName: 'Sử Thi', color: '#a3e635', hp: 300, atk: 64, def: 17, skill: 'Loạn Vũ Độc Kế', position: 'Ô 5', desc: 'Đầu độc toàn bộ địch, giảm 50% khả năng hồi phục máu.' }
         };
         const HERO_INFO = CARD_DEFINITIONS;
+        const GENERAL_ORDER = [
+            'zhao_yun', 'huang_zhong', 'zhuge_liang', 'cao_cao', 'dian_wei', 'guo_jia',
+            'sun_ce', 'lu_xun', 'da_qiao_xiao_qiao', 'zhang_he_yan_liang', 'hua_tuo', 'jia_xu'
+        ];
+        const GENERAL_PRICES = {
+            zhao_yun: 55, huang_zhong: 55, zhuge_liang: 65, cao_cao: 70,
+            dian_wei: 60, guo_jia: 65, sun_ce: 55, lu_xun: 65,
+            da_qiao_xiao_qiao: 60, zhang_he_yan_liang: 65, hua_tuo: 75, jia_xu: 65
+        };
 
         let deckRoleFilter = 'all';
         let deckRarityFilter = 'all';
         let deckSearchQuery = '';
-        let activeLineup = Array(9).fill(null); // 3x3 board; combat uses up to 3 cards
+        let activeLineup = Array(9).fill(null); // 1..5 active cards, arranged across a 9-slot formation
         let selectedFormationCardId = null;
         let activeDeckId = null;
         const LINEUP_ROLE_RULES = [
-            { name: 'Tiên Phong', roles: ['Đỡ Đòn'], hpBonus: 0.25, atkBonus: 0, initiativeBonus: 0 },
-            { name: 'Chủ Lực', roles: ['Sát Thủ', 'Xạ Thủ'], hpBonus: 0, atkBonus: 0.20, initiativeBonus: 0 },
-            { name: 'Hỗ Trợ', roles: ['Hỗ Trợ', 'Pháp Sư'], hpBonus: 0, atkBonus: 0, initiativeBonus: 30 }
+            { name: 'Tiền Tuyến', roles: ['Đấu Sĩ', 'Siêu Đỡ Đòn'], hpBonus: 0.25, atkBonus: 0, initiativeBonus: 0 },
+            { name: 'Trung Tuyến', roles: ['Đấu Sĩ', 'Pháp Sư', 'Chủ Lực Buffer'], hpBonus: 0, atkBonus: 0.20, initiativeBonus: 0 },
+            { name: 'Hậu Phương', roles: ['Xạ Thủ', 'Pháp Sư', 'Hồi Máu Hóa Giải'], hpBonus: 0, atkBonus: 0, initiativeBonus: 30 }
         ];
 
         function cardDefinition(card) {
@@ -3295,19 +3337,91 @@
         }
 
         function lineupSlotForCard(card) {
-            const role = cardDefinition(card).role;
-            return LINEUP_ROLE_RULES.findIndex(rule => rule.roles.includes(role));
+            const preferred = {
+                zhao_yun: 1, huang_zhong: 6, zhuge_liang: 4, cao_cao: 4,
+                dian_wei: 1, guo_jia: 7, sun_ce: 0, lu_xun: 6,
+                da_qiao_xiao_qiao: 7, zhang_he_yan_liang: 4, hua_tuo: 8, jia_xu: 4
+            };
+            return preferred[card.hero_class] ?? 4;
         }
 
         function isCardAllowedInSlot(card, slotIndex) {
-            const rule = LINEUP_ROLE_RULES[slotIndex];
-            return !!rule && rule.roles.includes(cardDefinition(card).role);
+            return !!card && slotIndex >= 0 && slotIndex < 9;
+        }
+
+        async function fetchShopCards() {
+            try {
+                const res = await fetch('/api/shop/cards');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.cards) && data.cards.length > 0) {
+                    data.cards.forEach(c => {
+                        GENERAL_PRICES[c.card_id] = c.price;
+                        if (!CARD_DEFINITIONS[c.card_id]) {
+                            CARD_DEFINITIONS[c.card_id] = {
+                                name: c.name,
+                                icon: c.icon || '⚔️',
+                                role: c.role,
+                                rarity: c.rarity,
+                                rarityName: c.rarity,
+                                color: '#60a5fa',
+                                hp: 300, atk: 60, def: 20,
+                                skill: c.skill_name,
+                                desc: c.description,
+                                is_available: c.is_available
+                            };
+                            if (!GENERAL_ORDER.includes(c.card_id)) {
+                                GENERAL_ORDER.push(c.card_id);
+                            }
+                        } else {
+                            CARD_DEFINITIONS[c.card_id].is_available = c.is_available;
+                            if (c.skill_name) CARD_DEFINITIONS[c.card_id].skill = c.skill_name;
+                            if (c.description) CARD_DEFINITIONS[c.card_id].desc = c.description;
+                        }
+                    });
+                    renderGeneralShop();
+                }
+            } catch (e) {
+                console.warn('Failed to load dynamic shop cards:', e);
+            }
         }
 
         function openShopModal() {
             closeAllModals();
             if (shopModal) shopModal.style.display = 'flex';
+            fetchShopCards();
+            renderGeneralShop();
             renderUserProfile();
+        }
+
+        function renderGeneralShop() {
+            const grid = document.getElementById('general-shop-grid');
+            if (!grid) return;
+            grid.innerHTML = GENERAL_ORDER.map(id => {
+                const info = CARD_DEFINITIONS[id];
+                if (!info) return '';
+                const price = GENERAL_PRICES[id] || 60;
+                const rarity = (info.rarity || 'Rare').toLowerCase();
+                const isAvail = info.is_available !== false;
+                const buyBtn = isAvail ?
+                    `<button class="shop-buy-btn" onclick="window.buyCard('${id}')">
+                        <span>Chiêu mộ ${price}</span> <span>🪙</span>
+                    </button>` :
+                    `<button class="shop-buy-btn" disabled style="opacity:0.45; cursor:not-allowed; background:#334155;">
+                        <span>Tạm Ngưng Bán</span>
+                    </button>`;
+
+                return `<div class="shop-item-card rarity-${rarity}">
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <span class="rarity-tag ${rarity}">${info.rarityName || info.rarity}</span>
+                        <span class="role-tag" style="color:${info.color || '#38bdf8'};">${info.icon || '⚔️'} ${info.role || 'Tướng'}</span>
+                    </div>
+                    <div class="shop-item-icon">${info.icon || '⚔️'}</div>
+                    <div class="shop-item-name">${info.name}</div>
+                    <div class="shop-item-desc"><strong>${info.skill || 'Kỹ Năng'}</strong> · ${info.desc || '--'}</div>
+                    <div class="shop-item-stats">❤️ ${info.hp || 300} HP | ⚔️ ${info.atk || 50} ATK | 🛡️ ${info.def || 20} DEF · ${info.position || 'Ô 5'}</div>
+                    ${buyBtn}
+                </div>`;
+            }).join('');
         }
 
         function closeShopModal() {
@@ -3322,6 +3436,10 @@
             renderDeckCards();
         }
 
+        function getBattleSlotLimit() {
+            return Math.max(1, Math.min(5, Number(currentUser && currentUser.battle_slots) || 1));
+        }
+
         function loadSavedLineup() {
             const userCards = (currentUser && currentUser.cards) ? currentUser.cards : [];
             const saved = currentUser && Array.isArray(currentUser.decks) ? currentUser.decks : [];
@@ -3333,21 +3451,19 @@
                     const card = userCards.find(c => c.id === entry.id);
                     if (!card) return;
                     const savedPosition = Number.isInteger(entry.position) ? entry.position : fallbackIndex;
-                    const row = lineupSlotForCard(card);
-                    const position = savedPosition >= 0 && savedPosition < 9 && Math.floor(savedPosition / 3) === row
-                        ? savedPosition : row * 3;
-                    if (row >= 0 && !activeLineup[position] && activeLineup.filter(Boolean).length < 3) {
+                    const position = savedPosition >= 0 && savedPosition < 9 ? savedPosition : 0;
+                    if (!activeLineup[position] && activeLineup.filter(Boolean).length < getBattleSlotLimit()) {
                         activeLineup[position] = card.id;
                     }
                 });
             }
             if (!activeLineup.some(Boolean)) {
                 userCards.forEach(card => {
-                    const row = lineupSlotForCard(card);
-                    const position = row >= 0 ? row * 3 : -1;
-                    if (position >= 0 && !activeLineup[position] && activeLineup.filter(Boolean).length < 3) {
+                    const position = activeLineup.findIndex(slot => !slot);
+                    if (position >= 0 && activeLineup.filter(Boolean).length < getBattleSlotLimit()) {
                         activeLineup[position] = card.id;
                     }
+
                 });
             }
         }
@@ -3430,7 +3546,7 @@
             // Filter logic
             const filteredCards = allCards.filter(c => {
                 const info = CARD_DEFINITIONS[c.hero_class] || { role: 'Chiến Binh', rarity: 'Common', name: c.hero_class };
-                if (deckRoleFilter !== 'all' && info.role !== deckRoleFilter) return false;
+                if (deckRoleFilter !== 'all' && !info.role.includes(deckRoleFilter)) return false;
                 if (deckRarityFilter !== 'all' && info.rarity !== deckRarityFilter) return false;
                 if (deckSearchQuery) {
                     const q = deckSearchQuery.toLowerCase();
@@ -3546,6 +3662,8 @@
                             </div>`}
                     </div>`;
                 }).join('');
+                const slotCount = document.getElementById('battle-slot-count');
+                if (slotCount) slotCount.textContent = `${activeLineup.filter(Boolean).length}/${getBattleSlotLimit()} (tối đa 5)`;
                 return `<div class="formation-row-label ${row.cls}">${row.name}</div>${cells}`;
             }).join('');
             list.innerHTML = allCards.map(card => {
@@ -3588,11 +3706,11 @@
             const synergyListEl = document.getElementById('deck-synergy-list');
             if (synergyListEl) {
                 const synergies = [];
-                if ((roleCount['Đỡ Đòn'] || 0) >= 2) synergies.push('🛡️ 2x Đỡ Đòn: Tăng +20% Giáp toàn đội');
-                if ((roleCount['Xạ Thủ'] || 0) >= 2) synergies.push('🏹 2x Xạ Thủ: Tăng +25% Tốc đánh & Xuyên giáp');
-                if ((roleCount['Pháp Sư'] || 0) >= 2) synergies.push('🔮 2x Pháp Sư: Tăng +30% Sát thương Phép AOE');
-                if ((roleCount['Sát Thủ'] || 0) >= 2) synergies.push('🗡️ 2x Sát Thủ: Tăng +35% Tỉ lệ Bạo kích');
-                if ((roleCount['Hỗ Trợ'] || 0) >= 2) synergies.push('✨ 2x Hỗ Trợ: Hồi phục 15% HP mỗi lượt');
+                if (Object.keys(roleCount).filter(r => r.includes('Đỡ Đòn') || r.includes('Đấu Sĩ')).length >= 2) synergies.push('🛡️ Tuyến trước: Tăng +20% Giáp toàn đội');
+                if (Object.keys(roleCount).filter(r => r.includes('Xạ Thủ')).length >= 2) synergies.push('🏹 Xạ Thủ: Tăng +25% Tốc đánh');
+                if (Object.keys(roleCount).filter(r => r.includes('Pháp Sư')).length >= 2) synergies.push('🔮 Pháp Sư: Tăng +30% Sát thương phép');
+                if (Object.keys(roleCount).filter(r => r.includes('Sát Thủ')).length >= 2) synergies.push('🗡️ Sát Thủ: Tăng +35% Bạo kích');
+                if (Object.keys(roleCount).filter(r => r.includes('Hồi Máu')).length >= 1) synergies.push('✨ Hồi phục: Tăng hiệu quả chữa lành');
 
                 if (synergies.length > 0) {
                     synergyListEl.innerHTML = synergies.map(s => `<div class="synergy-badge">${s}</div>`).join('');
@@ -3627,8 +3745,8 @@
                 renderDeckCards();
                 return;
             }
-            if (!activeLineup[position] && activeLineup.filter(Boolean).length >= 3) {
-                alert('Đội hình hiện tại tối đa 3 thẻ xuất trận.');
+            if (!activeLineup[position] && activeLineup.filter(Boolean).length >= getBattleSlotLimit()) {
+                alert(`Bạn đang mở ${getBattleSlotLimit()} ô ra trận. Hãy mua thêm ô trong Cửa Hàng.`);
                 return;
             }
             activeLineup[position] = cardId;
@@ -3686,12 +3804,41 @@
                         currentUser = data.user;
                         localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
                     }
-                    alert('💾 Đội hình đã được lưu vĩnh viễn trên OCI và sẵn sàng ra trận!');
+                    alert('💾 Đội hình đã được lưu và sẵn sàng ra trận!');
                     syncDeckToBevy();
                 } else {
                     alert(`❌ Không thể lưu đội hình: ${data.message || 'Lỗi server'}`);
                 }
             } catch(e) {
+                alert(`❌ Lỗi mạng: ${e.message}`);
+            }
+        };
+
+        window.buyBattleSlot = async function() {
+            if (!currentUser || currentUser.isGuest) {
+                alert('Vui lòng đăng nhập để mở ô ra trận.');
+                return;
+            }
+            if (getBattleSlotLimit() >= 5) {
+                alert('Bạn đã mở tối đa 5 ô ra trận.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/shop/buy_battle_slot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: currentUser.username })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    alert(`❌ ${data.message || 'Không thể mở ô ra trận.'}`);
+                    return;
+                }
+                currentUser = data.user;
+                localStorage.setItem('tac_arena_user', JSON.stringify(currentUser));
+                renderDeckCards();
+                alert(`✅ Đã mở ô ra trận ${currentUser.battle_slots}/5.`);
+            } catch (e) {
                 alert(`❌ Lỗi mạng: ${e.message}`);
             }
         };
@@ -3961,7 +4108,7 @@
             document.getElementById('tab-register').classList.remove('active');
             document.getElementById('register-fields').style.display = 'none';
             const t1 = document.getElementById('btn-auth-submit-text'); if(t1) t1.textContent = 'ĐĂNG NHẬP NGAY'; else document.getElementById('btn-auth-submit').textContent = 'Đăng Nhập Ngay';
-            document.getElementById('auth-title').textContent = '🔑 Đăng Nhập Tài Khoản OCI';
+            document.getElementById('auth-title').textContent = '🔑 Đăng Nhập Tài Khoản';
         };
 
         document.getElementById('tab-register').onclick = () => {
@@ -3969,8 +4116,8 @@
             document.getElementById('tab-register').classList.add('active');
             document.getElementById('tab-login').classList.remove('active');
             document.getElementById('register-fields').style.display = 'flex';
-            const t2 = document.getElementById('btn-auth-submit-text'); if(t2) t2.textContent = 'TẠO TÀI KHOẢN & LƯU VÀO OCI'; else document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản & Lưu Vào OCI';
-            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản OCI';
+            const t2 = document.getElementById('btn-auth-submit-text'); if(t2) t2.textContent = 'TẠO TÀI KHOẢN'; else document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản';
+            document.getElementById('auth-title').textContent = '✨ Đăng Ký Tài Khoản';
         };
 
         // Avatar selector
@@ -4022,11 +4169,9 @@
                 renderUserProfile();
                 authModal.style.display = 'none';
 
-                alert(isRegisterTab ? `🎉 Chúc mừng! Tài khoản "${currentUser.username}" đã lưu vào OCI Cloud Database!` : `✅ Chào mừng ${currentUser.displayName || currentUser.username} quay trở lại!`);
-                pvpHubModal.style.display = 'flex';
-                if (window._rust_pvp) window._rust_pvp.refreshLobby();
+                alert(isRegisterTab ? `🎉 Chúc mừng! Tài khoản "${currentUser.username}" đã sẵn sàng để chơi!` : `✅ Chào mừng ${currentUser.displayName || currentUser.username} quay trở lại!`);
             } catch (err) {
-                errorDiv.textContent = 'Lỗi kết nối tới máy chủ Rust: ' + err.message;
+                errorDiv.textContent = 'Lỗi kết nối tới máy chủ: ' + err.message;
                 errorDiv.style.display = 'flex';
             }
         };
@@ -4036,7 +4181,7 @@
             closeAllModals();
             if (leaderboardModal) leaderboardModal.style.display = 'flex';
             const tbody = document.getElementById('leaderboard-tbody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng vàng từ OCI Cloud Database...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Đang tải bảng vàng...</td></tr>';
             try {
                 const res = await fetch('/api/leaderboard');
                 const data = await res.json();
@@ -4547,7 +4692,7 @@
 
                     this.ws.onopen = () => {
                         console.log('[RUST WS] Connected successfully!');
-                        updateStatusChip('⚡ Rust WebSocket', true);
+                        updateStatusChip('⚡ Đã kết nối', true);
                         clearTimeout(this.reconnectTimer);
                         this.refreshLobby();
                     };
@@ -4620,6 +4765,8 @@
                 if (rInd) rInd.textContent = '⏳ Bạn đã khóa (Chờ đối thủ)';
                 this.send({
                     type: 'PLAYER_READY',
+                    room_code: pvpState.roomCode,
+                    role: pvpState.role,
                     lineup: lineup
                 });
             }
@@ -4627,6 +4774,8 @@
             onBattleFinished(winnerRole, survivors) {
                 this.send({
                     type: 'BATTLE_FINISHED',
+                    room_code: pvpState.roomCode,
+                    role: pvpState.role,
                     winner_role: winnerRole,
                     player_survivors: survivors
                 });
@@ -4737,7 +4886,7 @@
                             }
                             const isWin = msg.winner && msg.winner.toLowerCase() === currentUser.username.toLowerCase();
                             window.onMatchFinished(isWin, msg.winner, isWin ? 80 : 25, isWin ? 5 : 1, isWin ? 120 : 40);
-                            syncUserProfileFromOci();
+                            syncUserProfile();
                             break;
 
                         case 'ERROR':
@@ -4956,7 +5105,7 @@
                 js_to_rust_pvp(JSON.stringify({ type: 'EXIT_MATCH' }));
             }
 
-            syncUserProfileFromOci();
+            syncUserProfile();
         };
 
         window.onMatchFinished = function(isWin, winnerName, goldReward = 50, gemsReward = 2, expReward = 80) {

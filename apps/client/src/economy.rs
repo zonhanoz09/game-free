@@ -46,6 +46,13 @@ pub fn unit_cost(class: UnitClass) -> i32 {
         UnitClass::Mage => 3,
         UnitClass::Assassin => 3,
         UnitClass::Cleric => 2,
+        UnitClass::CaoCao => 4,
+        UnitClass::DianWei => 3,
+        UnitClass::GuoJia => 3,
+        UnitClass::SunCe => 3,
+        UnitClass::LuXun => 4,
+        UnitClass::DaQiaoXiaoQiao => 3,
+        UnitClass::JiaXu => 3,
     }
 }
 
@@ -103,13 +110,7 @@ impl PlayerEconomy {
     }
 
     pub fn generate_shop(&mut self, rng: &mut BattleRng) {
-        let pool = [
-            UnitClass::Knight,
-            UnitClass::Archer,
-            UnitClass::Mage,
-            UnitClass::Assassin,
-            UnitClass::Cleric,
-        ];
+        let pool = UnitClass::ALL;
         for slot in self.shop_slots.iter_mut() {
             let idx = (rng.next_f32() * pool.len() as f32) as usize % pool.len();
             *slot = Some(pool[idx]);

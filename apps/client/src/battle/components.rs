@@ -19,7 +19,7 @@ pub struct DashAnimation2d {
     pub returning: bool,
     pub damage_dealt: bool,
     pub target_entity: Entity,
-    pub attacker_entity: Entity,
+    #[allow(dead_code)] pub attacker_entity: Entity,
     pub damage: f32,
     pub is_crit: bool,
     pub is_ultimate: bool,
@@ -66,7 +66,7 @@ pub struct UnitHitRecoil2d {
 #[derive(Component)]
 pub struct ActiveTurnSpotlight2d {
     #[allow(dead_code)]
-    pub attacker_entity: Entity,
+    #[allow(dead_code)] pub attacker_entity: Entity,
 }
 
 #[derive(Resource, Default)]

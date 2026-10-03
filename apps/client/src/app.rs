@@ -38,12 +38,15 @@ pub fn run() {
         .init_resource::<SelectedBenchUnit>()
         .init_resource::<SelectedUnitState>()
         .init_resource::<PvpManager>()
+        .init_resource::<net::GachaClientState>()
         .init_resource::<net::PlayerDeck>()
         .init_resource::<SoundManager>()
         .add_event::<PlaySoundEvent>()
+        .add_event::<net::AuthoritativeReplayEvent>()
         .init_resource::<PlayerEconomy>()
         .init_resource::<BattleRng>()
         .init_resource::<BattleTurnManager>()
+        .init_resource::<battle::BattleSimulationAdapter>()
         .init_resource::<HoveredTile>()
         .init_resource::<HitStopManager>()
         .init_resource::<CameraShake2d>()
@@ -69,6 +72,7 @@ pub fn run() {
                 board::update_tile_visuals,
                 units::update_selection_halo,
                 net::pvp_network_system,
+                net::consume_authoritative_replay_events,
             ),
         )
         .add_systems(
@@ -87,6 +91,7 @@ pub fn run() {
             Update,
             (
                 units::update_unit_health_bars,
+                units::update_unit_effect_icons,
                 battle::update_floating_text,
                 ui::update_hero_inspection_system,
                 ui::update_shop_cards_ui,

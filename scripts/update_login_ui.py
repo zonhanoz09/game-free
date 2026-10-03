@@ -315,14 +315,14 @@ def update_login_ui():
         content = content.replace('</style>', auth_css + '\n    </style>')
 
     # Replace modal HTML
-    old_start = '    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ (OCI DATABASE) -->'
+    old_start = '    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->'
     old_end = '    <!-- Modal: SẢNH ĐỐI KHÁNG 2 NGƯỜI (PvP MATCHMAKING HUB) -->'
 
     idx1 = content.find(old_start)
     idx2 = content.find(old_end)
     assert idx1 != -1 and idx2 != -1, f'Indices not found: {idx1}, {idx2}'
 
-    new_auth_modal = '''    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ (OCI DATABASE) -->
+    new_auth_modal = '''    <!-- Modal: MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->
     <div id="auth-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="auth-banner-header">
@@ -331,7 +331,6 @@ def update_login_ui():
                 <h1 class="auth-main-title">Tactical Arena</h1>
                 <div class="auth-subtitle">
                     <span>Đấu Trường Chiến Thuật Đối Kháng</span>
-                    <span class="auth-cloud-badge">OCI CLOUD</span>
                 </div>
             </div>
 
@@ -409,7 +408,7 @@ def update_login_ui():
                 <!-- Info Cloud Banner -->
                 <div class="auth-info-banner">
                     <span class="auth-info-banner-icon">☁️</span>
-                    <span>Tài khoản, điểm xếp hạng ELO và lịch sử đấu được lưu trữ bảo mật vĩnh viễn trên cơ sở dữ liệu <strong>OCI Free Tier</strong>.</span>
+                    <span>Tài khoản, điểm xếp hạng và lịch sử đấu được lưu trữ bảo mật để bạn tiếp tục hành trình trong game.</span>
                 </div>
 
                 <!-- Error Message -->
@@ -458,8 +457,8 @@ def update_login_ui():
         "const t1 = document.getElementById('btn-auth-submit-text'); if(t1) t1.textContent = 'ĐĂNG NHẬP NGAY'; else document.getElementById('btn-auth-submit').textContent = 'Đăng Nhập Ngay';"
     )
     content = content.replace(
-        "document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản & Lưu Vào OCI';",
-        "const t2 = document.getElementById('btn-auth-submit-text'); if(t2) t2.textContent = 'TẠO TÀI KHOẢN & LƯU VÀO OCI'; else document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản & Lưu Vào OCI';"
+        "document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản';",
+        "const t2 = document.getElementById('btn-auth-submit-text'); if(t2) t2.textContent = 'TẠO TÀI KHOẢN'; else document.getElementById('btn-auth-submit').textContent = 'Tạo Tài Khoản';"
     )
 
     # Update errorDiv display

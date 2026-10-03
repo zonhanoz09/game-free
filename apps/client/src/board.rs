@@ -131,26 +131,7 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
         Transform::from_xyz(e_mid.x, e_mid.y, -25.0),
     ));
 
-    // 3. Reserve Bench Shelf Foundation
-    let bench_center_x = (-340.0 + -70.0) * 0.5;
-    commands.spawn((
-        Sprite {
-            custom_size: Some(Vec2::new(340.0, 58.0)),
-            color: Color::srgba(0.08, 0.10, 0.16, 0.90),
-            ..default()
-        },
-        Transform::from_xyz(bench_center_x, -165.0, -20.0),
-    ));
-
-    // Bench Bronze Border Trim
-    commands.spawn((
-        Sprite {
-            custom_size: Some(Vec2::new(344.0, 62.0)),
-            color: Color::srgba(0.45, 0.55, 0.70, 0.40),
-            ..default()
-        },
-        Transform::from_xyz(bench_center_x, -165.0, -21.0),
-    ));
+    // (Reserve bench removed per UI optimization requirements)
 
     // 4. Central Golden Energy Divider Beam
     commands.spawn((
@@ -275,37 +256,7 @@ pub fn setup_board(mut commands: Commands, textures: Res<GameTextures>) {
         }
     }
 
-    // 7. 6 Reserve Bench Pedestals (Player Reserve Slots)
-    for slot in 0..BENCH_SLOTS {
-        let pos = bench_world_pos(slot);
-        commands
-            .spawn((
-                BenchSlotEntity { slot },
-                Transform::from_xyz(pos.x, pos.y, 0.0),
-                Visibility::default(),
-            ))
-            .with_children(|parent| {
-                parent.spawn((
-                    BenchSlotBorderVisual,
-                    Sprite {
-                        custom_size: Some(Vec2::new(46.0, 46.0)),
-                        color: Color::srgba(0.25, 0.42, 0.65, 0.80),
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
-                ));
-
-                parent.spawn((
-                    BenchSlotCoreVisual,
-                    Sprite {
-                        custom_size: Some(Vec2::new(40.0, 40.0)),
-                        color: Color::srgba(0.09, 0.14, 0.22, 0.90),
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, 0.0, 0.5),
-                ));
-            });
-    }
+    // 7. (Reserve Bench Pedestals removed - all units deploy directly on the 3x3 battlefield)
 }
 
 pub fn animate_torches(
@@ -417,17 +368,8 @@ pub fn update_cursor_hover(
         }
     }
 
-    let mut found_bench = None;
-    for slot in 0..BENCH_SLOTS {
-        let center = bench_world_pos(slot);
-        if (world_pos.x - center.x).abs() <= 23.0 && (world_pos.y - center.y).abs() <= 23.0 {
-            found_bench = Some(slot);
-            break;
-        }
-    }
-
     hovered.tile = found_tile;
-    hovered.bench_slot = found_bench;
+    hovered.bench_slot = None;
 }
 
 pub fn update_tile_visuals(

@@ -12,4 +12,3 @@ services:
       - RUST_LOG=info
     volumes:
       - ../../dist/wasm:/app/dist/wasm
-      - ../../data:/app/data

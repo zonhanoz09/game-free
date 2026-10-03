@@ -12,14 +12,95 @@ pub struct PlayerDeck {
     pub cards: Vec<DeckCardData>,
 }
 
+#[derive(Event, Clone, Debug)]
+pub struct AuthoritativeReplayEvent(pub serde_json::Value);
+
 fn parse_unit_class(class: &str) -> UnitClass {
     match class {
-        "Archer" => UnitClass::Archer,
-        "Mage" => UnitClass::Mage,
-        "Assassin" => UnitClass::Assassin,
-        "Cleric" => UnitClass::Cleric,
+        "zhao_yun" | "Knight" => UnitClass::Knight,
+        "huang_zhong" | "Archer" => UnitClass::Archer,
+        "zhuge_liang" | "Mage" => UnitClass::Mage,
+        "zhang_he_yan_liang" | "zhang_he" | "Assassin" => UnitClass::Assassin,
+        "hua_tuo" | "Cleric" => UnitClass::Cleric,
+        "cao_cao" => UnitClass::CaoCao,
+        "dian_wei" => UnitClass::DianWei,
+        "guo_jia" => UnitClass::GuoJia,
+        "sun_ce" => UnitClass::SunCe,
+        "lu_xun" => UnitClass::LuXun,
+        "da_qiao_xiao_qiao" => UnitClass::DaQiaoXiaoQiao,
+        "jia_xu" => UnitClass::JiaXu,
+        "Triệu Vân" => UnitClass::Knight,
+        "Hoàng Trung" => UnitClass::Archer,
+        "Gia Cát Lượng" => UnitClass::Mage,
+        "Trương Cáp & Nhan Lương" | "Trương Cáp" => UnitClass::Assassin,
+        "Hoa Đà" => UnitClass::Cleric,
+        "Tào Tháo" => UnitClass::CaoCao,
+        "Điển Vi" => UnitClass::DianWei,
+        "Quách Gia" => UnitClass::GuoJia,
+        "Tôn Sách" => UnitClass::SunCe,
+        "Lục Tốn" => UnitClass::LuXun,
+        "Đại Kiều & Tiểu Kiều" | "Đại Kiều" => UnitClass::DaQiaoXiaoQiao,
+        "Giả Hủ" => UnitClass::JiaXu,
         _ => UnitClass::Knight,
     }
+}
+
+pub fn consume_authoritative_replay_events(
+    mut events: EventReader<AuthoritativeReplayEvent>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
+) {
+    for AuthoritativeReplayEvent(event) in events.read() {
+        let kind = event
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        match kind {
+            "UltimateTriggered" => {
+                sound_events.send(PlaySoundEvent(crate::audio::SoundEffect::Ultimate));
+            }
+            "Heal" => {
+                sound_events.send(PlaySoundEvent(crate::audio::SoundEffect::Heal));
+            }
+            _ => {}
+        }
+        info!("[PVP REPLAY] Consumed authoritative event {}", kind);
+    }
+}
+
+pub fn general_unit_class(class: &str) -> UnitClass {
+    parse_unit_class(class)
+}
+
+/// Formation slots are numbered by tier (front, middle, back), then
+/// top-to-bottom within that tier.
+pub fn formation_position_to_grid(position: usize, faction: Faction) -> (usize, usize) {
+    let position = position.min(8);
+    let tier = position / 3;
+    let row = position % 3;
+    let col = match faction {
+        Faction::Player => 2 - tier,
+        Faction::Enemy => tier,
+    };
+    (col, row)
+}
+
+#[allow(dead_code)]
+pub fn grid_to_formation_position(col: usize, row: usize, faction: Faction) -> usize {
+    let tier = match faction {
+        Faction::Player => 2 - col.min(2),
+        Faction::Enemy => col.min(2),
+    };
+    tier * 3 + row.min(2)
+}
+
+#[derive(Resource, Default, Debug, Clone)]
+pub struct GachaClientState {
+    pub currency: u64,
+    pub pity_counter: u32,
+    pub recent_pulls: Vec<game_protocol::GachaPullItemData>,
+    pub heroes: Vec<game_protocol::HeroProgressData>,
+    #[allow(dead_code)]
+    pub last_error: Option<String>,
 }
 
 #[derive(Resource, Debug)]
@@ -36,6 +117,9 @@ pub struct PvpManager {
     pub is_ready: bool,
     pub opponent_ready: bool,
     pub match_winner: Option<String>,
+    pub authoritative_battle_id: Option<String>,
+    pub authoritative_turn: u32,
+    pub authoritative_events: Vec<serde_json::Value>,
 }
 
 impl Default for PvpManager {
@@ -53,6 +137,9 @@ impl Default for PvpManager {
             is_ready: false,
             opponent_ready: false,
             match_winner: None,
+            authoritative_battle_id: None,
+            authoritative_turn: 0,
+            authoritative_events: Vec::new(),
         }
     }
 }
@@ -114,6 +201,9 @@ pub fn pvp_network_system(
     >,
     dead_player_units: Query<(Entity, &Unit, &GridPos), With<DeadUnit>>,
     mut sound_events: EventWriter<PlaySoundEvent>,
+    mut replay_events: EventWriter<AuthoritativeReplayEvent>,
+    mut adapter: ResMut<crate::battle::BattleSimulationAdapter>,
+    mut gacha_state: ResMut<GachaClientState>,
 ) {
     let mut messages = Vec::new();
     if let Ok(mut q) = INCOMING_PVP_MSGS.lock() {
@@ -144,18 +234,12 @@ pub fn pvp_network_system(
                             commands.entity(ent).despawn_recursive();
                         }
 
-                        let board_positions = [(2, 1), (2, 0), (1, 2), (0, 1), (1, 0)];
                         for (idx, card) in cards.iter().enumerate() {
-                            let unit_class = match card.hero_class.as_str() {
-                                "Archer" => UnitClass::Archer,
-                                "Mage" => UnitClass::Mage,
-                                "Assassin" => UnitClass::Assassin,
-                                "Cleric" => UnitClass::Cleric,
-                                _ => UnitClass::Knight,
-                            };
+                            let unit_class = general_unit_class(&card.hero_class);
 
-                            if idx < 3 {
-                                let (col, row) = board_positions[idx % board_positions.len()];
+                            if let Some(position) = card.position {
+                                let (col, row) =
+                                    formation_position_to_grid(position, Faction::Player);
                                 crate::units::spawn_unit_ext_bonus_with_initiative(
                                     &mut commands,
                                     &textures,
@@ -170,7 +254,7 @@ pub fn pvp_network_system(
                                     card.initiative_bonus,
                                 );
                             } else {
-                                let slot = (idx - 3).min(5);
+                                let slot = idx.min(5);
                                 crate::units::spawn_bench_unit_bonus(
                                     &mut commands,
                                     &textures,
@@ -201,6 +285,9 @@ pub fn pvp_network_system(
                     pvp_mgr.is_ready = false;
                     pvp_mgr.opponent_ready = false;
                     pvp_mgr.match_winner = None;
+                    pvp_mgr.authoritative_battle_id = None;
+                    pvp_mgr.authoritative_turn = 0;
+                    pvp_mgr.authoritative_events.clear();
                     pvp_mgr.opponent_lineup.clear();
 
                     // Immediately clear any single-player bot enemy units from the board!
@@ -214,6 +301,10 @@ pub fn pvp_network_system(
                         "[PVP] Room joined: {} as {} vs {}",
                         pvp_mgr.room_code, pvp_mgr.role, pvp_mgr.opponent_name
                     );
+                }
+                PvpMessage::OpponentReady => {
+                    pvp_mgr.opponent_ready = true;
+                    info!("[PVP] Opponent is ready!");
                 }
                 PvpMessage::StartRound {
                     round,
@@ -316,13 +407,113 @@ pub fn pvp_network_system(
                     );
                     next_state.set(GameState::Placement);
                 }
+                PvpMessage::BattleResult { result } => {
+                    let is_local_winner = result.winner.as_deref().is_some_and(|winner| {
+                        (winner == "ATTACKER" && pvp_mgr.role == "host")
+                            || (winner == "DEFENDER" && pvp_mgr.role == "guest")
+                    });
+                    pvp_mgr.authoritative_battle_id = Some(result.battle_id.clone());
+                    pvp_mgr.authoritative_turn = result.turn;
+                    pvp_mgr.authoritative_events = result.replay.events.clone();
+                    adapter.is_pvp = true;
+                    adapter.battle_id = Some(result.battle_id.clone());
+                    adapter.authoritative_turn = result.turn;
+                    for event in &result.replay.events {
+                        replay_events.send(AuthoritativeReplayEvent(event.clone()));
+                        if let Ok(combat_event) =
+                            serde_json::from_value::<game_logic::CombatEvent>(event.clone())
+                        {
+                            adapter.pending_events.push_back(combat_event);
+                        }
+                    }
+                    if let Some(winner) = result.winner.as_deref() {
+                        let side = match winner {
+                            "ATTACKER" => Some(game_logic::TeamSide::Attacker),
+                            "DEFENDER" => Some(game_logic::TeamSide::Defender),
+                            _ => None,
+                        };
+                        adapter.settled_winner = Some(side);
+                    }
+                    if is_local_winner {
+                        info!(
+                            "[PVP AUTHORITY] Battle {} resolved in our favor at turn {} ({} events)",
+                            result.battle_id,
+                            result.turn,
+                            result.replay.events.len()
+                        );
+                    } else if result.winner.is_some() {
+                        info!(
+                            "[PVP AUTHORITY] Battle {} resolved against us at turn {} ({} events)",
+                            result.battle_id,
+                            result.turn,
+                            result.replay.events.len()
+                        );
+                    } else {
+                        info!(
+                            "[PVP AUTHORITY] Battle {} replay advanced to turn {}",
+                            result.battle_id, result.turn
+                        );
+                    }
+                }
                 PvpMessage::MatchEnd { winner } => {
                     pvp_mgr.match_winner = Some(winner.clone());
                     info!("[PVP] Match ended! Winner: {}", winner);
                 }
+
                 PvpMessage::SetSpeed { speed } => {
                     info!("[PVP SPEED] Changed battle speed to: {}", speed);
                     battle_speed.multiplier = speed.clamp(0.2, 3.0);
+                }
+                PvpMessage::GachaPullResult {
+                    results,
+                    pity_counter,
+                    remaining_currency,
+                } => {
+                    info!(
+                        "[GACHA] Received {} pulls from server, pity={}",
+                        results.len(),
+                        pity_counter
+                    );
+                    gacha_state.recent_pulls = results;
+                    gacha_state.pity_counter = pity_counter;
+                    gacha_state.currency = remaining_currency;
+                }
+                PvpMessage::HeroUpgradeStarResult {
+                    hero_id,
+                    new_star,
+                    remaining_shards,
+                } => {
+                    info!("[PROG] Hero {} upgraded to star {}", hero_id, new_star);
+                    if let Some(h) = gacha_state.heroes.iter_mut().find(|h| h.hero_id == hero_id) {
+                        h.star_level = new_star;
+                        h.shards = remaining_shards;
+                    }
+                }
+                PvpMessage::HeroUpgradeLevelResult {
+                    hero_id,
+                    new_level,
+                    remaining_currency,
+                } => {
+                    info!("[PROG] Hero {} upgraded to level {}", hero_id, new_level);
+                    gacha_state.currency = remaining_currency;
+                    if let Some(h) = gacha_state.heroes.iter_mut().find(|h| h.hero_id == hero_id) {
+                        h.level = new_level;
+                    }
+                }
+                PvpMessage::ProgressionSync {
+                    currency,
+                    pity_counter,
+                    heroes,
+                } => {
+                    info!(
+                        "[PROG] Sync: currency={}, pity={}, heroes={}",
+                        currency,
+                        pity_counter,
+                        heroes.len()
+                    );
+                    gacha_state.currency = currency;
+                    gacha_state.pity_counter = pity_counter;
+                    gacha_state.heroes = heroes;
                 }
                 PvpMessage::ExitMatch => {
                     info!("[PVP] Exit match, reset state to Placement");
