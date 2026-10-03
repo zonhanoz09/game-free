@@ -457,7 +457,15 @@ pub fn pvp_network_system(
                 }
                 PvpMessage::MatchEnd { winner } => {
                     pvp_mgr.match_winner = Some(winner.clone());
-                    info!("[PVP] Match ended! Winner: {}", winner);
+                    let is_win = winner.to_lowercase() == pvp_mgr.player_name.to_lowercase()
+                        || (winner == "host" && pvp_mgr.role == "host")
+                        || (winner == "guest" && pvp_mgr.role == "guest");
+                    if is_win {
+                        next_state.set(GameState::Victory);
+                    } else {
+                        next_state.set(GameState::Defeat);
+                    }
+                    info!("[PVP] Match ended! Winner: {} (is_win: {})", winner, is_win);
                 }
 
                 PvpMessage::SetSpeed { speed } => {
@@ -519,6 +527,15 @@ pub fn pvp_network_system(
                     info!("[PVP] Exit match, reset state to Placement");
                     pvp_mgr.active = false;
                     pvp_mgr.match_winner = None;
+                    adapter.is_pvp = false;
+                    adapter.battle_state = None;
+                    adapter.settled_winner = None;
+                    adapter.pending_events.clear();
+                    for (ent, unit) in all_board_units.iter() {
+                        if unit.faction == Faction::Enemy {
+                            commands.entity(ent).despawn_recursive();
+                        }
+                    }
                     next_state.set(GameState::Placement);
                 }
                 PvpMessage::StartBattle => {

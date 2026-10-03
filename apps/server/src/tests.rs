@@ -10,7 +10,7 @@ fn test_card_economy_and_rules() {
         .expect("register failed");
     assert_eq!(user.gold, 100);
     assert_eq!(user.gems, 10);
-    assert_eq!(user.cards.len(), 1);
+    assert_eq!(user.cards.len(), 3);
     assert_eq!(user.decks.len(), 1);
     let starter = &user.cards[0];
     assert!(starter.is_starter);
@@ -22,11 +22,11 @@ fn test_card_economy_and_rules() {
 
     // 3. Buy Huang Zhong card for 55G
     let (user, new_card) = db
-        .buy_card("test_hero", "huang_zhong")
+        .buy_card("test_hero", "sun_ce")
         .expect("buy card failed");
     assert_eq!(user.gold, 45); // 100 - 55 = 45
-    assert_eq!(user.cards.len(), 2);
-    assert_eq!(new_card.hero_class, "huang_zhong");
+    assert_eq!(user.cards.len(), 4);
+    assert_eq!(new_card.hero_class, "sun_ce");
     assert!(!new_card.is_starter);
 
     // 4. Upgrade Huang Zhong card level (costs 1 * 20 = 20G)
@@ -102,8 +102,8 @@ fn test_card_economy_and_rules() {
         position: None,
     }];
     let (is_valid_hz, errors_hz) = validate_deck(
-        "Bộ Bài Hoàng Trung",
-        "huang_zhong",
+        "Bộ Bài Tôn Sách",
+        "sun_ce",
         &valid_cards,
         &user.cards,
     );
@@ -114,8 +114,8 @@ fn test_card_economy_and_rules() {
         .save_deck(
             "test_hero",
             None,
-            "Bộ Bài Hoàng Trung".to_string(),
-            "huang_zhong".to_string(),
+            "Bộ Bài Tôn Sách".to_string(),
+            "sun_ce".to_string(),
             Some("cb_dragon".to_string()),
             valid_cards,
         )
@@ -128,7 +128,7 @@ fn test_card_economy_and_rules() {
         .sell_card("test_hero", &new_card.id)
         .expect("sell non-starter failed");
     assert!(refund > 0);
-    assert_eq!(user.cards.len(), 1);
+    assert_eq!(user.cards.len(), 3);
     assert_eq!(user.cards[0].id, starter.id); // only starter remains
 }
 

@@ -42,7 +42,7 @@ pub fn check_battle_end(
 
     if let Some(winner) = adapter.settled_winner {
         let is_victory = match winner {
-            Some(game_logic::TeamSide::Attacker) => !adapter.is_pvp,
+            Some(game_logic::TeamSide::Attacker) => true,
             _ => false,
         };
         *battle_ended = true;

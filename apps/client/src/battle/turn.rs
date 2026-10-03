@@ -92,7 +92,7 @@ pub fn battle_tick_system(
     }
 
     // Auto-initialize headless battle simulation for single player if not already created
-    if adapter.battle_state.is_none() && !adapter.is_pvp {
+    if adapter.battle_state.is_none() {
         let mut sim_state = BattleState::default();
 
         for (entity, unit, stats, grid, _, gauge, _, _) in units.iter() {
@@ -129,76 +129,67 @@ pub fn battle_tick_system(
 
     // Step simulation if no events are pending
     if adapter.pending_events.is_empty() {
-        if !adapter.is_pvp {
-            if let Some(ref mut battle) = adapter.battle_state {
-                if let Some(winner) = battle.winner() {
-                    adapter.settled_winner = Some(winner);
-                    adapter
-                        .pending_events
-                        .push_back(CombatEvent::BattleEnded { winner });
-                } else {
-                    let mut advance_limit = 0;
-                    while battle.next_ready_unit().is_none() && advance_limit < 1000 {
-                        battle.advance_gauges();
-                        advance_limit += 1;
-                    }
+        if let Some(ref mut battle) = adapter.battle_state {
+            if let Some(winner) = battle.winner() {
+                adapter.settled_winner = Some(winner);
+                adapter
+                    .pending_events
+                    .push_back(CombatEvent::BattleEnded { winner });
+            } else {
+                let mut advance_limit = 0;
+                while battle.next_ready_unit().is_none() && advance_limit < 1000 {
+                    battle.advance_gauges();
+                    advance_limit += 1;
+                }
 
-                    // Synchronize visual action gauges with simulation gauges
-                    for u in &battle.units {
-                        if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == u.id) {
-                            if let Ok((.., mut visual_gauge, _, _)) = units.get_mut(ent) {
-                                visual_gauge.current =
-                                    (u.gauge.current as f32 / 100.0).clamp(0.0, 100.0);
-                            }
+                // Synchronize visual action gauges with simulation gauges
+                for u in &battle.units {
+                    if let Some(&(ent, _)) = unit_ids.iter().find(|(_, id)| *id == u.id) {
+                        if let Ok((.., mut visual_gauge, _, _)) = units.get_mut(ent) {
+                            visual_gauge.current =
+                                (u.gauge.current as f32 / 100.0).clamp(0.0, 100.0);
                         }
                     }
+                }
 
-                    if let Some(actor_id) = battle.next_ready_unit() {
-                        let actor_class = unit_ids
-                            .iter()
-                            .find(|(_, id)| *id == actor_id)
-                            .and_then(|(ent, _)| units.get(*ent).ok())
-                            .map(|(_, u, ..)| u.class)
-                            .unwrap_or(UnitClass::Knight);
+                if let Some(actor_id) = battle.next_ready_unit() {
+                    let actor_class = unit_ids
+                        .iter()
+                        .find(|(_, id)| *id == actor_id)
+                        .and_then(|(ent, _)| units.get(*ent).ok())
+                        .map(|(_, u, ..)| u.class)
+                        .unwrap_or(UnitClass::Knight);
 
-                        let (normal, ultimate) = skill_specs_for_class(actor_class);
-                        let is_crit = rng.next_f32() < 0.20;
-                        match battle.step(&normal, &ultimate, is_crit) {
-                            Ok(events) => {
-                                adapter.pending_events.extend(events);
-                            }
-                            Err(e) => {
-                                warn!(
-                                    "[BATTLE] Step error with ultimate: {:?}, attempting normal skill fallback",
-                                    e
-                                );
-                                match battle.step(&normal, &normal, is_crit) {
-                                    Ok(events) => {
-                                        adapter.pending_events.extend(events);
-                                    }
-                                    Err(e2) => {
-                                        warn!(
-                                            "[BATTLE] Normal skill fallback failed: {:?}, forcing gauge consumption for unit {}",
-                                            e2, actor_id
-                                        );
-                                        if let Some(actor_u) =
-                                            battle.units.iter_mut().find(|u| u.id == actor_id)
-                                        {
-                                            actor_u.gauge.consume_turn();
-                                        }
+                    let (normal, ultimate) = skill_specs_for_class(actor_class);
+                    let is_crit = rng.next_f32() < 0.20;
+                    match battle.step(&normal, &ultimate, is_crit) {
+                        Ok(events) => {
+                            adapter.pending_events.extend(events);
+                        }
+                        Err(e) => {
+                            warn!(
+                                "[BATTLE] Step error with ultimate: {:?}, attempting normal skill fallback",
+                                e
+                            );
+                            match battle.step(&normal, &normal, is_crit) {
+                                Ok(events) => {
+                                    adapter.pending_events.extend(events);
+                                }
+                                Err(e2) => {
+                                    warn!(
+                                        "[BATTLE] Normal skill fallback failed: {:?}, forcing gauge consumption for unit {}",
+                                        e2, actor_id
+                                    );
+                                    if let Some(actor_u) =
+                                        battle.units.iter_mut().find(|u| u.id == actor_id)
+                                    {
+                                        actor_u.gauge.consume_turn();
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
-        } else if let Some(ref mut battle) = adapter.battle_state {
-            if let Some(winner) = battle.winner() {
-                adapter.settled_winner = Some(winner);
-                adapter
-                    .pending_events
-                    .push_back(CombatEvent::BattleEnded { winner });
             }
         }
     }

@@ -316,7 +316,7 @@ impl Database {
         };
 
         let now = chrono_now();
-        let starter_card = create_starter_card(&clean, av);
+        let starter_cards = create_starter_cards(&clean);
         let user_id = format!("p_{}", clean);
         let avatar_id = format!("avatar_{}", av);
 
@@ -324,13 +324,17 @@ impl Database {
             id: format!("deck_{}_starter", clean),
             player_id: user_id.clone(),
             deck_name: "Bộ Bài Tiên Phong".to_string(),
-            hero_class: starter_card.hero_class.clone(),
+            hero_class: "Tactical".to_string(),
             cardback_id: "cb_classic".to_string(),
-            cards_data: vec![DeckCardEntry {
-                id: starter_card.id.clone(),
+            cards_data: starter_cards.iter().enumerate().map(|(i, c)| DeckCardEntry {
+                id: c.id.clone(),
                 count: 1,
-                position: Some(0),
-            }],
+                position: Some(match i {
+                    0 => 0,
+                    1 => 3,
+                    _ => 6,
+                }),
+            }).collect(),
             is_valid: true,
             validation_errors: vec![],
             updated_at: now.clone(),
@@ -353,14 +357,14 @@ impl Database {
             matches: 0,
             gold: 100,
             gems: 10,
-            battle_slots: 1,
+            battle_slots: 3,
             rank_tier: "Đồng".to_string(),
             rank_division: 3,
             rank_stars: 0,
             mmr: 1200,
             win_streak: 0,
             best_streak: 0,
-            cards: vec![starter_card],
+            cards: starter_cards,
             decks: vec![starter_deck],
             items: vec![],
             created_at: now.clone(),

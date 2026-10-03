@@ -1,7 +1,7 @@
 use super::*;
 
 fn default_battle_slots() -> u8 {
-    1
+    3
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -105,7 +105,8 @@ pub struct User {
 
 impl User {
     pub fn ensure_battle_slots(&mut self) {
-        self.battle_slots = self.battle_slots.clamp(1, 5);
+        if self.battle_slots < 3 { self.battle_slots = 3; }
+        self.battle_slots = self.battle_slots.clamp(3, 5);
     }
     pub fn sanitized(mut self) -> Self {
         self.password_hash.clear();
@@ -259,10 +260,21 @@ impl User {
             .iter()
             .any(|c| !is_three_kingdoms_general(&c.hero_class));
         if roster_is_legacy || self.cards.is_empty() {
-            let starter = create_starter_card(&self.username, "knight");
-            self.cards = vec![starter.clone()];
+            self.cards = create_starter_cards(&self.username);
             self.decks.clear();
+        } else if self.cards.len() < 3 {
+            let defaults = create_starter_cards(&self.username);
+            for d in defaults {
+                if !self.cards.iter().any(|c| c.hero_class == d.hero_class) {
+                    self.cards.push(d);
+                }
+            }
         }
+
+        if self.battle_slots < 3 {
+            self.battle_slots = 3;
+        }
+        self.battle_slots = self.battle_slots.clamp(3, 5);
 
         for c in &mut self.cards {
             if c.quantity == 0 {
@@ -271,18 +283,29 @@ impl User {
         }
 
         if self.decks.is_empty() && !self.cards.is_empty() {
-            let starter = &self.cards[0];
+            let deck_cards: Vec<DeckCardEntry> = self
+                .cards
+                .iter()
+                .take(3)
+                .enumerate()
+                .map(|(idx, c)| DeckCardEntry {
+                    id: c.id.clone(),
+                    count: 1,
+                    position: Some(match idx {
+                        0 => 0,
+                        1 => 3,
+                        _ => 6,
+                    }),
+                })
+                .collect();
+
             self.decks.push(PlayerDeck {
                 id: format!("deck_{}_starter", self.username),
                 player_id: self.id.clone(),
                 deck_name: "Bộ Bài Tiên Phong".to_string(),
-                hero_class: starter.hero_class.clone(),
+                hero_class: "Tactical".to_string(),
                 cardback_id: self.cardback_id.clone(),
-                cards_data: vec![DeckCardEntry {
-                    id: starter.id.clone(),
-                    count: 1,
-                    position: Some(0),
-                }],
+                cards_data: deck_cards,
                 is_valid: true,
                 validation_errors: vec![],
                 updated_at: chrono_now(),
@@ -699,17 +722,48 @@ pub fn general_display_name(hero_class: &str) -> &'static str {
     }
 }
 
+pub fn create_starter_cards(username: &str) -> Vec<UserCard> {
+    vec![
+        UserCard {
+            id: format!("general_{}_zhao_yun", username),
+            hero_class: "zhao_yun".to_string(),
+            name: general_display_name("zhao_yun").to_string(),
+            star_level: 1,
+            level: 1,
+            is_starter: true,
+            hp_bonus: 0.0,
+            atk_bonus: 0.0,
+            quantity: 1,
+            is_foil: false,
+        },
+        UserCard {
+            id: format!("general_{}_huang_zhong", username),
+            hero_class: "huang_zhong".to_string(),
+            name: general_display_name("huang_zhong").to_string(),
+            star_level: 1,
+            level: 1,
+            is_starter: true,
+            hp_bonus: 0.0,
+            atk_bonus: 0.0,
+            quantity: 1,
+            is_foil: false,
+        },
+        UserCard {
+            id: format!("general_{}_zhuge_liang", username),
+            hero_class: "zhuge_liang".to_string(),
+            name: general_display_name("zhuge_liang").to_string(),
+            star_level: 1,
+            level: 1,
+            is_starter: true,
+            hp_bonus: 0.0,
+            atk_bonus: 0.0,
+            quantity: 1,
+            is_foil: false,
+        },
+    ]
+}
+
+#[allow(dead_code)]
 pub fn create_starter_card(username: &str, _avatar: &str) -> UserCard {
-    UserCard {
-        id: format!("general_{}_starter", username),
-        hero_class: "zhao_yun".to_string(),
-        name: general_display_name("zhao_yun").to_string(),
-        star_level: 1,
-        level: 1,
-        is_starter: true,
-        hp_bonus: 0.0,
-        atk_bonus: 0.0,
-        quantity: 1,
-        is_foil: false,
-    }
+    create_starter_cards(username)[0].clone()
 }

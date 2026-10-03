@@ -343,7 +343,7 @@ impl OracleAdbClient {
                     matches,
                     gold,
                     gems,
-                    battle_slots: 1,
+                    battle_slots: 3,
                     rank_tier: if rank_tier.is_empty() {
                         "Đồng".to_string()
                     } else {

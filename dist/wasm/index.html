@@ -3301,7 +3301,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261003143921-1d529955';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261003151130-dccc67cb';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -3441,12 +3441,19 @@
         const deckModal = document.getElementById('deck-modal');
 
         function closeAllModals() {
-            if (guideModal) guideModal.style.display = 'none';
-            if (authModal) authModal.style.display = 'none';
-            if (leaderboardModal) leaderboardModal.style.display = 'none';
-            if (pvpHubModal) pvpHubModal.style.display = 'none';
-            if (shopModal) shopModal.style.display = 'none';
-            if (deckModal) deckModal.style.display = 'none';
+            const allModalIds = [
+                'guide-modal', 'auth-modal', 'leaderboard-modal', 'pvp-hub-modal',
+                'shop-modal', 'deck-modal', 'profile-modal', 'card-acquired-modal',
+                'match-result-modal', 'quick-match-modal', 'room-waiting-modal'
+            ];
+            allModalIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            if (window._quickMatchTimer) {
+                clearInterval(window._quickMatchTimer);
+                window._quickMatchTimer = null;
+            }
         }
 
         // ==========================================
@@ -3605,33 +3612,35 @@
         }
 
         function getBattleSlotLimit() {
-            return Math.max(1, Math.min(5, Number(currentUser && currentUser.battle_slots) || 1));
+            return Math.max(3, Math.min(5, Number(currentUser && currentUser.battle_slots) || 3));
         }
 
         function loadSavedLineup() {
             const userCards = (currentUser && currentUser.cards) ? currentUser.cards : [];
             const saved = currentUser && Array.isArray(currentUser.decks) ? currentUser.decks : [];
-            const deck = saved.find(d => d.id === activeDeckId) || saved.find(d => d.deck_name === 'Đội Hình Chiến Thuật') || saved[0];
+            const deck = saved.find(d => d.id === activeDeckId) || saved.find(d => d.deck_name === 'Đội Hình Chiến Thuật') || saved.find(d => d.is_valid) || saved[0];
             activeDeckId = deck ? deck.id : null;
             activeLineup = Array(9).fill(null);
-            if (deck && Array.isArray(deck.cards_data)) {
+            const slotLimit = getBattleSlotLimit();
+
+            if (deck && Array.isArray(deck.cards_data) && deck.cards_data.length > 0) {
                 deck.cards_data.forEach((entry, fallbackIndex) => {
                     const card = userCards.find(c => c.id === entry.id);
                     if (!card) return;
                     const savedPosition = Number.isInteger(entry.position) ? entry.position : fallbackIndex;
-                    const position = savedPosition >= 0 && savedPosition < 9 ? savedPosition : 0;
-                    if (!activeLineup[position] && activeLineup.filter(Boolean).length < getBattleSlotLimit()) {
+                    const position = (savedPosition >= 0 && savedPosition < 9) ? savedPosition : (fallbackIndex * 3) % 9;
+                    if (!activeLineup[position] && activeLineup.filter(Boolean).length < slotLimit) {
                         activeLineup[position] = card.id;
                     }
                 });
             }
             if (!activeLineup.some(Boolean)) {
-                userCards.forEach(card => {
-                    const position = activeLineup.findIndex(slot => !slot);
-                    if (position >= 0 && activeLineup.filter(Boolean).length < getBattleSlotLimit()) {
-                        activeLineup[position] = card.id;
+                const defaultPositions = [0, 3, 6, 1, 4];
+                userCards.forEach((card, idx) => {
+                    if (idx < slotLimit && idx < defaultPositions.length) {
+                        const pos = defaultPositions[idx];
+                        activeLineup[pos] = card.id;
                     }
-
                 });
             }
         }
@@ -4999,6 +5008,8 @@
 
                         case 'ROOM_CREATED':
                             pvpState.active = true;
+                            loadSavedLineup();
+                            syncDeckToBevy();
                             pvpState.roomCode = msg.room_code;
                             pvpState.role = 'host';
                             pvpState.playerHp = 100;
@@ -5035,6 +5046,9 @@
                         case 'ROOM_JOINED':
                         case 'OPPONENT_JOINED':
                             pvpState.active = true;
+                            closeAllModals();
+                            loadSavedLineup();
+                            syncDeckToBevy();
                             pvpState.roomCode = msg.room_code;
                             pvpState.role = msg.role || pvpState.role || 'guest';
                             pvpState.round = msg.round || 1;
@@ -5353,7 +5367,14 @@
                     });
                 }
                 if (lineup.length === 0) {
-                    lineup.push({ col: 2, row: 0, class: 'zhao_yun', star_level: 1 });
+                    allCards.slice(0, 3).forEach((c, idx) => {
+                        lineup.push({
+                            col: 2 - idx,
+                            row: 0,
+                            class: c.hero_class || c.card_id || 'zhao_yun',
+                            star_level: c.star_level || 1
+                        });
+                    });
                 }
                 window._rust_pvp.setReady(lineup);
             }
@@ -5479,6 +5500,10 @@
             const roundBadge = document.getElementById('battle-round-badge');
             if (roundBadge) roundBadge.textContent = 'VÒNG 1';
 
+            // Load saved lineup & sync to Bevy engine
+            loadSavedLineup();
+            syncDeckToBevy();
+
             // Populate Active Battle Hand (units participating in current match)
             window.renderActiveBattleHand();
             closeAllModals();
@@ -5493,6 +5518,8 @@
         window.exitMatchToLobby = function() {
             window.inBattle = false;
             pvpState.active = false;
+            pvpState.roomCode = null;
+            closeAllModals();
 
             const lobby = document.getElementById('lobby-screen');
             const topBar = document.getElementById('top-bar');
@@ -5597,15 +5624,22 @@
         };
 
         window.startPveBattle = function() {
+            pvpState.active = false;
+            pvpState.roomCode = null;
+            if (typeof js_to_rust_pvp === 'function') {
+                js_to_rust_pvp(JSON.stringify({ type: 'EXIT_MATCH' }));
+            }
             window.enterBattleScreen(true, '🤖 AI Thủ Lĩnh Arena', '👹');
             const readyBtn = document.getElementById('btn-battle-ready');
             const rInd = document.getElementById('ready-indicator');
             if (readyBtn) readyBtn.style.display = 'none';
             if (rInd) rInd.textContent = '⚔️ Đang giao chiến!';
 
-            if (typeof js_to_rust_pvp === 'function') {
-                js_to_rust_pvp(JSON.stringify({ type: 'START_BATTLE' }));
-            }
+            setTimeout(() => {
+                if (typeof js_to_rust_pvp === 'function') {
+                    js_to_rust_pvp(JSON.stringify({ type: 'START_BATTLE' }));
+                }
+            }, 300);
         };
 
         const rustPvP = new RustPvPClient();
