@@ -915,3 +915,124 @@ impl Database {
         list
     }
 }
+
+impl super::traits::AuthRepository for Database {
+    fn register(
+        &mut self,
+        username: &str,
+        password: &str,
+        display_name: &str,
+        avatar: &str,
+    ) -> Result<User, String> {
+        self.register(username, password, display_name, avatar)
+    }
+
+    fn login(&mut self, username: &str, password: &str) -> Result<User, String> {
+        self.login(username, password)
+    }
+
+    fn get_user(&self, username: &str) -> Option<User> {
+        self.get_user(username)
+    }
+
+    fn customize_profile(
+        &mut self,
+        username: &str,
+        display_name: Option<String>,
+        avatar_id: Option<String>,
+        cardback_id: Option<String>,
+        board_skin: Option<String>,
+    ) -> Result<User, String> {
+        self.customize_profile(username, display_name, avatar_id, cardback_id, board_skin)
+    }
+}
+
+impl super::traits::DeckRepository for Database {
+    fn save_deck(
+        &mut self,
+        username: &str,
+        deck_id: Option<String>,
+        deck_name: String,
+        hero_class: String,
+        cardback_id: Option<String>,
+        cards: Vec<DeckCardEntry>,
+    ) -> Result<(User, PlayerDeck), String> {
+        self.save_deck(username, deck_id, deck_name, hero_class, cardback_id, cards)
+    }
+
+    fn delete_deck(&mut self, username: &str, deck_id: &str) -> Result<User, String> {
+        self.delete_deck(username, deck_id)
+    }
+}
+
+impl super::traits::EconomyRepository for Database {
+    fn buy_card(
+        &mut self,
+        username: &str,
+        hero_class: &str,
+    ) -> Result<(User, UserCard), String> {
+        self.buy_card(username, hero_class)
+    }
+
+    fn buy_battle_slot(&mut self, username: &str) -> Result<User, String> {
+        self.buy_battle_slot(username)
+    }
+
+    fn upgrade_card(
+        &mut self,
+        username: &str,
+        card_id: &str,
+        upgrade_type: &str,
+    ) -> Result<(User, String), String> {
+        self.upgrade_card(username, card_id, upgrade_type)
+    }
+
+    fn foil_card(&mut self, username: &str, card_id: &str) -> Result<(User, String), String> {
+        self.foil_card(username, card_id)
+    }
+
+    fn sell_card(&mut self, username: &str, card_id: &str) -> Result<(User, u32), String> {
+        self.sell_card(username, card_id)
+    }
+}
+
+impl super::traits::MatchRepository for Database {
+    fn reward_match(
+        &mut self,
+        username: &str,
+        mode: &str,
+        win: bool,
+    ) -> Result<(User, u32, u64, u32, bool, String), String> {
+        self.reward_match(username, mode, win)
+    }
+
+    fn record_match(
+        &mut self,
+        match_id: &str,
+        host_user: &str,
+        guest_user: &str,
+        winner_user: Option<&str>,
+        rounds: usize,
+    ) {
+        self.record_match(match_id, host_user, guest_user, winner_user, rounds);
+    }
+
+    fn get_leaderboard(&self, limit: usize) -> Vec<User> {
+        self.get_leaderboard(limit)
+    }
+}
+
+impl super::traits::FormationRepository for Database {
+    fn get_user_formation(&self, username: &str, formation_type: &str) -> Option<game_data_schema::PlayerFormationRow> {
+        self.get_user_formation(username, formation_type)
+    }
+
+    fn save_user_formation(
+        &mut self,
+        username: &str,
+        formation: game_data_schema::PlayerFormationRow,
+    ) -> Result<(), String> {
+        self.save_user_formation(username, formation);
+        Ok(())
+    }
+}

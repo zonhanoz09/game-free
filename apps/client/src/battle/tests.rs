@@ -418,6 +418,7 @@ fn test_check_battle_end_pvp_draw_reports_draw() {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, bevy::state::app::StatesPlugin));
     app.add_event::<PlaySoundEvent>();
+    app.add_event::<SendPvpBattleFinishedEvent>();
     app.init_state::<GameState>();
     app.init_resource::<PlayerEconomy>();
     app.init_resource::<BattleRng>();
@@ -445,4 +446,10 @@ fn test_check_battle_end_pvp_draw_reports_draw() {
     // Check that system runs and does not panic on draw
     let adapter = app.world().resource::<BattleSimulationAdapter>();
     assert_eq!(adapter.settled_winner, Some(None));
+
+    let events = app.world().resource::<Events<SendPvpBattleFinishedEvent>>();
+    let mut reader = events.get_cursor();
+    let sent_event = reader.read(events).next().expect("SendPvpBattleFinishedEvent must be emitted on draw");
+    assert_eq!(sent_event.winner_role, "draw");
+    assert_eq!(sent_event.round, Some(1));
 }

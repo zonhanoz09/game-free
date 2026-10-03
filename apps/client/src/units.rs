@@ -237,6 +237,52 @@ impl Default for ChibiSquashStretch {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct UnitSpawnParams {
+    pub unit_class: UnitClass,
+    pub faction: Faction,
+    pub col: usize,
+    pub row: usize,
+    pub star_level: u8,
+    pub is_boss: bool,
+    pub hp_bonus: f32,
+    pub atk_bonus: f32,
+    pub initiative_bonus: f32,
+}
+
+impl UnitSpawnParams {
+    pub fn new(unit_class: UnitClass, faction: Faction, col: usize, row: usize) -> Self {
+        Self {
+            unit_class,
+            faction,
+            col,
+            row,
+            star_level: 1,
+            is_boss: false,
+            hp_bonus: 0.0,
+            atk_bonus: 0.0,
+            initiative_bonus: 0.0,
+        }
+    }
+
+    pub fn with_star(mut self, star_level: u8) -> Self {
+        self.star_level = star_level;
+        self
+    }
+
+    pub fn with_boss(mut self, is_boss: bool) -> Self {
+        self.is_boss = is_boss;
+        self
+    }
+
+    pub fn with_bonuses(mut self, hp_bonus: f32, atk_bonus: f32, initiative_bonus: f32) -> Self {
+        self.hp_bonus = hp_bonus;
+        self.atk_bonus = atk_bonus;
+        self.initiative_bonus = initiative_bonus;
+        self
+    }
+}
+
 pub fn spawn_unit(
     commands: &mut Commands,
     textures: &GameTextures,
@@ -245,7 +291,7 @@ pub fn spawn_unit(
     col: usize,
     row: usize,
 ) -> Entity {
-    spawn_unit_ext(commands, textures, unit_class, faction, col, row, 1, false)
+    spawn_unit_from_params(commands, textures, UnitSpawnParams::new(unit_class, faction, col, row))
 }
 
 pub fn spawn_unit_ext(
@@ -258,11 +304,16 @@ pub fn spawn_unit_ext(
     star_level: u8,
     is_boss: bool,
 ) -> Entity {
-    spawn_unit_ext_bonus(
-        commands, textures, unit_class, faction, col, row, star_level, is_boss, 0.0, 0.0,
+    spawn_unit_from_params(
+        commands,
+        textures,
+        UnitSpawnParams::new(unit_class, faction, col, row)
+            .with_star(star_level)
+            .with_boss(is_boss),
     )
 }
 
+#[allow(dead_code)]
 pub fn spawn_unit_ext_bonus(
     commands: &mut Commands,
     textures: &GameTextures,
@@ -275,9 +326,13 @@ pub fn spawn_unit_ext_bonus(
     hp_bonus: f32,
     atk_bonus: f32,
 ) -> Entity {
-    spawn_unit_ext_bonus_with_initiative(
-        commands, textures, unit_class, faction, col, row, star_level, is_boss, hp_bonus,
-        atk_bonus, 0.0,
+    spawn_unit_from_params(
+        commands,
+        textures,
+        UnitSpawnParams::new(unit_class, faction, col, row)
+            .with_star(star_level)
+            .with_boss(is_boss)
+            .with_bonuses(hp_bonus, atk_bonus, 0.0),
     )
 }
 
@@ -294,6 +349,33 @@ pub fn spawn_unit_ext_bonus_with_initiative(
     atk_bonus: f32,
     initiative_bonus: f32,
 ) -> Entity {
+    spawn_unit_from_params(
+        commands,
+        textures,
+        UnitSpawnParams::new(unit_class, faction, col, row)
+            .with_star(star_level)
+            .with_boss(is_boss)
+            .with_bonuses(hp_bonus, atk_bonus, initiative_bonus),
+    )
+}
+
+pub fn spawn_unit_from_params(
+    commands: &mut Commands,
+    textures: &GameTextures,
+    params: UnitSpawnParams,
+) -> Entity {
+    let UnitSpawnParams {
+        unit_class,
+        faction,
+        col,
+        row,
+        star_level,
+        is_boss,
+        hp_bonus,
+        atk_bonus,
+        initiative_bonus,
+    } = params;
+
     let world_pos = grid_to_world_pos(col, row, faction);
     let z_depth = 10.0 + (row as f32 * -0.5);
 

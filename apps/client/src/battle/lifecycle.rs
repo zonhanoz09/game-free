@@ -169,3 +169,16 @@ pub fn on_exit_battle(
         if let Some(mut e) = commands.get_entity(entity) { e.remove::<DashAnimation2d>(); }
     }
 }
+
+pub fn forward_pvp_battle_finished_events(
+    mut events: EventReader<SendPvpBattleFinishedEvent>,
+) {
+    for event in events.read() {
+        crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+            winner_role: event.winner_role.clone(),
+            player_survivors: event.player_survivors,
+            room_code: event.room_code.clone(),
+            round: event.round,
+        });
+    }
+}

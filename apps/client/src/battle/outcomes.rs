@@ -30,6 +30,7 @@ pub fn check_battle_end(
     mut rng: ResMut<BattleRng>,
     adapter: Res<BattleSimulationAdapter>,
     pvp_mgr: Res<crate::net::PvpManager>,
+    mut pvp_finished_events: EventWriter<SendPvpBattleFinishedEvent>,
     mut battle_ended: Local<bool>,
     mut battle_duration: Local<f32>,
     mut pvp_wait_timer: Local<f32>,
@@ -51,7 +52,7 @@ pub fn check_battle_end(
                     "[PVP WATCHDOG] 8s elapsed without server round settlement. Resending BattleFinished for round {}",
                     pvp_mgr.round
                 );
-                crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+                pvp_finished_events.send(SendPvpBattleFinishedEvent {
                     winner_role: "draw".to_string(),
                     player_survivors: 0,
                     room_code: Some(pvp_mgr.room_code.clone()),
@@ -106,7 +107,7 @@ pub fn check_battle_end(
                 "[PVP BATTLE FINISHED] Settled via sim adapter: Winner={}, Role={}, Survivors={}, Round={}",
                 role_winner, pvp_mgr.role, survivors, pvp_mgr.round
             );
-            crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+            pvp_finished_events.send(SendPvpBattleFinishedEvent {
                 winner_role: role_winner,
                 player_survivors: survivors,
                 room_code: Some(pvp_mgr.room_code.clone()),
@@ -175,7 +176,7 @@ pub fn check_battle_end(
                 "[PVP ROUND VICTORY] Sending BattleFinished to server. Surviving heroes: {}",
                 alive_player.max(1)
             );
-            crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+            pvp_finished_events.send(SendPvpBattleFinishedEvent {
                 winner_role: pvp_mgr.role.clone(),
                 player_survivors: alive_player.max(1),
                 room_code: Some(pvp_mgr.room_code.clone()),
@@ -209,7 +210,7 @@ pub fn check_battle_end(
                 "[PVP ROUND DEFEAT] Sending BattleFinished to server. Opponent won with {} survivors.",
                 alive_enemy.max(1)
             );
-            crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+            pvp_finished_events.send(SendPvpBattleFinishedEvent {
                 winner_role: opp_role,
                 player_survivors: alive_enemy.max(1),
                 room_code: Some(pvp_mgr.room_code.clone()),
@@ -226,7 +227,7 @@ pub fn check_battle_end(
         sound_events.send(PlaySoundEvent(SoundEffect::Defeat));
 
         if pvp_mgr.active {
-            crate::net::send_pvp_message(&crate::net::PvpMessage::BattleFinished {
+            pvp_finished_events.send(SendPvpBattleFinishedEvent {
                 winner_role: "draw".to_string(),
                 player_survivors: 0,
                 room_code: Some(pvp_mgr.room_code.clone()),

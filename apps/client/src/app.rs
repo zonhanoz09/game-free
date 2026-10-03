@@ -43,6 +43,7 @@ pub fn run() {
         .init_resource::<SoundManager>()
         .add_event::<PlaySoundEvent>()
         .add_event::<net::AuthoritativeReplayEvent>()
+        .add_event::<battle::SendPvpBattleFinishedEvent>()
         .init_resource::<PlayerEconomy>()
         .init_resource::<BattleRng>()
         .init_resource::<BattleTurnManager>()
@@ -73,6 +74,7 @@ pub fn run() {
                 units::update_selection_halo,
                 net::pvp_network_system,
                 net::consume_authoritative_replay_events,
+                battle::forward_pvp_battle_finished_events,
             ),
         )
         .add_systems(

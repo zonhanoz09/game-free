@@ -147,3 +147,11 @@ impl BattleRng {
         min + self.next_f32() * (max - min)
     }
 }
+
+#[derive(Event, Clone, Debug)]
+pub struct SendPvpBattleFinishedEvent {
+    pub winner_role: String,
+    pub player_survivors: usize,
+    pub room_code: Option<String>,
+    pub round: Option<usize>,
+}
