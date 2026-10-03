@@ -523,7 +523,48 @@ pub fn pvp_network_system(
                 }
                 PvpMessage::StartBattle => {
                     info!("[PVP/PVE] StartBattle requested from UI!");
-                    next_state.set(GameState::Battle);
+                    if pvp_mgr.active {
+                        if !pvp_mgr.is_ready {
+                            let mut lineup = Vec::new();
+                            for (_, unit, grid, _, _, _, _) in player_units.iter() {
+                                if unit.faction == Faction::Player {
+                                    lineup.push(game_protocol::PvpUnitData {
+                                        col: grid.col,
+                                        row: grid.row,
+                                        class: unit.class.id_str().to_string(),
+                                        star_level: 1,
+                                    });
+                                }
+                            }
+                            if lineup.is_empty() {
+                                for card in &player_deck.cards {
+                                    let (col, row) = match card.position {
+                                        Some(pos) => formation_position_to_grid(pos, Faction::Player),
+                                        None => (2, 0),
+                                    };
+                                    lineup.push(game_protocol::PvpUnitData {
+                                        col,
+                                        row,
+                                        class: general_unit_class(&card.hero_class).id_str().to_string(),
+                                        star_level: card.star_level.max(1) as u8,
+                                    });
+                                }
+                            }
+                            if lineup.is_empty() {
+                                lineup.push(game_protocol::PvpUnitData {
+                                    col: 2,
+                                    row: 0,
+                                    class: UnitClass::Knight.id_str().to_string(),
+                                    star_level: 1,
+                                });
+                            }
+                            pvp_mgr.is_ready = true;
+                            send_pvp_message(&game_protocol::PvpMessage::PlayerReady { lineup });
+                            info!("[PVP] Ready & Locked In triggered from UI StartBattle!");
+                        }
+                    } else {
+                        next_state.set(GameState::Battle);
+                    }
                 }
                 _ => {}
             }

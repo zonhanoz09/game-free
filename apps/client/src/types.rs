@@ -584,6 +584,16 @@ pub struct GameTextures {
     pub lu_xun: Handle<Image>,
     pub da_qiao_xiao_qiao: Handle<Image>,
     pub jia_xu: Handle<Image>,
+    pub fx_shield: Handle<Image>,
+    pub fx_burn: Handle<Image>,
+    pub fx_poison: Handle<Image>,
+    pub fx_freeze: Handle<Image>,
+    pub fx_stun: Handle<Image>,
+    pub fx_bleed: Handle<Image>,
+    pub fx_buff: Handle<Image>,
+    pub fx_heal: Handle<Image>,
+    pub font_regular: Handle<Font>,
+    pub font_bold: Handle<Font>,
 }
 
 impl FromWorld for GameTextures {
@@ -603,6 +613,16 @@ impl FromWorld for GameTextures {
             lu_xun: asset_server.load("textures/lu_xun.png"),
             da_qiao_xiao_qiao: asset_server.load("textures/da_qiao_xiao_qiao.png"),
             jia_xu: asset_server.load("textures/jia_xu.png"),
+            fx_shield: asset_server.load("textures/fx_shield.png"),
+            fx_burn: asset_server.load("textures/fx_burn.png"),
+            fx_poison: asset_server.load("textures/fx_poison.png"),
+            fx_freeze: asset_server.load("textures/fx_freeze.png"),
+            fx_stun: asset_server.load("textures/fx_stun.png"),
+            fx_bleed: asset_server.load("textures/fx_bleed.png"),
+            fx_buff: asset_server.load("textures/fx_buff.png"),
+            fx_heal: asset_server.load("textures/fx_heal.png"),
+            font_regular: asset_server.load("fonts/font.ttf"),
+            font_bold: asset_server.load("fonts/font_bold.ttf"),
         }
     }
 }
@@ -634,6 +654,27 @@ impl GameFonts {
 }
 
 impl GameTextures {
+    pub fn get_effect_texture(&self, effect_id: &str) -> Handle<Image> {
+        let lower = effect_id.to_lowercase();
+        if lower.contains("shield") || lower.contains("khiên") || lower.contains("thuẫn") {
+            self.fx_shield.clone()
+        } else if lower.contains("burn") || lower.contains("hỏa") || lower.contains("bỏng") {
+            self.fx_burn.clone()
+        } else if lower.contains("poison") || lower.contains("độc") {
+            self.fx_poison.clone()
+        } else if lower.contains("freeze") || lower.contains("băng") {
+            self.fx_freeze.clone()
+        } else if lower.contains("stun") || lower.contains("choáng") {
+            self.fx_stun.clone()
+        } else if lower.contains("bleed") || lower.contains("máu") {
+            self.fx_bleed.clone()
+        } else if lower.contains("heal") || lower.contains("hồi") || lower.contains("holy") {
+            self.fx_heal.clone()
+        } else {
+            self.fx_buff.clone()
+        }
+    }
+
     #[allow(dead_code)]
     pub fn dummy() -> Self {
         Self {
@@ -650,6 +691,16 @@ impl GameTextures {
             lu_xun: Handle::default(),
             da_qiao_xiao_qiao: Handle::default(),
             jia_xu: Handle::default(),
+            fx_shield: Handle::default(),
+            fx_burn: Handle::default(),
+            fx_poison: Handle::default(),
+            fx_freeze: Handle::default(),
+            fx_stun: Handle::default(),
+            fx_bleed: Handle::default(),
+            fx_buff: Handle::default(),
+            fx_heal: Handle::default(),
+            font_regular: Handle::default(),
+            font_bold: Handle::default(),
         }
     }
 

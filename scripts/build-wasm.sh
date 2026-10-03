@@ -22,6 +22,7 @@ cp assets/fonts/*.ttf dist/wasm/assets/fonts/
 for texture in background knight archer mage assassin cleric zhao_yun huang_zhong zhuge_liang zhang_he hua_tuo cao_cao dian_wei guo_jia sun_ce lu_xun da_qiao_xiao_qiao jia_xu; do
     cp "assets/textures/${texture}.png" "dist/wasm/assets/textures/"
 done
+cp assets/textures/fx_*.png dist/wasm/assets/textures/
 
 cat > dist/wasm/assets/manifest.json <<'EOF'
 {

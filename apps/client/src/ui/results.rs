@@ -254,8 +254,22 @@ pub fn hide_placement_ui_on_battle(mut query: Query<&mut Visibility, With<Placem
     }
 }
 
-pub fn show_placement_ui_on_placement(mut query: Query<&mut Visibility, With<PlacementUiRoot>>) {
+pub fn show_placement_ui_on_placement(
+    mut query: Query<&mut Visibility, With<PlacementUiRoot>>,
+    _pvp_mgr: Res<crate::net::PvpManager>,
+) {
     for mut vis in query.iter_mut() {
-        *vis = Visibility::Inherited;
+        #[cfg(target_arch = "wasm32")]
+        {
+            *vis = Visibility::Hidden;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if _pvp_mgr.active {
+                *vis = Visibility::Hidden;
+            } else {
+                *vis = Visibility::Inherited;
+            }
+        }
     }
 }

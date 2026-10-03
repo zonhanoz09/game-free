@@ -35,12 +35,14 @@ pub struct EffectBadgeSlot {
 }
 
 #[derive(Component)]
+#[allow(dead_code)]
 pub struct EffectBadgeText {
     #[allow(dead_code)]
     pub index: usize,
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 pub struct BadgeInfo {
     pub label: &'static str,
     pub bg_color: Color,
@@ -48,6 +50,7 @@ pub struct BadgeInfo {
     pub width: f32,
 }
 
+#[allow(dead_code)]
 pub fn get_badge_info(effect_id: &str, name: &str) -> BadgeInfo {
     let lower_id = effect_id.to_lowercase();
     let lower_name = name.to_lowercase();
@@ -444,6 +447,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                 vis_parent.spawn((
                     Text2d::new(unit_class.name()),
                     TextFont {
+                        font: textures.font_bold.clone(),
                         font_size: 8.5,
                         ..default()
                     },
@@ -481,6 +485,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                         badge.spawn((
                             Text2d::new(unit_class.role_abbr()),
                             TextFont {
+                                font: textures.font_bold.clone(),
                                 font_size: 7.5,
                                 ..default()
                             },
@@ -503,6 +508,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                         .with_child((
                             Text2d::new("👑 BOSS"),
                             TextFont {
+                                font: textures.font_bold.clone(),
                                 font_size: 8.5,
                                 ..default()
                             },
@@ -526,6 +532,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                             star_badge.spawn((
                                 Text2d::new(crate::economy::StarLevel(star_level).badge()),
                                 TextFont {
+                                    font: textures.font_bold.clone(),
                                     font_size: 9.5,
                                     ..default()
                                 },
@@ -559,6 +566,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                     unit_class.name().to_string()
                 }),
                 TextFont {
+                    font: textures.font_bold.clone(),
                     font_size: if is_boss { 9.5 } else { 9.0 },
                     ..default()
                 },
@@ -572,7 +580,7 @@ pub fn spawn_unit_ext_bonus_with_initiative(
                 Transform::from_xyz(0.0, 0.0, 0.1),
             ));
 
-        // Overhead Status Effects Container
+        // Overhead Status Effects Container (Pure Icon Sprites)
         parent
             .spawn((
                 EffectIconsRoot2d,
@@ -581,27 +589,16 @@ pub fn spawn_unit_ext_bonus_with_initiative(
             ))
             .with_children(|fx_parent| {
                 for idx in 0..3 {
-                    fx_parent
-                        .spawn((
-                            EffectBadgeSlot { index: idx },
-                            Sprite {
-                                custom_size: Some(Vec2::new(32.0, 13.0)),
-                                color: Color::srgba(0.1, 0.1, 0.1, 0.9),
-                                ..default()
-                            },
-                            Transform::from_xyz(0.0, 0.0, 0.1),
-                            Visibility::Hidden,
-                        ))
-                        .with_child((
-                            EffectBadgeText { index: idx },
-                            Text2d::new(""),
-                            TextFont {
-                                font_size: 7.5,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                            Transform::from_xyz(0.0, 0.0, 0.1),
-                        ));
+                    fx_parent.spawn((
+                        EffectBadgeSlot { index: idx },
+                        Sprite {
+                            image: textures.fx_shield.clone(),
+                            custom_size: Some(Vec2::splat(16.0)),
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.1),
+                        Visibility::Hidden,
+                    ));
                 }
             });
 
@@ -828,6 +825,7 @@ pub fn spawn_bench_unit_bonus(
                 vis_parent.spawn((
                     Text2d::new(unit_class.name()),
                     TextFont {
+                        font: textures.font_bold.clone(),
                         font_size: 8.5,
                         ..default()
                     },
@@ -865,6 +863,7 @@ pub fn spawn_bench_unit_bonus(
                         badge.spawn((
                             Text2d::new(unit_class.role_abbr()),
                             TextFont {
+                                font: textures.font_bold.clone(),
                                 font_size: 7.5,
                                 ..default()
                             },
@@ -891,6 +890,7 @@ pub fn spawn_bench_unit_bonus(
                             star_badge.spawn((
                                 Text2d::new(crate::economy::StarLevel(star_level).badge()),
                                 TextFont {
+                                    font: textures.font_bold.clone(),
                                     font_size: 9.5,
                                     ..default()
                                 },
@@ -922,6 +922,7 @@ pub fn spawn_bench_unit_bonus(
                     unit_class.name().to_string()
                 }),
                 TextFont {
+                    font: textures.font_bold.clone(),
                     font_size: 9.0,
                     ..default()
                 },
@@ -933,7 +934,7 @@ pub fn spawn_bench_unit_bonus(
                 Transform::from_xyz(0.0, 0.0, 0.1),
             ));
 
-        // Overhead Status Effects Container
+        // Overhead Status Effects Container (Pure Icon Sprites)
         parent
             .spawn((
                 EffectIconsRoot2d,
@@ -942,27 +943,16 @@ pub fn spawn_bench_unit_bonus(
             ))
             .with_children(|fx_parent| {
                 for idx in 0..3 {
-                    fx_parent
-                        .spawn((
-                            EffectBadgeSlot { index: idx },
-                            Sprite {
-                                custom_size: Some(Vec2::new(32.0, 13.0)),
-                                color: Color::srgba(0.1, 0.1, 0.1, 0.9),
-                                ..default()
-                            },
-                            Transform::from_xyz(0.0, 0.0, 0.1),
-                            Visibility::Hidden,
-                        ))
-                        .with_child((
-                            EffectBadgeText { index: idx },
-                            Text2d::new(""),
-                            TextFont {
-                                font_size: 7.5,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                            Transform::from_xyz(0.0, 0.0, 0.1),
-                        ));
+                    fx_parent.spawn((
+                        EffectBadgeSlot { index: idx },
+                        Sprite {
+                            image: textures.fx_shield.clone(),
+                            custom_size: Some(Vec2::splat(16.0)),
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, 0.1),
+                        Visibility::Hidden,
+                    ));
                 }
             });
 
@@ -1123,60 +1113,51 @@ pub fn update_unit_health_bars(
 pub fn update_unit_effect_icons(
     units: Query<(&UnitStats, &ActiveStatusEffects, &Children), (With<Unit>, Without<DeadUnit>)>,
     roots: Query<&Children, With<EffectIconsRoot2d>>,
-    mut slots: Query<(&EffectBadgeSlot, &mut Transform, &mut Sprite, &mut Visibility, &Children), Without<EffectBadgeText>>,
-    mut text_query: Query<(&EffectBadgeText, &mut Text2d, &mut TextColor), Without<EffectBadgeSlot>>,
+    mut slots: Query<(&EffectBadgeSlot, &mut Transform, &mut Sprite, &mut Visibility)>,
+    textures: Res<GameTextures>,
 ) {
     for (stats, active_fx, children) in units.iter() {
-        let mut badges: Vec<BadgeInfo> = Vec::new();
+        let mut effect_ids: Vec<String> = Vec::new();
 
         // 1. Shield active
         if stats.shield > 0.0 {
-            badges.push(get_badge_info("shield", "Khiên"));
+            effect_ids.push("shield".to_string());
         }
 
         // 2. Active status effects
         for eff in &active_fx.effects {
-            if badges.len() >= 3 {
+            if effect_ids.len() >= 3 {
                 break;
             }
-            let info = get_badge_info(&eff.effect_id, &eff.name);
-            if !badges.iter().any(|b| b.label == info.label) {
-                badges.push(info);
+            if !effect_ids.iter().any(|id| id == &eff.effect_id) {
+                effect_ids.push(eff.effect_id.clone());
             }
         }
 
-        let count = badges.len();
+        let count = effect_ids.len();
 
         for child in children.iter() {
             if let Ok(slot_entities) = roots.get(*child) {
                 for &slot_entity in slot_entities.iter() {
-                    if let Ok((slot, mut transform, mut sprite, mut vis, slot_children)) = slots.get_mut(slot_entity) {
+                    if let Ok((slot, mut transform, mut sprite, mut vis)) = slots.get_mut(slot_entity) {
                         if slot.index < count {
-                            let badge = &badges[slot.index];
+                            let eff_id = &effect_ids[slot.index];
 
                             let offset_x = match count {
                                 1 => 0.0,
-                                2 => if slot.index == 0 { -18.0 } else { 18.0 },
+                                2 => if slot.index == 0 { -9.0 } else { 9.0 },
                                 _ => match slot.index {
-                                    0 => -26.0,
+                                    0 => -18.0,
                                     1 => 0.0,
-                                    _ => 26.0,
+                                    _ => 18.0,
                                 },
                             };
 
                             transform.translation.x = offset_x;
-                            sprite.custom_size = Some(Vec2::new(badge.width, 13.0));
-                            sprite.color = badge.bg_color;
+                            sprite.custom_size = Some(Vec2::splat(16.0));
+                            sprite.color = Color::WHITE;
+                            sprite.image = textures.get_effect_texture(eff_id);
                             *vis = Visibility::Inherited;
-
-                            for &text_child in slot_children.iter() {
-                                if let Ok((_, mut text, mut color)) = text_query.get_mut(text_child) {
-                                    if text.0 != badge.label {
-                                        *text = Text2d::new(badge.label);
-                                    }
-                                    color.0 = badge.text_color;
-                                }
-                            }
                         } else {
                             *vis = Visibility::Hidden;
                         }

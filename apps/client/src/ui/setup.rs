@@ -5,6 +5,8 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
     commands
         .spawn((
             PlacementUiRoot,
+            #[cfg(target_arch = "wasm32")]
+            Visibility::Hidden,
             Node {
                 position_type: PositionType::Absolute,
                 top: Val::Px(12.0),
@@ -113,6 +115,8 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
     commands
         .spawn((
             PlacementUiRoot,
+            #[cfg(target_arch = "wasm32")]
+            Visibility::Hidden,
             Node {
                 position_type: PositionType::Absolute,
                 top: Val::Px(82.0),
@@ -617,6 +621,8 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
     commands
         .spawn((
             PlacementUiRoot,
+            #[cfg(target_arch = "wasm32")]
+            Visibility::Hidden,
             Node {
                 position_type: PositionType::Absolute,
                 bottom: Val::Px(138.0),
@@ -669,6 +675,8 @@ pub fn setup_ui(mut commands: Commands, textures: Res<GameTextures>, fonts: Res<
                 ..default()
             },
             PlacementUiRoot,
+            #[cfg(target_arch = "wasm32")]
+            Visibility::Hidden,
         ))
         .with_children(|parent| {
             // 4 Shop Cards Row

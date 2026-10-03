@@ -226,12 +226,16 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             current_room = Some(code.clone());
                             current_role = Some("guest".to_string());
 
+                            let host_avatar = room.host.avatar.clone();
                             let to_host = serde_json::json!({
                                 "type": "ROOM_JOINED",
                                 "room_code": code,
                                 "role": "host",
                                 "player_name": host_name,
-                                "opponent_name": player_name
+                                "opponent_name": player_name,
+                                "opponent_avatar": avatar,
+                                "host_avatar": host_avatar,
+                                "round": room.round
                             });
                             let _ = room.host.tx.send(Message::Text(to_host.to_string().into()));
 
@@ -240,7 +244,10 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                                 "room_code": code,
                                 "role": "guest",
                                 "player_name": player_name,
-                                "opponent_name": host_name
+                                "opponent_name": host_name,
+                                "opponent_avatar": host_avatar,
+                                "host_avatar": host_avatar,
+                                "round": room.round
                             });
                             let _ = tx.send(Message::Text(to_guest.to_string().into()));
                             println!("[RUST WS] {} joined room {}", player_name, code);
@@ -299,12 +306,16 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             authority: None,
                         };
 
+                        let host_avatar = room.host.avatar.clone();
                         let to_host = serde_json::json!({
                             "type": "ROOM_JOINED",
                             "room_code": code,
                             "role": "host",
                             "player_name": host_name,
-                            "opponent_name": player_name
+                            "opponent_name": player_name,
+                            "opponent_avatar": avatar,
+                            "host_avatar": host_avatar,
+                            "round": room.round
                         });
                         let _ = room.host.tx.send(Message::Text(to_host.to_string().into()));
 
@@ -313,7 +324,10 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             "room_code": code,
                             "role": "guest",
                             "player_name": player_name,
-                            "opponent_name": host_name
+                            "opponent_name": host_name,
+                            "opponent_avatar": host_avatar,
+                            "host_avatar": host_avatar,
+                            "round": room.round
                         });
                         let _ = tx.send(Message::Text(to_guest.to_string().into()));
 
@@ -347,6 +361,48 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             let _ = tx.send(Message::Text(res.to_string().into()));
                         }
                     }
+                }
+
+                "LEAVE_ROOM" | "CANCEL_ROOM" => {
+                    let room_code_hint = parsed.get("room_code").and_then(|v| v.as_str());
+                    let mut rooms_guard = state.rooms.write().await;
+                    if let Some((code, role)) = find_room_and_role(
+                        &rooms_guard,
+                        room_code_hint,
+                        &current_room,
+                        &current_role,
+                        &tx,
+                    ) {
+                        if role == "host" {
+                            if let Some(room) = rooms_guard.remove(&code) {
+                                if let Some(ref g) = room.guest {
+                                    let _ = g.tx.send(Message::Text(
+                                        serde_json::json!({
+                                            "type": "ROOM_CLOSED",
+                                            "message": "Chủ phòng đã đóng phòng."
+                                        })
+                                        .to_string()
+                                        .into(),
+                                    ));
+                                }
+                            }
+                        } else if let Some(room) = rooms_guard.get_mut(&code) {
+                            room.guest = None;
+                            let _ = room.host.tx.send(Message::Text(
+                                serde_json::json!({
+                                    "type": "OPPONENT_LEFT",
+                                    "message": "Đối thủ đã rời khỏi phòng."
+                                })
+                                .to_string()
+                                .into(),
+                            ));
+                        }
+                        current_room = None;
+                        current_role = None;
+                    }
+                    let _ = tx.send(Message::Text(
+                        serde_json::json!({ "type": "ROOM_LEFT" }).to_string().into(),
+                    ));
                 }
 
                 "PLAYER_READY" => {

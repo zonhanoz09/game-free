@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3v3 Tactical Arena - Đấu Trường Chiến Thuật</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>⚔️</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             user-select: none;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         body, html {
@@ -618,6 +621,68 @@
             display: none;
             flex-direction: column;
             justify-content: space-between;
+        }
+
+        .battle-bottom-bar {
+            height: 64px;
+            background: linear-gradient(0deg, rgba(15, 23, 42, 0.96) 0%, rgba(15, 23, 42, 0.85) 75%, transparent 100%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-top: 1px solid rgba(51, 65, 85, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: auto;
+            gap: 16px;
+        }
+
+        .battle-active-hand-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            max-width: 580px;
+        }
+
+        .effect-icon-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1.5px solid #6366f1;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        .effect-icon-chip:hover {
+            transform: scale(1.25);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+            border-color: #facc15;
+            z-index: 10;
+        }
+
+        #effect-tooltip-popup {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid #38bdf8;
+            border-radius: 12px;
+            padding: 12px 16px;
+            width: 270px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.35);
+            transition: opacity 0.12s ease;
         }
 
         .battle-top-bar {
@@ -3072,6 +3137,37 @@
                 </div>
             </div>
         </div>
+
+        <!-- Bottom Preparation & Ready Command Bar -->
+        <div class="battle-bottom-bar">
+            <!-- Left: Active Lineup Deck Hand with Effect Badges -->
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+                    <span>🛡️ ĐỘI HÌNH RA TRẬN</span>
+                    <span id="battle-hand-count" style="color:#facc15; font-size:0.75rem;">(3 Tướng)</span>
+                </div>
+                <div id="battle-active-hand" class="battle-active-hand-container">
+                    <!-- Populated dynamically by window.renderActiveBattleHand() -->
+                </div>
+            </div>
+
+            <!-- Center: Status & Round Indicator -->
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-width:240px;">
+                <div id="round-indicator" style="font-size:1.05rem; font-weight:900; color:#facc15; letter-spacing:1px; text-shadow:0 0 12px rgba(250,204,21,0.4);">
+                    VÒNG 1
+                </div>
+                <div id="ready-indicator" style="font-size:0.78rem; font-weight:700; color:#38bdf8; background:rgba(15,23,42,0.85); padding:4px 14px; border-radius:20px; border:1px solid #1e293b; box-shadow:0 2px 8px rgba(0,0,0,0.4);">
+                    ⏳ Hãy kiểm tra đội hình và bấm SẴN SÀNG
+                </div>
+            </div>
+
+            <!-- Right: Ready / Start Battle Action Button -->
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button id="btn-battle-ready" class="btn btn-primary" onclick="window.clickReadyBattle()" style="padding:10px 24px; font-size:0.95rem; font-weight:800; border-radius:10px; box-shadow:0 0 16px rgba(56,189,248,0.4); text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:8px;">
+                    <span>⚔️ SẴN SÀNG (XUẤT TRẬN)</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- MATCH RESULT MODAL (ĐÁNH 1 TRẬN RỒI THOÁT) -->
@@ -3123,6 +3219,78 @@
             </button>
         </div>
     </div>
+
+    <!-- QUICK MATCH SEARCHING MODAL -->
+    <div id="quick-match-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card" style="max-width:400px; text-align:center; padding:32px 24px;">
+            <div style="font-size:3.5rem; margin-bottom:12px; animation: pulse 1.5s infinite;">🔍</div>
+            <h3 style="margin:0 0 8px 0; color:#38bdf8; font-size:1.3rem; font-weight:800;">ĐANG GHÉP TRẬN ONLINE...</h3>
+            <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:20px;">Hệ thống đang ghép bạn với kỳ thủ có cùng điểm xếp hạng MMR.</p>
+            <div style="display:inline-flex; align-items:center; gap:8px; background:#0f172a; border:1px solid #334155; padding:8px 20px; border-radius:20px; font-weight:800; color:#facc15; font-size:1.15rem; margin-bottom:24px;">
+                <span>⏱️</span> <span id="quick-match-timer">00:00</span>
+            </div>
+            <div>
+                <button class="btn btn-danger" onclick="window.cancelQuickMatch()" style="width:100%; padding:11px; font-weight:700;">
+                    ❌ HỦY TÌM TRẬN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROOM WAITING MODAL (CHỜ ĐỐI THỦ VÀO PHÒNG) -->
+    <div id="room-waiting-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card" style="max-width:440px; text-align:center; padding:32px 24px;">
+            <div style="font-size:3.0rem; margin-bottom:10px;">🏠</div>
+            <h3 style="margin:0 0 6px 0; color:#facc15; font-size:1.35rem; font-weight:800;">PHÒNG ĐẤU ĐÃ TẠO</h3>
+            <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:16px;">Gửi mã phòng này cho bạn bè để cùng vào thi đấu!</p>
+
+            <div style="background:#0f172a; border:2px dashed #6366f1; border-radius:12px; padding:16px; margin-bottom:20px;">
+                <div style="font-size:0.75rem; color:#818cf8; font-weight:700; text-transform:uppercase; margin-bottom:4px;">MÃ PHÒNG (4 KÝ TỰ)</div>
+                <div id="room-waiting-code" style="font-size:2.4rem; font-weight:900; letter-spacing:8px; color:#38bdf8; font-family:monospace;">ABCD</div>
+                <button class="btn btn-sm" onclick="window.copyRoomWaitingCode()" style="margin-top:10px; background:#1e1b4b; border-color:#6366f1; color:#c7d2fe; font-size:0.78rem;">
+                    📋 Sao Chép Mã Phòng
+                </button>
+            </div>
+
+            <div style="display:flex; justify-content:space-around; align-items:center; background:#1e293b; border-radius:10px; padding:12px; margin-bottom:24px;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <span id="room-host-avatar" style="font-size:1.8rem;">🛡️</span>
+                    <span id="room-host-name" style="font-size:0.8rem; font-weight:800; color:#38bdf8;">Bạn (Chủ phòng)</span>
+                    <span style="font-size:0.65rem; color:#4ade80; font-weight:700;">🟢 Đã vào phòng</span>
+                </div>
+                <div style="font-size:1.2rem; color:#64748b; font-weight:900;">VS</div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <span style="font-size:1.8rem; opacity:0.4;">👤</span>
+                    <span style="font-size:0.8rem; font-weight:700; color:#94a3b8;">Đối thủ...</span>
+                    <span style="font-size:0.65rem; color:#facc15; font-weight:700;">⏳ Đang đợi...</span>
+                </div>
+            </div>
+
+            <div>
+                <button class="btn btn-danger" onclick="window.cancelRoomWaiting()" style="width:100%; padding:11px; font-weight:700;">
+                    ❌ HỦY PHÒNG & QUAY LẠI
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING EFFECT TOOLTIP POPUP (HOVER CHI TIẾT HIỆU ỨNG) -->
+    <div id="effect-tooltip-popup">
+        <div style="display:flex; align-items:center; gap:8px; border-bottom:1px solid #334155; padding-bottom:6px;">
+            <span id="fx-tooltip-icon" style="font-size:1.3rem;">🔥</span>
+            <div style="flex:1;">
+                <div id="fx-tooltip-name" style="font-size:0.85rem; font-weight:900; color:#f8fafc;">Thiêu Đốt</div>
+                <div id="fx-tooltip-cat" style="font-size:0.68rem; color:#f97316; font-weight:700;">Sát Thương Theo Lượt</div>
+            </div>
+        </div>
+        <div id="fx-tooltip-desc" style="font-size:0.75rem; color:#cbd5e1; line-height:1.35;">
+            Mỗi hiệp chịu sát thương bằng 8% công kích của người thi triển.
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:3px 8px; border-radius:6px; margin-top:2px;">
+            <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">Tác Động:</span>
+            <span id="fx-tooltip-stat" style="font-size:0.68rem; color:#facc15; font-weight:700;">-8% HP/Hiệp</span>
+        </div>
+    </div>
     <div id="canvas-wrapper">
         <div id="loading-screen">
             <div class="spinner"></div>
@@ -3133,7 +3301,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261003133316-3202f0a3';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261003143921-1d529955';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -4758,6 +4926,36 @@
                     avatar: currentUser.avatar || 'knight',
                     elo: currentUser.elo || 1000
                 });
+                closeAllModals();
+                const qmModal = document.getElementById('quick-match-modal');
+                const timerEl = document.getElementById('quick-match-timer');
+                if (qmModal) qmModal.style.display = 'flex';
+                let elapsed = 0;
+                if (timerEl) timerEl.textContent = '00:00';
+                if (window._quickMatchTimer) clearInterval(window._quickMatchTimer);
+                window._quickMatchTimer = setInterval(() => {
+                    elapsed++;
+                    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                    const s = String(elapsed % 60).padStart(2, '0');
+                    if (timerEl) timerEl.textContent = `${m}:${s}`;
+                }, 1000);
+            }
+
+            cancelMatch() {
+                this.send({ type: 'CANCEL_MATCH' });
+                const modal = document.getElementById('quick-match-modal');
+                if (modal) modal.style.display = 'none';
+                if (window._quickMatchTimer) clearInterval(window._quickMatchTimer);
+                showRoomBadge('Đã hủy tìm trận.');
+            }
+
+            leaveRoom() {
+                this.send({ type: 'LEAVE_ROOM', room_code: pvpState.roomCode });
+                pvpState.active = false;
+                pvpState.roomCode = null;
+                const modal = document.getElementById('room-waiting-modal');
+                if (modal) modal.style.display = 'none';
+                showRoomBadge('Đã rời phòng đấu.');
             }
 
             setReady(lineup) {
@@ -4808,8 +5006,20 @@
                             pvpState.round = 1;
 
                             showRoomBadge(`Phòng: ${msg.room_code} (Đang chờ đối thủ...)`);
-                            showMatchHud();
-                            updateHudLabels(msg.player_name, 'Đang chờ đối thủ...');
+                            closeAllModals();
+
+                            // Open dedicated room waiting modal
+                            const roomWaitModal = document.getElementById('room-waiting-modal');
+                            const roomCodeEl = document.getElementById('room-waiting-code');
+                            const roomHostName = document.getElementById('room-host-name');
+                            const roomHostAvatar = document.getElementById('room-host-avatar');
+                            if (roomCodeEl) roomCodeEl.textContent = msg.room_code;
+                            if (roomHostName) roomHostName.textContent = currentUser.displayName || currentUser.username;
+                            if (roomHostAvatar) {
+                                const avKey = (currentUser.avatar || 'knight').replace('avatar_', '');
+                                roomHostAvatar.textContent = AVATAR_ICONS[avKey] || '🛡️';
+                            }
+                            if (roomWaitModal) roomWaitModal.style.display = 'flex';
 
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify({
@@ -4820,8 +5030,6 @@
                                     opponent_name: 'Đang đợi đối thủ...'
                                 }));
                             }
-                            closeAllModals();
-                            alert(`🏠 Bạn đã tạo phòng "${msg.room_code}"! Hãy gửi mã phòng này cho bạn bè.`);
                             break;
 
                         case 'ROOM_JOINED':
@@ -4831,11 +5039,28 @@
                             pvpState.role = msg.role || pvpState.role || 'guest';
                             pvpState.round = msg.round || 1;
 
+                            // Close waiting modals and timer
+                            closeAllModals();
+                            if (window._quickMatchTimer) clearInterval(window._quickMatchTimer);
+
                             showRoomBadge(`Phòng: ${msg.room_code} vs ${msg.opponent_name}`);
                             showMatchHud();
                             showHeroHud(currentUser.avatar, msg.opponent_name);
                             updateHudLabels(msg.player_name, msg.opponent_name);
                             window.enterBattleScreen(false, msg.opponent_name, msg.opponent_avatar);
+
+                            // Reset ready button state for new battle
+                            const readyBtnEl = document.getElementById('btn-battle-ready');
+                            const rIndEl = document.getElementById('ready-indicator');
+                            if (readyBtnEl) {
+                                readyBtnEl.style.display = 'inline-flex';
+                                readyBtnEl.disabled = false;
+                                readyBtnEl.innerHTML = '<span>⚔️ SẴN SÀNG (XUẤT TRẬN)</span>';
+                                readyBtnEl.style.opacity = '1.0';
+                            }
+                            if (rIndEl) {
+                                rIndEl.textContent = '⏳ Hãy kiểm tra đội hình và bấm SẴN SÀNG';
+                            }
 
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify({
@@ -4846,7 +5071,6 @@
                                     opponent_name: msg.opponent_name
                                 }));
                             }
-                            closeAllModals();
                             break;
 
                         case 'OPPONENT_READY':
@@ -4858,13 +5082,36 @@
                             showRoomBadge('⚡ Đang tìm đối thủ...');
                             break;
 
+                        case 'MATCH_CANCELED':
+                            const qmModal = document.getElementById('quick-match-modal');
+                            if (qmModal) qmModal.style.display = 'none';
+                            if (window._quickMatchTimer) clearInterval(window._quickMatchTimer);
+                            showRoomBadge('Đã hủy tìm trận.');
+                            break;
+
+                        case 'ROOM_CLOSED':
+                            closeAllModals();
+                            alert(msg.message || 'Phòng đã bị đóng.');
+                            window.exitMatchToLobby();
+                            break;
+
+                        case 'OPPONENT_LEFT':
+                            const rIndLeft = document.getElementById('ready-indicator');
+                            if (rIndLeft) rIndLeft.textContent = '⚠️ Đối thủ đã rời phòng!';
+                            alert(msg.message || 'Đối thủ đã rời khỏi phòng.');
+                            break;
+
                         case 'START_ROUND':
                             console.log('[RUST WS] ROUND START:', msg);
                             updateHp(msg.player_hp, msg.opponent_hp);
                             const roundInd = document.getElementById('round-indicator');
                             const readyInd = document.getElementById('ready-indicator');
+                            const roundBadge = document.getElementById('battle-round-badge');
+                            const activeReadyBtn = document.getElementById('btn-battle-ready');
                             if (roundInd) roundInd.textContent = `VÒNG ${msg.round}`;
+                            if (roundBadge) roundBadge.textContent = `VÒNG ${msg.round}`;
                             if (readyInd) readyInd.textContent = '⚔️ Đang giao chiến!';
+                            if (activeReadyBtn) activeReadyBtn.style.display = 'none';
 
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify(msg));
@@ -4874,7 +5121,14 @@
                         case 'UPDATE_MATCH_HP':
                             updateHp(msg.player_hp, msg.opponent_hp);
                             const rInd2 = document.getElementById('ready-indicator');
+                            const rBtnNext = document.getElementById('btn-battle-ready');
                             if (rInd2) rInd2.textContent = 'Bày trận hiệp tiếp theo';
+                            if (rBtnNext) {
+                                rBtnNext.style.display = 'inline-flex';
+                                rBtnNext.disabled = false;
+                                rBtnNext.innerHTML = '<span>⚔️ SẴN SÀNG HIỆP TIẾP</span>';
+                                rBtnNext.style.opacity = '1.0';
+                            }
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify(msg));
                             }
@@ -4988,8 +5242,126 @@
             }
         };
 
+        // ==========================================
+        // MASTER STATUS EFFECT DEFINITIONS
+        // ==========================================
+        const STATUS_EFFECT_DEFINITIONS = {
+            eff_stun: { name: 'Choáng', icon: '⚡', category: 'Khống Chế', desc: 'Mục tiêu bị tê liệt hoàn toàn, mất lượt hành động trong 1 hiệp.', stat: 'Khóa hành động (1 hiệp)', color: '#facc15' },
+            eff_burn: { name: 'Thiêu Đốt', icon: '🔥', category: 'Sát Thương Lửa (DoT)', desc: 'Mỗi hiệp chịu sát thương lửa bằng 8% công của người thi triển. Tối đa 5 tầng.', stat: '-8% HP mỗi hiệp', color: '#f97316' },
+            eff_freeze: { name: 'Đóng Băng', icon: '❄️', category: 'Khống Chế & Chậm', desc: 'Giảm 50% tốc độ hành động và khóa nộ khí trong 2 hiệp.', stat: '-50% Tốc độ & Khóa Nộ', color: '#38bdf8' },
+            eff_poison: { name: 'Trúng Độc', icon: '☠️', category: 'Độc Tố (DoT)', desc: 'Gây mất máu liên tục theo hiệp và làm giảm 50% khả năng hồi máu.', stat: '-6% HP & -50% Hồi phục', color: '#4ade80' },
+            eff_bleed: { name: 'Chảy Máu', icon: '🩸', category: 'Sát Thương Sâu', desc: 'Mỗi khi mục tiêu hành động sẽ bị tổn thương thêm 5% HP tối đa.', stat: '-5% HP khi ra đòn', color: '#ef4444' },
+            eff_atk_up: { name: 'Cuồng Nộ', icon: '⚔️', category: 'Tăng Cường (Buff)', desc: 'Gia tăng 25% lực công kích cơ bản trong 2 hiệp đấu.', stat: '+25% Sức mạnh tấn công', color: '#fb923c' },
+            eff_shield: { name: 'Lá Chắn', icon: '🛡️', category: 'Hộ Thể (Shield)', desc: 'Tạo lớp khiên thần bảo hộ hấp thụ tối đa 300 điểm sát thương.', stat: 'Chặn 300 Sát thương', color: '#60a5fa' },
+            eff_holy_regen: { name: 'Thần Ân Trị Liệu', icon: '✨', category: 'Hồi Phục (HoT)', desc: 'Mỗi hiệp tự động hồi phục 10% lượng máu tối đa cho bản thân và đồng minh.', stat: '+10% HP tối đa/hiệp', color: '#fde047' },
+            eff_armor_break: { name: 'Phá Giáp', icon: '💥', category: 'Suy Yếu (Debuff)', desc: 'Bào mòn và làm giảm 30% chỉ số phòng ngự của mục tiêu.', stat: '-30% Giáp phòng ngự', color: '#fb7185' },
+            shield: { name: 'Lá Chắn', icon: '🛡️', category: 'Hộ Thể (Shield)', desc: 'Tạo lớp khiên thần bảo hộ hấp thụ sát thương.', stat: 'Chặn sát thương', color: '#60a5fa' },
+            burn: { name: 'Thiêu Đốt', icon: '🔥', category: 'Sát Thương Lửa', desc: 'Mỗi hiệp chịu sát thương thiêu đốt liên tục.', stat: 'Mất máu theo hiệp', color: '#f97316' },
+            poison: { name: 'Trúng Độc', icon: '☠️', category: 'Độc Tố', desc: 'Mất máu theo hiệp và giảm hồi phục.', stat: 'Mất máu & giảm hồi', color: '#4ade80' },
+            freeze: { name: 'Đóng Băng', icon: '❄️', category: 'Khống Chế', desc: 'Đóng băng hành động và giảm tốc độ.', stat: 'Giảm 50% Tốc độ', color: '#38bdf8' },
+            stun: { name: 'Choáng', icon: '⚡', category: 'Khống Chế', desc: 'Không thể ra đòn hay tích nộ.', stat: 'Mất lượt', color: '#facc15' },
+            bleed: { name: 'Chảy Máu', icon: '🩸', category: 'Sát Thương', desc: 'Mất máu mỗi khi hành động.', stat: 'Mất máu khi ra đòn', color: '#ef4444' }
+        };
+
+        window.showEffectTooltip = function(event, effectId) {
+            const popup = document.getElementById('effect-tooltip-popup');
+            if (!popup) return;
+            const eff = STATUS_EFFECT_DEFINITIONS[effectId] || {
+                name: 'Hiệu Ứng Trận Đấu',
+                icon: '✨',
+                category: 'Trạng Thái',
+                desc: 'Kích hoạt hiệu ứng đặc biệt trong trận chiến.',
+                stat: 'Tác động giao tranh',
+                color: '#38bdf8'
+            };
+
+            const tIcon = document.getElementById('fx-tooltip-icon');
+            const tName = document.getElementById('fx-tooltip-name');
+            const tCat = document.getElementById('fx-tooltip-cat');
+            const tDesc = document.getElementById('fx-tooltip-desc');
+            const tStat = document.getElementById('fx-tooltip-stat');
+
+            if (tIcon) tIcon.textContent = eff.icon;
+            if (tName) tName.textContent = eff.name;
+            if (tCat) {
+                tCat.textContent = eff.category;
+                tCat.style.color = eff.color || '#38bdf8';
+            }
+            if (tDesc) tDesc.textContent = eff.desc;
+            if (tStat) tStat.textContent = eff.stat || 'Ảnh hưởng chỉ số';
+            popup.style.borderColor = eff.color || '#38bdf8';
+
+            popup.style.display = 'flex';
+            window.moveEffectTooltip(event);
+        };
+
+        window.moveEffectTooltip = function(event) {
+            const popup = document.getElementById('effect-tooltip-popup');
+            if (!popup || popup.style.display === 'none') return;
+            const x = event.clientX;
+            const y = event.clientY;
+            const pad = 14;
+            const w = popup.offsetWidth || 270;
+            const h = popup.offsetHeight || 135;
+
+            let posX = x + pad;
+            let posY = y - h - pad;
+            if (posX + w > window.innerWidth) posX = x - w - pad;
+            if (posY < 10) posY = y + pad;
+
+            popup.style.left = `${posX}px`;
+            popup.style.top = `${posY}px`;
+        };
+
+        window.hideEffectTooltip = function() {
+            const popup = document.getElementById('effect-tooltip-popup');
+            if (popup) popup.style.display = 'none';
+        };
+
+        window.clickReadyBattle = function() {
+            const readyBtn = document.getElementById('btn-battle-ready');
+            const rInd = document.getElementById('ready-indicator');
+            if (readyBtn) {
+                readyBtn.disabled = true;
+                readyBtn.innerHTML = '<span>⏳ ĐÃ KHÓA TRẬN</span>';
+                readyBtn.style.opacity = '0.7';
+            }
+            if (rInd) {
+                rInd.textContent = '⏳ Bạn đã khóa trận (Chờ đối thủ...)';
+            }
+            if (typeof js_to_rust_pvp === 'function') {
+                js_to_rust_pvp(JSON.stringify({ type: 'START_BATTLE' }));
+            }
+            if (pvpState.active && window._rust_pvp) {
+                let lineup = [];
+                const allCards = (currentUser && currentUser.cards) ? currentUser.cards : [];
+                if (activeLineup && activeLineup.some(Boolean)) {
+                    activeLineup.forEach((cardId, pos) => {
+                        if (cardId) {
+                            const c = allCards.find(card => card.id === cardId);
+                            const heroClass = c ? (c.hero_class || c.card_id) : 'Knight';
+                            const tier = Math.floor(pos / 3);
+                            const row = pos % 3;
+                            const col = 2 - Math.min(2, tier);
+                            lineup.push({
+                                col: col,
+                                row: row,
+                                class: heroClass,
+                                star_level: c ? (c.star_level || 1) : 1
+                            });
+                        }
+                    });
+                }
+                if (lineup.length === 0) {
+                    lineup.push({ col: 2, row: 0, class: 'zhao_yun', star_level: 1 });
+                }
+                window._rust_pvp.setReady(lineup);
+            }
+        };
+
         window.renderActiveBattleHand = function() {
             const handContainer = document.getElementById('battle-active-hand');
+            const countSpan = document.getElementById('battle-hand-count');
             if (!handContainer) return;
 
             const allCards = (currentUser && currentUser.cards && currentUser.cards.length > 0) ? currentUser.cards : [];
@@ -5002,23 +5374,56 @@
             }
             if (cards.length === 0) {
                 cards = [
-                    { card_id: 'Knight', hero_class: 'Knight', star_level: 1, is_foil: false },
-                    { card_id: 'Archer', hero_class: 'Archer', star_level: 1, is_foil: false },
-                    { card_id: 'Assassin', hero_class: 'Assassin', star_level: 1, is_foil: false }
+                    { card_id: 'zhao_yun', hero_class: 'zhao_yun', star_level: 1, is_foil: false },
+                    { card_id: 'huang_zhong', hero_class: 'huang_zhong', star_level: 1, is_foil: false },
+                    { card_id: 'zhuge_liang', hero_class: 'zhuge_liang', star_level: 1, is_foil: false }
                 ];
             }
 
+            if (countSpan) countSpan.textContent = `(${cards.length} Tướng)`;
+
+            const CLASS_SAMPLE_EFFECTS = {
+                zhao_yun: ['eff_atk_up'],
+                huang_zhong: ['eff_burn'],
+                zhuge_liang: ['eff_freeze', 'eff_stun'],
+                cao_cao: ['eff_atk_up', 'eff_shield'],
+                dian_wei: ['eff_shield'],
+                guo_jia: ['eff_freeze'],
+                sun_ce: ['eff_bleed'],
+                lu_xun: ['eff_burn'],
+                da_qiao_xiao_qiao: ['eff_holy_regen'],
+                zhang_he_yan_liang: ['eff_bleed'],
+                hua_tuo: ['eff_holy_regen'],
+                jia_xu: ['eff_poison'],
+                Knight: ['eff_atk_up'],
+                Archer: ['eff_burn'],
+                Mage: ['eff_freeze'],
+                Assassin: ['eff_bleed'],
+                Cleric: ['eff_holy_regen']
+            };
+
             handContainer.innerHTML = cards.map(c => {
-                const def = CARD_DEFINITIONS[c.hero_class || c.card_id] || { name: c.hero_class || c.card_id, icon: '⚔️', role: 'Chiến Binh', rarity: 'Common' };
+                const heroKey = c.hero_class || c.card_id || 'Knight';
+                const def = CARD_DEFINITIONS[heroKey] || { name: heroKey, icon: '⚔️', role: 'Chiến Binh', rarity: 'Common' };
                 const stars = '★'.repeat(c.star_level || 1);
                 const isFoil = c.is_foil ? 'foil' : '';
                 const rLower = (def.rarity || 'Common').toLowerCase();
+                const effects = CLASS_SAMPLE_EFFECTS[heroKey] || ['eff_shield'];
+
+                const effectChipsHtml = effects.map(effId => {
+                    const eff = STATUS_EFFECT_DEFINITIONS[effId] || { icon: '✨', name: 'Hiệu Ứng' };
+                    return `<span class="effect-icon-chip" onmouseenter="window.showEffectTooltip(event, '${effId}')" onmousemove="window.moveEffectTooltip(event)" onmouseleave="window.hideEffectTooltip()" title="Di chuột để xem hiệu ứng">${eff.icon}</span>`;
+                }).join('');
+
                 return `
-                    <div class="active-hand-card ${isFoil} rarity-${rLower}" title="${def.name} (${stars}) - ${def.role}">
-                        <span style="font-size:1.3rem;">${def.icon}</span>
-                        <div>
+                    <div class="active-hand-card ${isFoil} rarity-${rLower}">
+                        <span style="font-size:1.35rem;">${def.icon}</span>
+                        <div style="flex:1;">
                             <div style="font-size:0.75rem; font-weight:800; color:#f1f5f9;">${def.name}</div>
                             <div style="font-size:0.68rem; color:#facc15; font-weight:700;">${stars} <span style="color:#94a3b8; font-size:0.65rem;">• ${def.role}</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:4px; margin-left:6px;">
+                            ${effectChipsHtml}
                         </div>
                     </div>
                 `;
@@ -5163,8 +5568,41 @@
             }
         };
 
+        window.cancelQuickMatch = function() {
+            if (window._rust_pvp) {
+                window._rust_pvp.cancelMatch();
+            }
+            const modal = document.getElementById('quick-match-modal');
+            if (modal) modal.style.display = 'none';
+            if (window._quickMatchTimer) clearInterval(window._quickMatchTimer);
+        };
+
+        window.cancelRoomWaiting = function() {
+            if (window._rust_pvp) {
+                window._rust_pvp.leaveRoom();
+            }
+            const modal = document.getElementById('room-waiting-modal');
+            if (modal) modal.style.display = 'none';
+        };
+
+        window.copyRoomWaitingCode = function() {
+            const codeEl = document.getElementById('room-waiting-code');
+            if (codeEl && codeEl.textContent) {
+                navigator.clipboard.writeText(codeEl.textContent.trim()).then(() => {
+                    alert(`Đã sao chép mã phòng: ${codeEl.textContent.trim()}`);
+                }).catch(() => {
+                    prompt('Mã phòng của bạn:', codeEl.textContent.trim());
+                });
+            }
+        };
+
         window.startPveBattle = function() {
             window.enterBattleScreen(true, '🤖 AI Thủ Lĩnh Arena', '👹');
+            const readyBtn = document.getElementById('btn-battle-ready');
+            const rInd = document.getElementById('ready-indicator');
+            if (readyBtn) readyBtn.style.display = 'none';
+            if (rInd) rInd.textContent = '⚔️ Đang giao chiến!';
+
             if (typeof js_to_rust_pvp === 'function') {
                 js_to_rust_pvp(JSON.stringify({ type: 'START_BATTLE' }));
             }
