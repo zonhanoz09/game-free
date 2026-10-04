@@ -296,8 +296,7 @@ pub async fn handle_lobby_message(
                                     ));
                                 }
                             }
-                        } else if let Some(room) = rooms_guard.get_mut(&code) {
-                            room.guest = None;
+                        } else if let Some(room) = rooms_guard.remove(&code) {
                             let _ = room.host.tx.send(Message::Text(
                                 serde_json::json!({
                                     "type": "OPPONENT_LEFT",
@@ -306,6 +305,17 @@ pub async fn handle_lobby_message(
                                 .to_string()
                                 .into(),
                             ));
+                            let end_message = serde_json::json!({
+                                "type": "MATCH_END",
+                                "winner": room.host.name,
+                                "winner_role": "host",
+                                "player_hp": 100,
+                                "opponent_hp": 0,
+                                "gold_reward": 80,
+                                "consolation_gold": 25
+                            })
+                            .to_string();
+                            let _ = room.host.tx.send(Message::Text(end_message.into()));
                         }
                         *current_room = None;
                         *current_role = None;

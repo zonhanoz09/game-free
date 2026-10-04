@@ -150,7 +150,7 @@ pub async fn handle_ws_client(socket: WebSocket, state: Arc<AppState>) {
                             .to_string()
                             .into(),
                     ));
-                    room.guest = None;
+                    rooms_guard.remove(&code);
                 }
             }
         }

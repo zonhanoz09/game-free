@@ -218,46 +218,29 @@ pub async fn handle_battle_message(
                                                         100,
                                                     )
                                                 };
-                                            let host_hp_message = serde_json::json!({
-                                                "type": "UPDATE_MATCH_HP",
-                                                "player_hp": host_hp,
-                                                "opponent_hp": guest_hp,
-                                                "damage_dealt": 100
-                                            })
-                                            .to_string();
-                                            let _ = room
-                                                .host
-                                                .tx
-                                                .send(Message::Text(host_hp_message.into()));
-                                            if let Some(guest) = &room.guest {
-                                                let guest_hp_message = serde_json::json!({
-                                                    "type": "UPDATE_MATCH_HP",
-                                                    "player_hp": guest_hp,
-                                                    "opponent_hp": host_hp,
-                                                    "damage_dealt": 100
-                                                })
-                                                .to_string();
-                                                let _ = guest
-                                                    .tx
-                                                    .send(Message::Text(guest_hp_message.into()));
-                                            }
-
-                                            let end_message = serde_json::json!({
+                                            let host_end = serde_json::json!({
                                                 "type": "MATCH_END",
                                                 "winner": winner_name,
                                                 "winner_role": winner_role,
+                                                "player_hp": host_hp,
+                                                "opponent_hp": guest_hp,
                                                 "gold_reward": 80,
                                                 "consolation_gold": 25
-                                            })
-                                            .to_string();
-                                            let _ = room.host.tx.send(Message::Text(
-                                                end_message.clone().into(),
-                                            ));
+                                            }).to_string();
+                                            let _ = room.host.tx.send(Message::Text(host_end.into()));
                                             if let Some(guest) = &room.guest {
-                                                let _ = guest
-                                                    .tx
-                                                    .send(Message::Text(end_message.into()));
+                                                let guest_end = serde_json::json!({
+                                                    "type": "MATCH_END",
+                                                    "winner": winner_name,
+                                                    "winner_role": winner_role,
+                                                    "player_hp": guest_hp,
+                                                    "opponent_hp": host_hp,
+                                                    "gold_reward": 80,
+                                                    "consolation_gold": 25
+                                                }).to_string();
+                                                let _ = guest.tx.send(Message::Text(guest_end.into()));
                                             }
+
                                             let guest_id = room
                                                 .guest
                                                 .as_ref()
@@ -372,41 +355,33 @@ pub async fn handle_battle_message(
                                 ("Hòa Trận".to_string(), "".to_string(), 0, 0)
                             };
 
-                            let to_host = serde_json::json!({
-                                "type": "UPDATE_MATCH_HP",
-                                "player_hp": host_hp,
-                                "opponent_hp": guest_hp,
-                                "damage_dealt": 100
-                            });
-                            let _ = room.host.tx.send(Message::Text(to_host.to_string().into()));
-
-                            if let Some(ref g) = room.guest {
-                                let to_guest = serde_json::json!({
-                                    "type": "UPDATE_MATCH_HP",
-                                    "player_hp": guest_hp,
-                                    "opponent_hp": host_hp,
-                                    "damage_dealt": 100
-                                });
-                                let _ = g.tx.send(Message::Text(to_guest.to_string().into()));
-                            }
-
                             println!(
                                 "[RUST WS] [MATCH END] Room {} single-round match settled by {}. Winner: {} ({}) | Role: {}",
                                 code, role, winner_name, winner_id, winner_role
                             );
 
-                            let end_message = serde_json::json!({
+                            let host_end = serde_json::json!({
                                 "type": "MATCH_END",
                                 "winner": winner_name,
                                 "winner_role": winner_role,
+                                "player_hp": host_hp,
+                                "opponent_hp": guest_hp,
                                 "gold_reward": 80,
                                 "consolation_gold": 25
-                            })
-                            .to_string();
+                            }).to_string();
+                            let _ = room.host.tx.send(Message::Text(host_end.into()));
 
-                            let _ = room.host.tx.send(Message::Text(end_message.clone().into()));
                             if let Some(ref g) = room.guest {
-                                let _ = g.tx.send(Message::Text(end_message.into()));
+                                let guest_end = serde_json::json!({
+                                    "type": "MATCH_END",
+                                    "winner": winner_name,
+                                    "winner_role": winner_role,
+                                    "player_hp": guest_hp,
+                                    "opponent_hp": host_hp,
+                                    "gold_reward": 80,
+                                    "consolation_gold": 25
+                                }).to_string();
+                                let _ = g.tx.send(Message::Text(guest_end.into()));
                             }
 
                             let guest_id = room

@@ -3320,7 +3320,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261004023255-8dfb4758';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261004024126-8dfb4758';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -5176,6 +5176,13 @@
                             const isWin = msg.winner_role
                                 ? (msg.winner_role === pvpState.role)
                                 : (msg.winner && currentUser && msg.winner.toLowerCase() === currentUser.username.toLowerCase());
+                            if (typeof msg.player_hp === 'number' && typeof msg.opponent_hp === 'number') {
+                                updateHp(msg.player_hp, msg.opponent_hp);
+                            }
+                            const rBtnEnd = document.getElementById('btn-battle-ready');
+                            if (rBtnEnd) rBtnEnd.style.display = 'none';
+                            const rIndEnd = document.getElementById('ready-indicator');
+                            if (rIndEnd) rIndEnd.textContent = isWin ? '🏆 Chiến thắng trận đấu!' : '💀 Thất bại trận đấu!';
                             window.onMatchFinished(isWin, msg.winner, isWin ? 80 : 25, isWin ? 5 : 1, isWin ? 120 : 40);
                             syncUserProfile();
                             break;
