@@ -194,35 +194,35 @@ pub async fn handle_battle_message(
                                             if authority.is_settled() {
                                                 return true;
                                             }
-                                            let survivors = match winner {
-                                                "ATTACKER" => authority.surviving_count(
-                                                    game_logic::TeamSide::Attacker,
-                                                ),
-                                                "DEFENDER" => authority.surviving_count(
-                                                    game_logic::TeamSide::Defender,
-                                                ),
-                                                _ => 0,
-                                            }
-                                                as i32;
-                                            let damage = 10 + survivors * 3;
-                                            if winner == "ATTACKER" {
-                                                if let Some(guest) = room.guest.as_mut() {
-                                                    guest.hp = (guest.hp - damage).max(0);
-                                                }
-                                            } else if winner == "DEFENDER" {
-                                                room.host.hp = (room.host.hp - damage).max(0);
-                                            }
-                                            let host_hp = room.host.hp;
-                                            let guest_hp = room
-                                                .guest
-                                                .as_ref()
-                                                .map(|guest| guest.hp)
-                                                .unwrap_or(0);
+                                            let (winner_name, winner_id, winner_role, host_hp, guest_hp) =
+                                                if winner == "ATTACKER" {
+                                                    (
+                                                        room.host.name.clone(),
+                                                        room.host.id.clone(),
+                                                        "host",
+                                                        100,
+                                                        0,
+                                                    )
+                                                } else {
+                                                    (
+                                                        room.guest
+                                                            .as_ref()
+                                                            .map(|guest| guest.name.clone())
+                                                            .unwrap_or_default(),
+                                                        room.guest
+                                                            .as_ref()
+                                                            .map(|guest| guest.id.clone())
+                                                            .unwrap_or_default(),
+                                                        "guest",
+                                                        0,
+                                                        100,
+                                                    )
+                                                };
                                             let host_hp_message = serde_json::json!({
                                                 "type": "UPDATE_MATCH_HP",
                                                 "player_hp": host_hp,
                                                 "opponent_hp": guest_hp,
-                                                "damage_dealt": damage
+                                                "damage_dealt": 100
                                             })
                                             .to_string();
                                             let _ = room
@@ -234,62 +234,47 @@ pub async fn handle_battle_message(
                                                     "type": "UPDATE_MATCH_HP",
                                                     "player_hp": guest_hp,
                                                     "opponent_hp": host_hp,
-                                                    "damage_dealt": damage
+                                                    "damage_dealt": 100
                                                 })
                                                 .to_string();
-                                                let _ =
-                                                    guest.tx.send(Message::Text(guest_hp_message.into()));
+                                                let _ = guest
+                                                    .tx
+                                                    .send(Message::Text(guest_hp_message.into()));
                                             }
-                                            if host_hp <= 0 || guest_hp <= 0 {
-                                                let winner_id = if host_hp > 0 {
-                                                    room.host.id.clone()
-                                                } else {
-                                                    room.guest
-                                                        .as_ref()
-                                                        .map(|guest| guest.id.clone())
-                                                        .unwrap_or_default()
-                                                };
-                                                let winner_name = if host_hp > 0 {
-                                                    room.host.name.clone()
-                                                } else {
-                                                    room.guest
-                                                        .as_ref()
-                                                        .map(|guest| guest.name.clone())
-                                                        .unwrap_or_default()
-                                                };
-                                                let end_message = serde_json::json!({
-                                                    "type": "MATCH_END",
-                                                    "winner": winner_name,
-                                                    "gold_reward": 80,
-                                                    "consolation_gold": 15
-                                                })
-                                                .to_string();
-                                                let _ = room.host.tx.send(Message::Text(
-                                                    end_message.clone().into(),
-                                                ));
-                                                if let Some(guest) = &room.guest {
-                                                    let _ = guest
-                                                        .tx
-                                                        .send(Message::Text(end_message.into()));
-                                                }
-                                                let guest_id = room
-                                                    .guest
-                                                    .as_ref()
-                                                    .map(|guest| guest.id.as_str())
-                                                    .unwrap_or("");
-                                                state.db.write().await.record_match(
-                                                    &format!("m_{}", code),
-                                                    &room.host.id,
-                                                    guest_id,
-                                                    Some(&winner_id),
-                                                    room.round,
-                                                );
-                                                authority.mark_settled();
-                                                rooms_guard.remove(&code);
-                                            } else {
-                                                room.round += 1;
-                                                room.authority = None;
+
+                                            let end_message = serde_json::json!({
+                                                "type": "MATCH_END",
+                                                "winner": winner_name,
+                                                "winner_role": winner_role,
+                                                "gold_reward": 80,
+                                                "consolation_gold": 25
+                                            })
+                                            .to_string();
+                                            let _ = room.host.tx.send(Message::Text(
+                                                end_message.clone().into(),
+                                            ));
+                                            if let Some(guest) = &room.guest {
+                                                let _ = guest
+                                                    .tx
+                                                    .send(Message::Text(end_message.into()));
                                             }
+                                            let guest_id = room
+                                                .guest
+                                                .as_ref()
+                                                .map(|guest| guest.id.as_str())
+                                                .unwrap_or("");
+                                            state.db.write().await.record_match(
+                                                &format!("m_{}", code),
+                                                &room.host.id,
+                                                guest_id,
+                                                Some(&winner_id),
+                                                1,
+                                            );
+                                            authority.mark_settled();
+                                            rooms_guard.remove(&code);
+                                            *current_room = None;
+                                            *current_role = None;
+                                            return true;
                                         }
                                     }
                                     Err(error) => {
@@ -362,113 +347,84 @@ pub async fn handle_battle_message(
                                 .get("player_survivors")
                                 .and_then(|v| v.as_u64())
                                 .unwrap_or(1) as i32;
-                            let damage = 10 + survivors * 4;
+                            let _damage = 10 + survivors * 4;
                             let winner_role = parsed
                                 .get("winner_role")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("host");
 
-                            if winner_role == "host" {
-                                if let Some(ref mut g) = room.guest {
-                                    g.hp = (g.hp - damage).max(0);
-                                }
+                            let (winner_name, winner_id, host_hp, guest_hp) = if winner_role == "host" {
+                                (room.host.name.clone(), room.host.id.clone(), 100, 0)
                             } else if winner_role == "guest" {
-                                room.host.hp = (room.host.hp - damage).max(0);
-                            } else if winner_role == "draw" {
-                                // Both players take tiebreaker damage on draw to prevent infinite matches
-                                let draw_damage = 10;
-                                room.host.hp = (room.host.hp - draw_damage).max(0);
-                                if let Some(ref mut g) = room.guest {
-                                    g.hp = (g.hp - draw_damage).max(0);
-                                }
-                                println!(
-                                    "[RUST WS] Round {} in room {} was a DRAW. Both players take {} tiebreaker damage.",
-                                    room.round, code, draw_damage
-                                );
-                            }
+                                (
+                                    room.guest
+                                        .as_ref()
+                                        .map(|g| g.name.clone())
+                                        .unwrap_or_else(|| "Đối Thủ".to_string()),
+                                    room.guest
+                                        .as_ref()
+                                        .map(|g| g.id.clone())
+                                        .unwrap_or_default(),
+                                    0,
+                                    100,
+                                )
+                            } else {
+                                ("Hòa Trận".to_string(), "".to_string(), 0, 0)
+                            };
 
-                            let host_hp = room.host.hp;
-                            let guest_hp = room.guest.as_ref().map(|g| g.hp).unwrap_or(0);
-
-                            // Send UPDATE_MATCH_HP to host
                             let to_host = serde_json::json!({
                                 "type": "UPDATE_MATCH_HP",
                                 "player_hp": host_hp,
                                 "opponent_hp": guest_hp,
-                                "damage_dealt": damage
+                                "damage_dealt": 100
                             });
                             let _ = room.host.tx.send(Message::Text(to_host.to_string().into()));
 
-                            // Send UPDATE_MATCH_HP to guest
                             if let Some(ref g) = room.guest {
                                 let to_guest = serde_json::json!({
                                     "type": "UPDATE_MATCH_HP",
                                     "player_hp": guest_hp,
                                     "opponent_hp": host_hp,
-                                    "damage_dealt": damage
+                                    "damage_dealt": 100
                                 });
                                 let _ = g.tx.send(Message::Text(to_guest.to_string().into()));
                             }
 
                             println!(
-                                "[RUST WS] [BATTLE SETTLED] Round {} in room {} settled by {}. Winner: {} | Host HP: {}, Guest HP: {} (Damage: {})",
-                                room.round, code, role, winner_role, host_hp, guest_hp, damage
+                                "[RUST WS] [MATCH END] Room {} single-round match settled by {}. Winner: {} ({}) | Role: {}",
+                                code, role, winner_name, winner_id, winner_role
                             );
 
-                            const MAX_MATCH_ROUNDS: usize = 20;
-                            if host_hp <= 0 || guest_hp <= 0 || room.round >= MAX_MATCH_ROUNDS {
-                                let (winner_name, winner_id) = if host_hp > guest_hp {
-                                    (room.host.name.clone(), room.host.id.clone())
-                                } else if guest_hp > host_hp {
-                                    (
-                                        room.guest.as_ref().map(|g| g.name.clone()).unwrap_or_default(),
-                                        room.guest.as_ref().map(|g| g.id.clone()).unwrap_or_default(),
-                                    )
-                                } else {
-                                    // Tiebreaker at round limit or mutual elimination: host wins tiebreak
-                                    (room.host.name.clone(), room.host.id.clone())
-                                };
+                            let end_message = serde_json::json!({
+                                "type": "MATCH_END",
+                                "winner": winner_name,
+                                "winner_role": winner_role,
+                                "gold_reward": 80,
+                                "consolation_gold": 25
+                            })
+                            .to_string();
 
-                                println!(
-                                    "[RUST WS] [MATCH END] Room {} match ended after round {}. Winner: {} ({}) | Final Host HP: {}, Guest HP: {}",
-                                    code, room.round, winner_name, winner_id, host_hp, guest_hp
-                                );
-
-                                let end_message = serde_json::json!({
-                                    "type": "MATCH_END",
-                                    "winner": winner_name,
-                                    "gold_reward": 80,
-                                    "consolation_gold": 25
-                                })
-                                .to_string();
-
-                                let _ =
-                                    room.host.tx.send(Message::Text(end_message.clone().into()));
-                                if let Some(ref g) = room.guest {
-                                    let _ = g.tx.send(Message::Text(end_message.into()));
-                                }
-
-                                let guest_id = room
-                                    .guest
-                                    .as_ref()
-                                    .map(|guest| guest.id.as_str())
-                                    .unwrap_or("");
-                                state.db.write().await.record_match(
-                                    &format!("m_{}", code),
-                                    &room.host.id,
-                                    guest_id,
-                                    Some(&winner_id),
-                                    room.round,
-                                );
-                                rooms_guard.remove(&code);
-                            } else {
-                                room.round += 1;
-                                room.host.ready = false;
-                                if let Some(ref mut g) = room.guest {
-                                    g.ready = false;
-                                }
-                                room.authority = None;
+                            let _ = room.host.tx.send(Message::Text(end_message.clone().into()));
+                            if let Some(ref g) = room.guest {
+                                let _ = g.tx.send(Message::Text(end_message.into()));
                             }
+
+                            let guest_id = room
+                                .guest
+                                .as_ref()
+                                .map(|guest| guest.id.as_str())
+                                .unwrap_or("");
+                            state.db.write().await.record_match(
+                                &format!("m_{}", code),
+                                &room.host.id,
+                                guest_id,
+                                Some(&winner_id),
+                                1,
+                            );
+                            rooms_guard.remove(&code);
+                            *current_room = None;
+                            *current_role = None;
+                            return true;
                         }
                     }
                     true

@@ -3220,6 +3220,25 @@
         </div>
     </div>
 
+    <!-- CONFIRM EXIT MATCH MODAL -->
+    <div id="confirm-exit-match-modal" class="modal-overlay" style="display:none; align-items:center; justify-content:center;">
+        <div class="modal-card" style="max-width:400px; text-align:center; padding:28px 24px;">
+            <div style="font-size:3rem; margin-bottom:12px;">🏳️</div>
+            <h3 style="margin:0 0 10px 0; color:#ef4444; font-size:1.3rem; font-weight:800;">XÁC NHẬN THOÁT TRẬN</h3>
+            <p style="color:#cbd5e1; font-size:0.88rem; line-height:1.5; margin-bottom:24px;">
+                Bạn có chắc chắn muốn rời khỏi trận đấu và quay trở về Sảnh Chính không?
+            </p>
+            <div style="display:flex; gap:12px;">
+                <button class="btn btn-outline" onclick="window.closeConfirmExitModal()" style="flex:1; padding:12px; font-weight:700;">
+                    ⚔️ Tiếp Tục Đấu
+                </button>
+                <button class="btn btn-danger" onclick="window.closeConfirmExitModal(); window.exitMatchToLobby();" style="flex:1; padding:12px; font-weight:800; background:#dc2626; border-color:#ef4444;">
+                    🏠 Thoát Về Sảnh
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- QUICK MATCH SEARCHING MODAL -->
     <div id="quick-match-modal" class="modal-overlay" style="display:none;">
         <div class="modal-card" style="max-width:400px; text-align:center; padding:32px 24px;">
@@ -3301,7 +3320,7 @@
     </div>
 
     <script type="module">
-        import init, { js_to_rust_pvp } from './game-free.js?v=20261003164958-1e4cc416';
+        import init, { js_to_rust_pvp } from './game-free.js?v=20261004023218-8dfb4758';
 
         // ==========================================
         // USER PROFILE & RUST API MANAGER
@@ -3444,7 +3463,8 @@
             const allModalIds = [
                 'guide-modal', 'auth-modal', 'leaderboard-modal', 'pvp-hub-modal',
                 'shop-modal', 'deck-modal', 'profile-modal', 'card-acquired-modal',
-                'match-result-modal', 'quick-match-modal', 'room-waiting-modal'
+                'match-result-modal', 'quick-match-modal', 'room-waiting-modal',
+                'confirm-exit-match-modal'
             ];
             allModalIds.forEach(id => {
                 const el = document.getElementById(id);
@@ -5153,7 +5173,9 @@
                             if (typeof js_to_rust_pvp === 'function') {
                                 js_to_rust_pvp(JSON.stringify(msg));
                             }
-                            const isWin = msg.winner && msg.winner.toLowerCase() === currentUser.username.toLowerCase();
+                            const isWin = msg.winner_role
+                                ? (msg.winner_role === pvpState.role)
+                                : (msg.winner && currentUser && msg.winner.toLowerCase() === currentUser.username.toLowerCase());
                             window.onMatchFinished(isWin, msg.winner, isWin ? 80 : 25, isWin ? 5 : 1, isWin ? 120 : 40);
                             syncUserProfile();
                             break;
@@ -5511,13 +5533,24 @@
         };
 
         window.confirmExitMatch = function() {
-            if (confirm('Bạn có chắc chắn muốn thoát trận đấu và trở về Sảnh Chính?')) {
+            const modal = document.getElementById('confirm-exit-match-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+            } else {
                 window.exitMatchToLobby();
             }
         };
 
+        window.closeConfirmExitModal = function() {
+            const modal = document.getElementById('confirm-exit-match-modal');
+            if (modal) modal.style.display = 'none';
+        };
+
         window.exitMatchToLobby = function() {
             window.inBattle = false;
+            if (pvpState.active && pvpState.roomCode && window._rust_pvp) {
+                window._rust_pvp.leaveRoom();
+            }
             pvpState.active = false;
             pvpState.roomCode = null;
             closeAllModals();

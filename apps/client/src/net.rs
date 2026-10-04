@@ -226,12 +226,16 @@ pub fn pvp_network_system(
                     if *state.get() == GameState::Placement && !cards.is_empty() {
                         for (ent, unit) in all_board_units.iter() {
                             if unit.faction == Faction::Player {
-                                commands.entity(ent).despawn_recursive();
+                                if let Some(e) = commands.get_entity(ent) {
+                                    e.despawn_recursive();
+                                }
                             }
                         }
 
                         for (ent, _) in bench_units.iter() {
-                            commands.entity(ent).despawn_recursive();
+                            if let Some(e) = commands.get_entity(ent) {
+                                e.despawn_recursive();
+                            }
                         }
 
                         for (idx, card) in cards.iter().enumerate() {
@@ -532,11 +536,15 @@ pub fn pvp_network_system(
                 PvpMessage::ExitMatch => {
                     info!("[PVP] Exit match, reset state to Placement");
                     pvp_mgr.active = false;
+                    pvp_mgr.is_ready = false;
+                    pvp_mgr.opponent_ready = false;
+                    pvp_mgr.round = 1;
                     pvp_mgr.match_winner = None;
                     adapter.is_pvp = false;
                     adapter.battle_state = None;
                     adapter.settled_winner = None;
                     adapter.pending_events.clear();
+                    adapter.reset(false, 0, None);
                     for (ent, unit) in all_board_units.iter() {
                         if unit.faction == Faction::Enemy {
                             if let Some(e) = commands.get_entity(ent) {
